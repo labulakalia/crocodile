@@ -17,7 +17,7 @@ func Init() {
 		err      error
 		filepath string
 	)
-	filepath = "../../conf/config.yaml"
+	filepath = "config.yaml"
 	if err = config.LoadFile(filepath); err != nil {
 		panic(err)
 	}
