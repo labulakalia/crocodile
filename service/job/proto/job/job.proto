@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package crocodile.srv.job;
+
+import "google/protobuf/timestamp.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+service Job {
+	// 增
+	rpc CreateJob(Task) returns(Response){}
+	// 删
+	rpc DeleteJob(Task) returns(Response){}
+	// 改 停止 恢复
+	rpc ChangeJob(Task) returns(Response){}
+	// 查
+	rpc GetJob(Task) returns(Response){}
+	// 强杀
+	rpc KillJob(Task) returns(Response){}
+	// 运行
+	rpc RunJob(Task) returns(Response){}
+}
+
+
+message Task {
+	int32 id = 1;
+	string taskname = 2 [(gogoproto.jsontag) = "taskname"]; 				// 任务名
+	string command = 3 [(gogoproto.jsontag) = "command"]; 				// 命令
+	string cronexpr = 4 [(gogoproto.jsontag) = "cronexpr"]; 				// 定时表达式
+	int32 timeout = 5 [(gogoproto.jsontag) = "timeout"]; 					// 任务执行的最长时间
+	string remark = 6 [(gogoproto.jsontag) = "remark"]; 					// 备注
+	string createdby = 7 [(gogoproto.jsontag) = "createdby"]; 				// 创建人
+	bool stop = 8 [(gogoproto.jsontag) = "stop"]; 						// 任务是否停止
+	google.protobuf.Timestamp nexttime = 10 [(gogoproto.jsontag) = "nexttime"]; 				// 下次运行时间
+	string actuator = 11 [(gogoproto.jsontag) = "actuator"]; 			// 执行器ID
+}
+
+message Response {
+	repeated Task tasks = 1;
+	repeated string regips = 3;
+	int32 code = 4;
+}

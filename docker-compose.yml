@@ -1,0 +1,28 @@
+version: '3.1'
+
+services:
+  actuator_srv:
+    build: service/actuator
+  auth_srv:
+    build: service/auth
+  executor_srv:
+    build: service/executor
+  job_srv:
+    build: service/job
+  tasklog_srv:
+    build: service/tasklog
+  actuator_web:
+    build: web/actuator
+  auth_web:
+    build: web/auth
+  job_web:
+    build: web/job
+  mysql:
+    image: mariadb
+    ports:
+      - 3306:3306
+  etcd:
+    image: etcd
+    ports:
+      - 2379:2379
+
