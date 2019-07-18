@@ -4,6 +4,7 @@ import (
 	"context"
 	pbtasklog "crocodile/service/tasklog/proto/tasklog"
 	"database/sql"
+	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/labulaka521/logging"
 	"time"
@@ -30,7 +31,9 @@ func (s *Service) CreateLog(ctx context.Context, log *pbtasklog.SimpleLog) (err 
 	)
 
 	starttime, _ = ptypes.Timestamp(log.Starttime)
+
 	endtime, _ = ptypes.Timestamp(log.Endtime)
+	fmt.Println(starttime.Local(), endtime.Local())
 	createlog_sql = `INSERT INTO crocodile_log 
 					(taskname,command,cronexpr,createdby,timeout,actuator,runhost,starttime,endtime,output,err)
 					VALUE(?,?,?,?,?,?,?,?,?,?,?)`
@@ -40,7 +43,7 @@ func (s *Service) CreateLog(ctx context.Context, log *pbtasklog.SimpleLog) (err 
 	}
 	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, log.Taskname, log.Command, log.Cronexpr, log.Createdby,
-		log.Timeout, log.Actuator, log.Runhost, starttime, endtime, log.Output, log.Err)
+		log.Timeout, log.Actuator, log.Runhost, starttime.Local(), endtime.Local(), log.Output, log.Err)
 	if err != nil {
 		logging.Errorf("SQL %s Exec Err: %v", createlog_sql, err)
 	}
@@ -63,7 +66,7 @@ func (s *Service) GetLog(ctx context.Context, querylog *pbtasklog.QueryLog) (res
 	getlog_sql = `SELECT *
 				 FROM crocodile_log 
 				 WHERE taskname=?
-				 AND starttime BETWEEN ? AND ?
+                 AND (starttime > ? AND starttime < ?)
 				 ORDER BY starttime DESC
 				 LIMIT ? OFFSET ?
 				`

@@ -55,13 +55,12 @@ func CreateActuator(c *gin.Context) {
 		loginuser   string
 		exists      bool
 		code        int32
-		resp        *pbactuator.Response
 		reqactuator pbactuator.Actuat
 	)
 
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
-
+	code = e.SUCCESS
 	reqactuator = pbactuator.Actuat{}
 	if err = bind.BindJson(c, &reqactuator); err != nil {
 		code = e.ERR_BAD_REQUEST
@@ -76,14 +75,12 @@ func CreateActuator(c *gin.Context) {
 
 	reqactuator.Createdby = loginuser
 
-	resp, err = ActuatorClient.CreateActuator(ctx, &reqactuator)
+	_, err = ActuatorClient.CreateActuator(ctx, &reqactuator)
 	if err != nil {
 		logging.Errorf("CreateActuator Err: %v", err)
 		code = e.ERR_CREATE_ACTUAT_FAIL
-		app.Response(code, nil)
-		return
 	}
-	app.Response(resp.Code, nil)
+	app.Response(code, nil)
 }
 func DeleteActuator(c *gin.Context) {
 	var (
@@ -92,12 +89,12 @@ func DeleteActuator(c *gin.Context) {
 		ctx            context.Context
 		err            error
 		code           int32
-		resp           *pbactuator.Response
 		exits          bool
 	)
 
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
+	code = e.SUCCESS
 	deleteactuator, exits = c.Keys["data"].(pbactuator.Actuat)
 	if !exits {
 		code = e.ERR_BAD_REQUEST
@@ -105,14 +102,12 @@ func DeleteActuator(c *gin.Context) {
 		return
 	}
 
-	resp, err = ActuatorClient.DeleteActuator(ctx, &deleteactuator)
+	_, err = ActuatorClient.DeleteActuator(ctx, &deleteactuator)
 	if err != nil {
 		logging.Errorf("DeleteActuator Err: %v", err)
 		code = e.ERR_DELETE_ACTUAT_FAIL
-		app.Response(code, nil)
-		return
 	}
-	app.Response(resp.Code, nil)
+	app.Response(code, nil)
 }
 
 func ChangeActuator(c *gin.Context) {
@@ -122,13 +117,12 @@ func ChangeActuator(c *gin.Context) {
 		ctx            context.Context
 		err            error
 		code           int32
-		resp           *pbactuator.Response
 		exits          bool
 	)
 
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
-
+	code = e.SUCCESS
 	changeactuator = pbactuator.Actuat{}
 	changeactuator, exits = c.Keys["data"].(pbactuator.Actuat)
 	if !exits {
@@ -138,14 +132,12 @@ func ChangeActuator(c *gin.Context) {
 		return
 	}
 
-	resp, err = ActuatorClient.ChangeActuator(ctx, &changeactuator)
+	_, err = ActuatorClient.ChangeActuator(ctx, &changeactuator)
 	if err != nil {
 		logging.Errorf("CreateActuator Err: %v", err)
 		code = e.ERR_CHANGE_ACTUAT_FAIL
-		app.Response(code, nil)
-		return
 	}
-	app.Response(resp.Code, nil)
+	app.Response(code, nil)
 }
 
 func GetActuator(c *gin.Context) {
@@ -160,6 +152,7 @@ func GetActuator(c *gin.Context) {
 	queryctuator = pbactuator.Actuat{}
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
+	code = e.SUCCESS
 	if err = bind.BindQuery(c, &queryctuator); err != nil {
 		code = e.ERR_BAD_REQUEST
 		app.Response(code, nil)
@@ -170,10 +163,8 @@ func GetActuator(c *gin.Context) {
 	if err != nil {
 		logging.Errorf("CreateActuator Err: %v", err)
 		code = e.ERR_CHANGE_ACTUAT_FAIL
-		app.Response(code, nil)
-		return
 	}
-	app.Response(rsp.Code, rsp.Actuators)
+	app.Response(code, rsp.Actuators)
 }
 
 func GetALLExecuteIP(c *gin.Context) {
@@ -186,12 +177,11 @@ func GetALLExecuteIP(c *gin.Context) {
 	)
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
+	code = e.SUCCESS
 	rsp, err = ActuatorClient.GetAllExecutorIP(ctx, new(pbactuator.Actuat))
 	if err != nil {
 		logging.Errorf("GetAllExecutorIP Err:%v", err)
 		code = e.ERR_GET_EXECUTOR_IP_FAIL
-		app.Response(code, nil)
-		return
 	}
-	app.Response(rsp.Code, rsp.ExecutorIps)
+	app.Response(code, rsp.ExecutorIps)
 }

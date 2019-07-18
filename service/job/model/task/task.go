@@ -42,9 +42,7 @@ func Init(cient client.Client) {
 }
 
 type Service struct {
-	DB            *sql.DB
-	Pub           *micro.Publisher
-	ActatorCLient *pbactator.ActuatorService
+	DB *sql.DB
 }
 
 // 创建任务
@@ -79,7 +77,7 @@ func (s *Service) CreateJob(ctx context.Context, task *pbjob.Task) (err error) {
 	}
 
 	// 获取程序下一次运行时间
-	now = time.Now().Local()
+	now = time.Now()
 	if nexttime, err = util.NextTime(task.Cronexpr, now); err != nil {
 		return
 	}
@@ -192,12 +190,12 @@ func (s *Service) UpdateNextTime(ctx context.Context, taskname string, nexttime 
 		logging.Errorf("Exec Context Err: %v", err)
 		return
 	}
-	logging.Debugf("Update NextRun Time Success")
+	logging.Debugf("Update Task %s NextRun Time Success", taskname)
 	return
 }
 
 // optional
-//   id
+//   taskname
 func (s *Service) GetJob(ctx context.Context, taskname string) (resp []*pbjob.Task, err error) {
 	var (
 		getjob_sql string
@@ -205,22 +203,22 @@ func (s *Service) GetJob(ctx context.Context, taskname string) (resp []*pbjob.Ta
 
 		rows     *sql.Rows
 		nextTime time.Time
+		args     []interface{}
 	)
 	resp = []*pbjob.Task{}
-	if taskname == "" {
-		taskname = "%"
+	getjob_sql = "SELECT * FROM crocodile_task"
+	args = make([]interface{}, 0)
+	if taskname != "" {
+		getjob_sql += " WHERE taskname=?"
+		args = append(args, taskname)
 	}
-	getjob_sql = `SELECT id, taskname,command,cronexpr,createdby,remark,stop,timeout,nexttime,actuator
-				FROM crocodile_task
-				WHERE taskname LIKE ?`
 
 	if stmt, err = s.DB.PrepareContext(ctx, getjob_sql); err != nil {
 		logging.Errorf("Prepare SQL %s Err: %v", getjob_sql, err)
 		return
 	}
 	defer stmt.Close()
-	if rows, err = stmt.QueryContext(ctx, taskname); err != nil {
-
+	if rows, err = stmt.QueryContext(ctx, args...); err != nil {
 		logging.Errorf("SQL %s Query Err: %v", getjob_sql, err)
 		return
 	}

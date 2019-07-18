@@ -58,7 +58,7 @@ func GetUser(c *gin.Context) {
 	tmpuser = &User{}
 	app = response.Gin{c}
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
-
+	code = e.SUCCESS
 	if loginuser, exists = c.Keys["user"].(string); !exists {
 		code = e.ERR_TOKEN_INVALID
 		app.Response(code, nil)
@@ -83,7 +83,7 @@ func GetUser(c *gin.Context) {
 	} else {
 		tmpuser.Roles = []string{}
 	}
-	app.Response(respAuthSrv.Code, tmpuser)
+	app.Response(code, tmpuser)
 }
 
 func GetUsers(c *gin.Context) {
@@ -98,7 +98,7 @@ func GetUsers(c *gin.Context) {
 	)
 	us = []*User{}
 	app = response.Gin{c}
-
+	code = e.SUCCESS
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 
 	reqUser = &pbauth.User{}
@@ -124,7 +124,7 @@ func GetUsers(c *gin.Context) {
 		us = append(us, &tmpuser)
 	}
 	logging.Infof("GetUsers Response  Code: %d", respAuthSrv.Code)
-	app.Response(respAuthSrv.Code, us)
+	app.Response(code, us)
 }
 
 func ChangeUser(c *gin.Context) {
@@ -135,12 +135,11 @@ func ChangeUser(c *gin.Context) {
 		err     error
 		code    int32
 		reqUser *pbauth.User
-		resp    *pbauth.Response
 	)
 	app = response.Gin{c}
 	u = User{}
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
-
+	code = e.SUCCESS
 	if err = bind.BindJson(c, &u); err != nil {
 		logging.Errorf("BindJson Err:%v", err)
 		code = e.ERR_BAD_REQUEST
@@ -155,14 +154,14 @@ func ChangeUser(c *gin.Context) {
 		Forbid:   u.Forbid,
 		Super:    u.Super,
 	}
-	if resp, err = AuthClient.ChangeUser(ctx, reqUser); err != nil {
+	if _, err = AuthClient.ChangeUser(ctx, reqUser); err != nil {
 		logging.Errorf("ChangeUser Err:%v", err)
 		code = e.ERR_CHANGE_USER_FAIL
 		app.Response(code, nil)
 		return
 	}
-	logging.Infof("ChangeUser Response Code: %d", resp.Code)
-	app.Response(resp.Code, nil)
+
+	app.Response(code, nil)
 }
 
 // 创建用户
@@ -181,12 +180,11 @@ func UserCreate(c *gin.Context) {
 		err     error
 		code    int32
 		reqUser *pbauth.User
-		resp    *pbauth.Response
 		avatar  string
 	)
 	app = response.Gin{c}
 	u = create{}
-
+	code = e.SUCCESS
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 
 	avatar, _ = util.GenerateAvatar(u.Email, 128)
@@ -205,14 +203,14 @@ func UserCreate(c *gin.Context) {
 		Forbid:   false,
 		Super:    u.Super,
 	}
-	if resp, err = AuthClient.CreateUser(ctx, reqUser); err != nil {
+	if _, err = AuthClient.CreateUser(ctx, reqUser); err != nil {
 		logging.Errorf("CreateUser Err:%v", err)
 		code = e.ERR_CREATE_USER_FAIL
 		app.Response(code, nil)
 		return
 	}
-	logging.Infof("CreateUser Response Code: %d", resp.Code)
-	app.Response(resp.Code, nil)
+
+	app.Response(code, nil)
 }
 
 func UserLogin(c *gin.Context) {
@@ -233,7 +231,7 @@ func UserLogin(c *gin.Context) {
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 
 	app = response.Gin{c}
-
+	code = e.SUCCESS
 	if authorization, err = middle.GetAuthor(c); err != nil {
 		code = e.ERR_USER_PASS_FAIL
 		return
@@ -274,25 +272,24 @@ func UserLogin(c *gin.Context) {
 		app.Response(code, nil)
 		return
 	}
-	logging.Infof("UserLogin Response Code: %d", resp.Code)
-	app.Response(resp.Code, resp.Token)
+	app.Response(code, resp.Token)
 	return
 }
 
 func Logout(c *gin.Context) {
 	var (
-		app       response.Gin
-		ctx       context.Context
-		err       error
-		code      int32
-		reqUser   *pbauth.User
-		resp      *pbauth.Response
+		app     response.Gin
+		ctx     context.Context
+		err     error
+		code    int32
+		reqUser *pbauth.User
+
 		exists    bool
 		loginuser string
 	)
 	app = response.Gin{c}
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
-
+	code = e.SUCCESS
 	if loginuser, exists = c.Keys["user"].(string); !exists {
 		code = e.ERR_TOKEN_INVALID
 		app.Response(code, nil)
@@ -300,30 +297,29 @@ func Logout(c *gin.Context) {
 	}
 
 	reqUser = &pbauth.User{Username: loginuser}
-	if resp, err = AuthClient.LogoutUser(ctx, reqUser); err != nil {
+	if _, err = AuthClient.LogoutUser(ctx, reqUser); err != nil {
 		logging.Errorf("Logout User Err:%v", err)
 		code = e.ERR_LOGOUT_USER_FAIL
 		app.Response(code, nil)
 		return
 	}
-	logging.Infof("LogoutUser Response Code: %d", resp.Code)
-	app.Response(resp.Code, nil)
+	app.Response(code, nil)
 }
 
 func DeleteUser(c *gin.Context) {
 	var (
-		app       response.Gin
-		ctx       context.Context
-		err       error
-		code      int32
-		reqUser   *pbauth.User
-		resp      *pbauth.Response
+		app     response.Gin
+		ctx     context.Context
+		err     error
+		code    int32
+		reqUser *pbauth.User
+
 		exists    bool
 		loginuser string
 	)
 	app = response.Gin{c}
 	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
-
+	code = e.SUCCESS
 	if loginuser, exists = c.Keys["user"].(string); !exists {
 		code = e.ERR_TOKEN_INVALID
 		app.Response(code, nil)
@@ -331,12 +327,12 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	reqUser = &pbauth.User{Username: loginuser}
-	if resp, err = AuthClient.DeleteUser(ctx, reqUser); err != nil {
+	if _, err = AuthClient.DeleteUser(ctx, reqUser); err != nil {
 		logging.Errorf("DeleteUser Err:%v", err)
 		code = e.ERR_DELETE_USER_FAIL
 		app.Response(code, nil)
 		return
 	}
-	logging.Infof("DeleteUser Response  Code: %d", resp.Code)
-	app.Response(resp.Code, nil)
+
+	app.Response(code, nil)
 }

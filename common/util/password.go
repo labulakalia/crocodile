@@ -17,7 +17,6 @@ func GenerateHashPass(password string) (hashpassword string, err error) {
 }
 
 func CheckHashPass(hashpass string, password string) (err error) {
-	logging.Info(hashpass, password)
 	if err = bcrypt.CompareHashAndPassword([]byte(hashpass), []byte(password)); err != nil {
 		logging.Errorf("CompareHashAndPassword Err: %v", err)
 		return err

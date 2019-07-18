@@ -13,7 +13,7 @@ func NextTime(cronLine string, fromtime time.Time) (nexttime time.Time, err erro
 	if expr, err = cronexpr.Parse(cronLine); err != nil {
 		return
 	}
-	nexttime = expr.Next(fromtime)
+	nexttime = expr.Next(fromtime.In(time.Local))
 
 	return
 }
