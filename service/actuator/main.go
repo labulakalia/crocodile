@@ -48,7 +48,10 @@ func main() {
 	}
 
 	// Register Handler
-	pbactuator.RegisterActuatorHandler(service.Server(), h)
+	err = pbactuator.RegisterActuatorHandler(service.Server(), h)
+	if err != nil {
+		logging.Fatal(err)
+	}
 
 	// Run service
 	if err = service.Run(); err != nil {

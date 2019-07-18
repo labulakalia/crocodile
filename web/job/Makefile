@@ -5,7 +5,7 @@ GOPATH:=$(shell go env GOPATH)
 .PHONY: build
 build:
 
-	go build -o log-web main.go plugin.go
+	go build -o job-web main.go plugin.go
 
 .PHONY: test
 test:

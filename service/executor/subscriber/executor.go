@@ -9,7 +9,7 @@ import (
 	"github.com/labulaka521/logging"
 	"github.com/micro/go-micro/broker"
 	"github.com/micro/util/go/lib/addr"
-	"strings"
+	"net"
 )
 
 type Executor struct {
@@ -22,12 +22,10 @@ func (e *Executor) ExecEvent(ctx context.Context, exMsg *pbexecutor.ExecuteMsg) 
 		port string
 		run  bool
 	)
-	// 判断任务执行的主机IP
-	logging.Debugf("Recevice Event %+v", exMsg)
 
 	switch exMsg.Event {
 	case event.Run_Task:
-		port = strings.Split(e.PubSub.Options().Addrs[0], ":")[1]
+		_, port, _ = net.SplitHostPort(e.PubSub.Address())
 		for _, ip := range addr.IPs() {
 			address := fmt.Sprintf("%s:%s", ip, port)
 			if address == exMsg.Runhost {
@@ -39,9 +37,12 @@ func (e *Executor) ExecEvent(ctx context.Context, exMsg *pbexecutor.ExecuteMsg) 
 			return
 		}
 		// 运行任务的事件
-		if err = execute.RunTask(ctx, exMsg); err != nil {
-			logging.Errorf("RunTask Err: %v", err)
-		}
+		go func() {
+			if err = execute.RunTask(ctx, exMsg); err != nil {
+				logging.Errorf("RunTask Err: %v", err)
+			}
+		}()
+
 	case event.Kill_Task:
 		// 强杀任务的事件
 		if err = execute.KillTask(exMsg); err != nil {

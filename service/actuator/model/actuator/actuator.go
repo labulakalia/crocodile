@@ -111,13 +111,16 @@ func (s *Service) GetActuator(ctx context.Context, name string) (actuats []*pbac
 		rows            *sql.Rows
 		address         string
 		allExecutorIP   []string
+		args            []interface{}
 	)
 	actuats = []*pbactuat.Actuat{}
-	if name == "" {
-		name = "%"
+	getActuator_sql = "SELECT id,name,address,createdby FROM crocodile_actuator"
+	args = make([]interface{}, 0)
+	if name != "" {
+		getActuator_sql += " WHERE name=?"
+		args = append(args, name)
 	}
 
-	getActuator_sql = "SELECT * FROM crocodile_actuator WHERE name LIKE ?"
 	// 所有在线的执行器
 	if allExecutorIP, err = s.GetAllExecutorIP(ctx); err != nil {
 		logging.Errorf("Get AllExecutorIP Err: %v", err)
@@ -128,14 +131,15 @@ func (s *Service) GetActuator(ctx context.Context, name string) (actuats []*pbac
 		logging.Errorf("Prepare SQL %s Err: %v", getActuator_sql, err)
 		return
 	}
-	if rows, err = stmt.QueryContext(ctx, name); err != nil {
+	if rows, err = stmt.QueryContext(ctx, args...); err != nil {
 		logging.Errorf("Exec Err:%v", err)
 		return
 	}
 
 	for rows.Next() {
-		actuat := pbactuat.Actuat{}
-
+		actuat := pbactuat.Actuat{
+			Address: make([]*pbactuat.Addr, 0),
+		}
 		if err = rows.Scan(&actuat.Id, &actuat.Name, &address, &actuat.Createdby); err != nil {
 			continue
 		}
@@ -163,7 +167,6 @@ func (s *Service) GetActuator(ctx context.Context, name string) (actuats []*pbac
 
 		actuats = append(actuats, &actuat)
 	}
-
 	return
 }
 

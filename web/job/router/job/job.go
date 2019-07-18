@@ -7,7 +7,6 @@ import (
 	"crocodile/common/e"
 	"crocodile/common/registry"
 	"crocodile/common/response"
-	ftime "crocodile/common/time"
 	pbjob "crocodile/service/job/proto/job"
 	pbtasklog "crocodile/service/tasklog/proto/tasklog"
 	"github.com/gin-gonic/gin"
@@ -28,7 +27,7 @@ func Init() {
 		client.Retries(3),
 		client.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
 	)
-	JobClient = pbjob.NewJobService("crocodile.srv.job", c)
+	JobClient = pbjob.NewJobService("crocodile.srv.job", client.DefaultClient)
 	Logclient = pbtasklog.NewTaskLogService("crocodile.srv.tasklog", c)
 }
 
@@ -281,6 +280,7 @@ func GetJobLog(c *gin.Context) {
 		app.Response(code, nil)
 		return
 	}
+
 	fromtime, err = ptypes.TimestampProto(querylog.Fromtime)
 	if err != nil {
 		logging.Errorf("Bind Query Err:%v", err)
@@ -318,11 +318,8 @@ func GetJobLog(c *gin.Context) {
 		getlog.Timeout = log.Timeout
 		getlog.Actuator = log.Actuator
 		getlog.Runhost = log.Runhost
-		stime, _ := ptypes.Timestamp(log.Starttime)
-		getlog.Starttime = ftime.Format(stime.In(time.Local))
-		etime, _ := ptypes.Timestamp(log.Endtime)
-		getlog.Endtime = ftime.Format(etime.In(time.Local))
-
+		getlog.Starttime = ptypes.TimestampString(log.Starttime)
+		getlog.Endtime = ptypes.TimestampString(log.Endtime)
 		getlog.Output = log.Output
 		getlog.Err = log.Err
 		getlogs = append(getlogs, &getlog)

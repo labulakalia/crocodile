@@ -17,13 +17,13 @@ import (
 var (
 	// 执行过程中的信息
 	ExecutingTable map[string]*TaskExecuteInfo
-	lock           sync.Locker
+	lock           *sync.RWMutex
 	tasklogclient  pbtasklog.TaskLogService
 )
 
 func Init(client client.Client) {
 	ExecutingTable = make(map[string]*TaskExecuteInfo)
-	lock = &sync.Mutex{}
+	lock = &sync.RWMutex{}
 	tasklogclient = pbtasklog.NewTaskLogService("crocodile.srv.tasklog", client)
 }
 
@@ -57,7 +57,11 @@ func RunTask(ctx context.Context, executeMsg *pbexecutor.ExecuteMsg) (err error)
 
 	logging.Infof("Start Run Task %s", executeMsg.Task.Taskname)
 	// 在运行中的任务不允许再次调度
-	if _, exits = ExecutingTable[executeMsg.Task.Taskname]; exits {
+	// 加读锁 因为map不是并发安全的
+	lock.RLock()
+	_, exits = ExecutingTable[executeMsg.Task.Taskname]
+	lock.RUnlock()
+	if exits {
 		logging.Errorf("Task %s:%s Is Running", executeMsg.Task.Taskname, executeMsg.Task.Id)
 		return
 	}
@@ -68,7 +72,9 @@ func RunTask(ctx context.Context, executeMsg *pbexecutor.ExecuteMsg) (err error)
 	} else {
 		cancelCtx, cancelFunc = context.WithTimeout(ctx, time.Duration(executeMsg.Task.Timeout)*time.Second)
 	}
+
 	// 更新执行表
+	// 需要加写锁
 	lock.Lock()
 	ExecutingTable[executeMsg.Task.Taskname] = NewTaskExecuteInfo(cancelFunc, executeMsg.Task)
 	lock.Unlock()
@@ -116,6 +122,7 @@ func sendLog(ctx context.Context, taskLog *pbtasklog.TaskResLog) {
 		err       error
 	)
 	// 删除执行表中的任务
+	// 加锁
 	lock.Lock()
 	if _, exits = ExecutingTable[taskLog.Executemsg.Task.Taskname]; exits {
 		delete(ExecutingTable, taskLog.Executemsg.Task.Taskname)

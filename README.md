@@ -1,5 +1,5 @@
 ![](https://img.shields.io/badge/language-golang-orange.svg)
-# Crocodile 分布式任务调度系统
+# Crocodile 任务调度系统
 
 
 ## Master
@@ -27,23 +27,23 @@
     一些公共的包
   - service
     服务
-    - actuator
-      执行器管理
-    - executor
+    - actuator  
+      执行器
+    - executor  
       执行任务的服务
-    - taskjob
+    - taskjob  
       任务管理的服务
-    - log
+    - log  
       日志管理的服务
-    - user
+    - user  
       用户管理的服务
   - web
     web接口
-    - job
+    - job  
     任务的接口平台
-    - actutor
+    - actutor  
     执行器接口
-    - user
+    - user  
     用户管理接口
     
     

@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"crocodile/common/util"
+	"fmt"
 	"github.com/golang/protobuf/ptypes"
 	"math"
 
@@ -27,6 +28,7 @@ func Loop(exit chan int, db *sql.DB) {
 		t               *pbjob.Task
 		tasks           []*pbjob.Task
 		nextTime        time.Time
+		newnextTime     time.Time
 		now             time.Time
 		nearTime        time.Duration
 		tk              *time.Ticker
@@ -39,26 +41,26 @@ func Loop(exit chan int, db *sql.DB) {
 	taskService = &task.Service{
 		DB: db,
 	}
+	//
 	for {
 		now = time.Now()
 		if tasks, err = taskService.GetJob(context.TODO(), ""); err != nil {
 			logging.Errorf("Get JOb Err: %v", err)
-
 		}
+		fmt.Println("---------------------- new scheduler loop ----------------------")
 
 		// 获取全部的任务
 		if len(tasks) == 0 {
 			nearTime = defaultWaitTime
 		}
-
 		for _, t = range tasks {
+			var update = false
 			if nextTime, err = ptypes.Timestamp(t.Nexttime); err != nil {
 				logging.Errorf("task %s Time format Err: %v", t.Taskname, err)
 				continue
 			}
-
-			// 比较任务的下一次运行时间
 			if nextTime.Before(now) || nextTime.Equal(now) {
+				update = true
 				go func(t *pbjob.Task) {
 					if t.Stop {
 						logging.Warnf("Task %s is stop scheduler ", t.Taskname)
@@ -69,14 +71,17 @@ func Loop(exit chan int, db *sql.DB) {
 					}
 				}(t)
 			}
-			// 更新下一次的运行时间
-			nextTime, _ = util.NextTime(t.Cronexpr, now)
-			if err = taskService.UpdateNextTime(context.TODO(), t.Taskname, nextTime); err != nil {
-				logging.Errorf("UpdatenexTime Task %s Err:%v", t.Taskname, err)
+
+			newnextTime, _ = util.NextTime(t.Cronexpr, now)
+
+			if update {
+				if err = taskService.UpdateNextTime(context.TODO(), t.Taskname, newnextTime); err != nil {
+					logging.Errorf("UpdatenexTime Task %s Err:%v", t.Taskname, err)
+				}
 			}
 
-			if nextTime.Sub(now) < nearTime || nearTime == 0 {
-				nearTime = nextTime.Sub(now)
+			if newnextTime.Sub(now) < nearTime || nearTime == 0 {
+				nearTime = newnextTime.Sub(now)
 			}
 		}
 
