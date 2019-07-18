@@ -20,12 +20,13 @@
 - 接收到执行任务的消息后，执行任务
 - 完成后会向日志接收的模块发布消息
 
-- crocodile
-  主目录
-  - common
-    一些公共的包
+
+
+
+## 主目录
+  - common  
+    公共的包
   - service
-    服务
     - actuator  
       执行器
     - executor  
@@ -37,7 +38,6 @@
     - user  
       用户管理的服务
   - web
-    web接口
     - job  
     任务,任务日志的接口平台
     - actutor  
