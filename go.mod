@@ -33,13 +33,16 @@ require (
 	github.com/influxdata/influxdb v1.7.5 // indirect
 	github.com/labulaka521/logging v0.0.0-20190526092138-ef7e2414b576
 	github.com/lyft/protoc-gen-validate v0.0.14 // indirect
+	github.com/micro/cli v0.2.0
 	github.com/micro/go-micro v1.5.0
 	github.com/micro/go-plugins v1.1.0
 	github.com/micro/micro v1.5.0 // indirect
 	github.com/micro/protoc-gen-micro v0.8.0 // indirect
 	github.com/micro/util v0.2.0
+	github.com/opentracing/opentracing-go v1.1.0
 	github.com/protocolbuffers/protobuf v3.8.0+incompatible // indirect
 	github.com/shirou/gopsutil v2.18.12+incompatible // indirect
+	github.com/uber/jaeger-client-go v2.16.0+incompatible
 	github.com/ugorji/go/codec v0.0.0-20190320090025-2dc34c0b8780 // indirect
 	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
 	golang.org/x/tools v0.0.0-20190606050223-4d9ae51c2468 // indirect

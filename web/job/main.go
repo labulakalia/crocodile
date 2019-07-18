@@ -4,6 +4,7 @@ import (
 	"crocodile/common/cfg"
 	"crocodile/common/log"
 	"crocodile/common/registry"
+	"crocodile/common/wrapper"
 	"crocodile/web/job/router"
 	"crocodile/web/job/router/job"
 	"github.com/labulaka521/logging"
@@ -11,11 +12,18 @@ import (
 	"time"
 
 	"github.com/micro/go-micro/web"
+	goopentracing "github.com/opentracing/opentracing-go"
 )
 
 func main() {
 	cfg.Init()
 	log.Init()
+	t, io, err := wrapper.NewTracer("crocodile.web.job", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
+	goopentracing.SetGlobalTracer(t)
 	// create new web service
 	service := web.NewService(
 		web.Name("crocodile.web.job"),
@@ -26,7 +34,7 @@ func main() {
 	)
 
 	// initialise service
-	err := service.Init(
+	err = service.Init(
 		web.Action(func(c *cli.Context) {
 			job.Init()
 		}),

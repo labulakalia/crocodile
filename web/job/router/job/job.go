@@ -7,6 +7,7 @@ import (
 	"crocodile/common/e"
 	"crocodile/common/registry"
 	"crocodile/common/response"
+	"crocodile/common/wrapper"
 	pbjob "crocodile/service/job/proto/job"
 	pbtasklog "crocodile/service/tasklog/proto/tasklog"
 	"github.com/gin-gonic/gin"
@@ -46,7 +47,12 @@ func CreateJob(c *gin.Context) {
 		loginuser string
 		exists    bool
 	)
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	task = pbjob.Task{}
 
@@ -84,7 +90,12 @@ func DeleteJob(c *gin.Context) {
 		code   int32
 		exists bool
 	)
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 
 	task, exists = c.Keys["data"].(pbjob.Task)
@@ -113,7 +124,12 @@ func ChangeJob(c *gin.Context) {
 		code   int32
 		exists bool
 	)
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	logging.Infof("%+v", c.Keys["data"])
 	task, exists = c.Keys["data"].(pbjob.Task)
@@ -145,7 +161,12 @@ func GetJob(c *gin.Context) {
 		code      int32
 		res       []*pbjob.Task
 	)
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 
 	querytask = QueryTask{}
@@ -180,7 +201,12 @@ func RunJob(c *gin.Context) {
 		code   int32
 		exists bool
 	)
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 
 	task, exists = c.Keys["data"].(pbjob.Task)
@@ -210,8 +236,12 @@ func KillJob(c *gin.Context) {
 		code   int32
 		exists bool
 	)
-
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 
 	task, exists = c.Keys["data"].(pbjob.Task)
@@ -271,7 +301,12 @@ func GetJobLog(c *gin.Context) {
 		code       int32
 		getlogs    []*GetLog
 	)
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	querylog = QueryLog{}
 	if err = bind.BindQuery(c, &querylog); err != nil {

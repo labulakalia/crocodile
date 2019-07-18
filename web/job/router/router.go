@@ -2,6 +2,7 @@ package router
 
 import (
 	"crocodile/common/middle"
+	"crocodile/common/wrapper"
 	"crocodile/web/job/router/job"
 	"github.com/gin-gonic/gin"
 )
@@ -14,6 +15,7 @@ func NewRouter() (r *gin.Engine) {
 	r = gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middle.MiddleJwt())
+	r.Use(wrapper.TracerWrapper)
 
 	apiv1job = r.Group("/job")
 	apiv1job.Use(JobControl())

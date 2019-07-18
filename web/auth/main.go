@@ -4,6 +4,7 @@ import (
 	"crocodile/common/cfg"
 	"crocodile/common/log"
 	"crocodile/common/registry"
+	"crocodile/common/wrapper"
 	"crocodile/web/auth/router/user"
 	"time"
 
@@ -13,12 +14,19 @@ import (
 	"github.com/micro/cli"
 
 	"github.com/micro/go-micro/web"
+	goopentracing "github.com/opentracing/opentracing-go"
 )
 
 func main() {
 	cfg.Init()
 	log.Init()
 
+	t, io, err := wrapper.NewTracer("crocodile.web.auth", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
+	goopentracing.SetGlobalTracer(t)
 	// create new web service
 
 	service := web.NewService(

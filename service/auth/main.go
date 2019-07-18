@@ -5,13 +5,14 @@ import (
 	"crocodile/common/db/mysql"
 	"crocodile/common/log"
 	"crocodile/common/registry"
+	"crocodile/common/wrapper"
 	"crocodile/service/auth/handler"
 	"crocodile/service/auth/model/user"
 	pbauth "crocodile/service/auth/proto/auth"
-
 	"github.com/labulaka521/logging"
 	"github.com/micro/go-micro"
-
+	"github.com/micro/go-plugins/wrapper/trace/opentracing"
+	goopentracing "github.com/opentracing/opentracing-go"
 	"time"
 )
 
@@ -24,6 +25,12 @@ func main() {
 	// New Service
 	cfg.Init()
 	log.Init()
+	t, io, err := wrapper.NewTracer("crocodile.srv.auth", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
+	goopentracing.SetGlobalTracer(t)
 
 	service := micro.NewService(
 		micro.Name("crocodile.srv.auth"),
@@ -33,6 +40,7 @@ func main() {
 		// 每隔15秒注册一次
 		micro.RegisterInterval(time.Second*15),
 		micro.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
+		micro.WrapHandler(opentracing.NewHandlerWrapper()),
 	)
 	// Initialise service
 	service.Init()

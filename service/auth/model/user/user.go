@@ -165,7 +165,6 @@ func (s *Service) GetUser(ctx context.Context, username string) (resp *pbauth.Re
 		users = append(users, &user)
 	}
 	resp.Users = users
-	logging.Infof("Get User code: %d ", resp.Code)
 	return
 }
 

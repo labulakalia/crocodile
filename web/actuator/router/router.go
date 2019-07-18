@@ -2,6 +2,7 @@ package router
 
 import (
 	"crocodile/common/middle"
+	"crocodile/common/wrapper"
 	"crocodile/web/actuator/router/actuator"
 	"github.com/gin-gonic/gin"
 )
@@ -14,8 +15,10 @@ func NewRouter() (r *gin.Engine) {
 	r = gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middle.MiddleJwt())
-	r.Use(ActuatorControl())
+	r.Use(wrapper.TracerWrapper)
+
 	apiv1actuator = r.Group("/actuator")
+	apiv1actuator.Use(ActuatorControl())
 
 	{
 		apiv1actuator.POST("/create", actuator.CreateActuator)

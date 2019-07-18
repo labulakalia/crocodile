@@ -9,6 +9,7 @@ import (
 	"crocodile/common/registry"
 	"crocodile/common/response"
 	"crocodile/common/util"
+	"crocodile/common/wrapper"
 	pbauth "crocodile/service/auth/proto/auth"
 
 	"encoding/base64"
@@ -55,9 +56,14 @@ func GetUser(c *gin.Context) {
 		loginuser   string
 		tmpuser     *User
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 	tmpuser = &User{}
 	app = response.Gin{c}
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	code = e.SUCCESS
 	if loginuser, exists = c.Keys["user"].(string); !exists {
 		code = e.ERR_TOKEN_INVALID
@@ -72,7 +78,7 @@ func GetUser(c *gin.Context) {
 		app.Response(code, nil)
 		return
 	}
-	logging.Infof("GetUser Response Code: %d", respAuthSrv.Code)
+
 	tmpuser.UserName = respAuthSrv.Users[0].Username
 	tmpuser.Email = respAuthSrv.Users[0].Email
 	tmpuser.Avatar = respAuthSrv.Users[0].Avatar
@@ -96,10 +102,15 @@ func GetUsers(c *gin.Context) {
 		respAuthSrv *pbauth.Response
 		us          []*User
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 	us = []*User{}
 	app = response.Gin{c}
 	code = e.SUCCESS
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 
 	reqUser = &pbauth.User{}
 	if respAuthSrv, err = AuthClient.GetUser(ctx, reqUser); err != nil {
@@ -136,9 +147,14 @@ func ChangeUser(c *gin.Context) {
 		code    int32
 		reqUser *pbauth.User
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 	app = response.Gin{c}
 	u = User{}
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	code = e.SUCCESS
 	if err = bind.BindJson(c, &u); err != nil {
 		logging.Errorf("BindJson Err:%v", err)
@@ -182,10 +198,15 @@ func UserCreate(c *gin.Context) {
 		reqUser *pbauth.User
 		avatar  string
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 	app = response.Gin{c}
 	u = create{}
 	code = e.SUCCESS
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 
 	avatar, _ = util.GenerateAvatar(u.Email, 128)
 
@@ -227,8 +248,13 @@ func UserLogin(c *gin.Context) {
 		reqUser       *pbauth.User
 		resp          *pbauth.Response
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 
 	app = response.Gin{c}
 	code = e.SUCCESS
@@ -287,15 +313,19 @@ func Logout(c *gin.Context) {
 		exists    bool
 		loginuser string
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 	app = response.Gin{c}
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	code = e.SUCCESS
 	if loginuser, exists = c.Keys["user"].(string); !exists {
 		code = e.ERR_TOKEN_INVALID
 		app.Response(code, nil)
 		return
 	}
-
 	reqUser = &pbauth.User{Username: loginuser}
 	if _, err = AuthClient.LogoutUser(ctx, reqUser); err != nil {
 		logging.Errorf("Logout User Err:%v", err)
@@ -317,8 +347,13 @@ func DeleteUser(c *gin.Context) {
 		exists    bool
 		loginuser string
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 	app = response.Gin{c}
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	code = e.SUCCESS
 	if loginuser, exists = c.Keys["user"].(string); !exists {
 		code = e.ERR_TOKEN_INVALID

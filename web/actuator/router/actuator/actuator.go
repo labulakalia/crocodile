@@ -7,10 +7,12 @@ import (
 	"crocodile/common/e"
 	"crocodile/common/registry"
 	"crocodile/common/response"
+	"crocodile/common/wrapper"
 	pbactuator "crocodile/service/actuator/proto/actuator"
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/logging"
 	"github.com/micro/go-micro/client"
+	"github.com/micro/go-plugins/wrapper/trace/opentracing"
 	"time"
 )
 
@@ -22,6 +24,7 @@ func Init() {
 	c := client.NewClient(
 		client.Retries(3),
 		client.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
+		client.Wrap(opentracing.NewClientWrapper()),
 	)
 	ActuatorClient = pbactuator.NewActuatorService("crocodile.srv.actuator", c)
 
@@ -57,8 +60,12 @@ func CreateActuator(c *gin.Context) {
 		code        int32
 		reqactuator pbactuator.Actuat
 	)
-
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	code = e.SUCCESS
 	reqactuator = pbactuator.Actuat{}
@@ -91,8 +98,12 @@ func DeleteActuator(c *gin.Context) {
 		code           int32
 		exits          bool
 	)
-
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	code = e.SUCCESS
 	deleteactuator, exits = c.Keys["data"].(pbactuator.Actuat)
@@ -119,8 +130,12 @@ func ChangeActuator(c *gin.Context) {
 		code           int32
 		exits          bool
 	)
-
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	code = e.SUCCESS
 	changeactuator = pbactuator.Actuat{}
@@ -149,8 +164,13 @@ func GetActuator(c *gin.Context) {
 		code         int32
 		rsp          *pbactuator.Response
 	)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
 	queryctuator = pbactuator.Actuat{}
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	code = e.SUCCESS
 	if err = bind.BindQuery(c, &queryctuator); err != nil {
@@ -175,7 +195,12 @@ func GetALLExecuteIP(c *gin.Context) {
 		code int32
 		rsp  *pbactuator.Response
 	)
-	ctx, _ = context.WithTimeout(context.TODO(), time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
+	ctx, ok := wrapper.ContextWithSpan(c)
+	if ok == false {
+		logging.Error("get context err")
+		ctx = context.Background()
+	}
+	ctx, _ = context.WithTimeout(ctx, time.Duration(cfg.MysqlConfig.MaxQueryTime)*time.Second)
 	app = response.Gin{c}
 	code = e.SUCCESS
 	rsp, err = ActuatorClient.GetAllExecutorIP(ctx, new(pbactuator.Actuat))

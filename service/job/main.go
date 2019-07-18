@@ -5,6 +5,7 @@ import (
 	"crocodile/common/db/mysql"
 	"crocodile/common/log"
 	"crocodile/common/registry"
+	"crocodile/common/wrapper"
 	"crocodile/service/job/handler"
 	"crocodile/service/job/model/task"
 	"crocodile/service/job/scheduler"
@@ -12,9 +13,11 @@ import (
 	"github.com/labulaka521/logging"
 	"github.com/micro/cli"
 	"github.com/micro/go-micro"
+	"github.com/micro/go-plugins/wrapper/trace/opentracing"
 	"time"
 
 	pbjob "crocodile/service/job/proto/job"
+	goopentracing "github.com/opentracing/opentracing-go"
 )
 
 func main() {
@@ -28,6 +31,12 @@ func main() {
 	// New Service
 	cfg.Init()
 	log.Init()
+	t, io, err := wrapper.NewTracer("crocodile.srv.job", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
+	goopentracing.SetGlobalTracer(t)
 
 	service := micro.NewService(
 		micro.Name("crocodile.srv.job"),
@@ -41,6 +50,7 @@ func main() {
 			go scheduler.Loop(exit, db)
 			return nil
 		}),
+		micro.WrapHandler(opentracing.NewHandlerWrapper()),
 	)
 
 	// Initialise service

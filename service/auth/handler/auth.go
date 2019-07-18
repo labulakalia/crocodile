@@ -46,11 +46,8 @@ func (auth *Auth) LoginUser(ctx context.Context, req *pbauth.User, resp *pbauth.
 	return
 }
 func (auth *Auth) LogoutUser(ctx context.Context, req *pbauth.User, resp *pbauth.Response) (err error) {
-	var (
-		rsp *pbauth.Response
-	)
 	logging.Debugf("ChangeUser %s", req.Username)
 	err = auth.Service.LogoutUser(ctx, req.Username)
-	logging.Infof("Logout User %s Code: %d", req.Username, rsp.Code)
+	logging.Infof("Logout User %s", req.Username)
 	return
 }

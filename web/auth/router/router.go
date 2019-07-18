@@ -2,6 +2,7 @@ package router
 
 import (
 	"crocodile/common/middle"
+	"crocodile/common/wrapper"
 	"crocodile/web/auth/router/user"
 	"github.com/gin-gonic/gin"
 )
@@ -13,9 +14,11 @@ func NewRouter() (r *gin.Engine) {
 	r = gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middle.MiddleJwt())
+	r.Use(wrapper.TracerWrapper)
 
 	apiv1user = r.Group("/auth")
 	apiv1user.Use(UserControl())
+
 	{
 		apiv1user.GET("/info", user.GetUser)
 		apiv1user.GET("/infos", user.GetUsers)

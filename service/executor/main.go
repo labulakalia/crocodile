@@ -4,12 +4,15 @@ import (
 	"crocodile/common/cfg"
 	"crocodile/common/log"
 	"crocodile/common/registry"
+	"crocodile/common/wrapper"
 	"crocodile/service/executor/execute"
 	"crocodile/service/executor/subscriber"
 	"github.com/labulaka521/logging"
 	"github.com/micro/cli"
 	"github.com/micro/go-micro"
 	"github.com/micro/go-micro/broker"
+	"github.com/micro/go-plugins/wrapper/trace/opentracing"
+	goopentracing "github.com/opentracing/opentracing-go"
 	"time"
 )
 
@@ -19,6 +22,12 @@ func main() {
 	)
 	cfg.Init()
 	log.Init()
+	t, io, err := wrapper.NewTracer("crocodile.srv.executor", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
+	goopentracing.SetGlobalTracer(t)
 
 	service := micro.NewService(
 		micro.Name("crocodile.srv.executor"),
@@ -32,6 +41,7 @@ func main() {
 				broker.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
 			),
 		),
+		micro.WrapSubscriber(opentracing.NewSubscriberWrapper()),
 	)
 
 	// Initialise service

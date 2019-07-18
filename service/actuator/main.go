@@ -5,8 +5,10 @@ import (
 	"crocodile/common/db/mysql"
 	"crocodile/common/log"
 	"crocodile/common/registry"
+	"crocodile/common/wrapper"
 	"crocodile/service/actuator/model/actuator"
 	"github.com/labulaka521/logging"
+	"github.com/micro/go-plugins/wrapper/trace/opentracing"
 
 	"crocodile/service/actuator/handler"
 	"database/sql"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	pbactuator "crocodile/service/actuator/proto/actuator"
+	goopentracing "github.com/opentracing/opentracing-go"
 )
 
 func main() {
@@ -26,8 +29,12 @@ func main() {
 	// New Service
 	cfg.Init()
 	log.Init()
-
-	// New Service
+	t, io, err := wrapper.NewTracer("crocodile.srv.actuator", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
+	goopentracing.SetGlobalTracer(t)
 	// New Service
 	service := micro.NewService(
 		micro.Name("crocodile.srv.actuator"),
@@ -35,6 +42,7 @@ func main() {
 		micro.RegisterTTL(time.Second*30),
 		micro.RegisterInterval(time.Second*15),
 		micro.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
+		micro.WrapHandler(opentracing.NewHandlerWrapper()),
 	)
 
 	// Initialise service
