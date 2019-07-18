@@ -46,7 +46,9 @@
     用户管理接口
     
  
-## 截屏
+## Web界面
+[crocodile_web](https://github.com/labulaka521/crocodile_web/tree/permission-control)
+
 ![](image/job.png)
 ![](image/actuator.png)
 ![](image/log.png)
