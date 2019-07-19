@@ -54,3 +54,28 @@
 ![](image/log.png)
 ![](image/user.png)
 
+## 启动
+- API网关 
+  下载api网关包
+  ```
+  git clone https://github.com/micro/micro
+  ```
+  创建`plugins.go`文件,import后面添加一行`_ "github.com/micro/go-plugins/registry/etcdv3"`  
+  编译
+  ```
+  go build -o micro main.go plugins.go
+  ```
+  运行
+  ```
+  make run_api
+  ```
+- 数据库  
+  安装etcd与mysql  
+  - mysql: 存储任务，日志，执行器，用户  
+    创建数据库`crocodile`  
+    然后将`docs/database.sql`导入数据库 `mysql -u user -h host -p password crocodile < docs/database.sql`  
+  - etcd: 用来服务注册发现
+- 启动各个服务  
+  修改配置文件  
+  在各个模块下启动服务  
+
