@@ -5,6 +5,3 @@ user:
 run_api:
 	micro --api_namespace=crocodile.web --registry=etcdv3 api --handler=web
 
-build_all:
-	cd service/actuator&&make build
-
