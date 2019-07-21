@@ -15,6 +15,5 @@ func Init() {
 	if cfg.LogConfig.Size != 0 {
 		logging.SetLogSize(cfg.LogConfig.Size)
 	}
-	logging.Setup()
 	logging.Info("Init Logging...")
 }

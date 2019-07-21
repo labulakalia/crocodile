@@ -31,7 +31,7 @@ require (
 	github.com/hashicorp/vault-plugin-secrets-gcp v0.0.0-20190320211452-71903323ecb4 // indirect
 	github.com/hashicorp/vault-plugin-secrets-gcpkms v0.0.0-20190320213325-9e326a9e802d // indirect
 	github.com/influxdata/influxdb v1.7.5 // indirect
-	github.com/labulaka521/logging v0.0.0-20190526092138-ef7e2414b576
+	github.com/labulaka521/logging v0.0.0-20190720164727-1fbe245758d7
 	github.com/lyft/protoc-gen-validate v0.0.14 // indirect
 	github.com/micro/cli v0.2.0
 	github.com/micro/go-micro v1.5.0

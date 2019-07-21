@@ -2,7 +2,7 @@ app:
   jwt:
     jwtkey: "saleiwacn;j"
   mysql:
-    dsn: root:wang109097@tcp(127.0.0.1:3306)/crocodile?charset=utf8mb4&parseTime=true
+    dsn: root:wang109097@tcp(127.0.0.1:3306)/crocodile?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
     maxIdleConnection: 100
     maxOpenConnection: 100
     maxQueryTime: 10

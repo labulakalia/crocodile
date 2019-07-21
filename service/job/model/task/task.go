@@ -81,7 +81,7 @@ func (s *Service) CreateJob(ctx context.Context, task *pbjob.Task) (err error) {
 	if nexttime, err = util.NextTime(task.Cronexpr, now); err != nil {
 		return
 	}
-	logging.Info("change", nexttime)
+
 	if task.Nexttime, err = ptypes.TimestampProto(nexttime); err != nil {
 		return
 	}
@@ -98,7 +98,7 @@ func (s *Service) CreateJob(ctx context.Context, task *pbjob.Task) (err error) {
 		return
 	}
 
-	logging.Debugf("Create Job success")
+	logging.Debugf("Create Job %s success", task.Taskname)
 	return
 }
 
@@ -126,7 +126,7 @@ func (s *Service) DeleteJob(ctx context.Context, taskname string) (err error) {
 		return
 	}
 
-	logging.Debugf("Delete Job success ")
+	logging.Debugf("Delete Job %s success ", taskname)
 	return
 }
 
@@ -169,7 +169,7 @@ func (s *Service) ChangeJob(ctx context.Context, task *pbjob.Task) (err error) {
 		return
 	}
 
-	logging.Debugf("Change Job success")
+	logging.Debugf("Change Job %s success", task.Taskname)
 	return
 }
 
@@ -234,7 +234,7 @@ func (s *Service) GetJob(ctx context.Context, taskname string) (resp []*pbjob.Ta
 		resp = append(resp, &task)
 	}
 
-	logging.Debugf("GetJob success")
+	logging.Debugf("Get Job  success")
 	return
 }
 
@@ -253,6 +253,7 @@ func (s *Service) KillJob(ctx context.Context, task *pbjob.Task) (err error) {
 	if err = Pub.Publish(ctx, exmsg); err != nil {
 		logging.Errorf("Publish Err: %v", err)
 	}
+	logging.Debugf("Killl Job %s", task.Taskname)
 	return
 }
 
@@ -309,10 +310,11 @@ func (s *Service) RunJob(ctx context.Context, task *pbjob.Task) (err error) {
 		Task:    task,
 		Runhost: addr.Ip,
 	}
-	logging.Debugf("New Publish Job %v", exmsg)
+
 	if err = Pub.Publish(ctx, exmsg); err != nil {
 		logging.Errorf("Publish Err: %v", err)
 	}
+	logging.Debugf("New Publish Job %v", task.Taskname)
 	return
 }
 

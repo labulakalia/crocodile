@@ -107,10 +107,11 @@ func KillTask(executeMsg *pbexecutor.ExecuteMsg) (err error) {
 		taskExecuteInfo *TaskExecuteInfo
 		exits           bool
 	)
-
+	lock.RLock()
 	if taskExecuteInfo, exits = ExecutingTable[executeMsg.Task.Taskname]; !exits {
 		return
 	}
+	lock.RUnlock()
 	taskExecuteInfo.CancelFunc()
 	return
 }
