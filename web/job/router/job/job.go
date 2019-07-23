@@ -7,6 +7,7 @@ import (
 	"crocodile/common/e"
 	"crocodile/common/registry"
 	"crocodile/common/response"
+	"github.com/micro/go-plugins/wrapper/trace/opentracing"
 
 	"crocodile/common/wrapper"
 
@@ -26,9 +27,15 @@ var (
 )
 
 func Init() {
+	t, io, err := wrapper.NewTracer("crocodile.srv.actuator", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
 	c := client.NewClient(
 		client.Retries(3),
 		client.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
+		client.Wrap(opentracing.NewClientWrapper(t)),
 	)
 	JobClient = pbjob.NewJobService("crocodile.srv.job", client.DefaultClient)
 	Logclient = pbtasklog.NewTaskLogService("crocodile.srv.tasklog", c)

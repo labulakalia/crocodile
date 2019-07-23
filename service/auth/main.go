@@ -40,7 +40,7 @@ func main() {
 		// 每隔15秒注册一次
 		micro.RegisterInterval(time.Second*15),
 		micro.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
-		micro.WrapHandler(opentracing.NewHandlerWrapper()),
+		micro.WrapHandler(opentracing.NewHandlerWrapper(t)),
 	)
 	// Initialise service
 	service.Init()

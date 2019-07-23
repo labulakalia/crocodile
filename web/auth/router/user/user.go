@@ -5,18 +5,16 @@ import (
 	"crocodile/common/bind"
 	"crocodile/common/cfg"
 	"crocodile/common/e"
-	"crocodile/common/middle"
 	"crocodile/common/registry"
 	"crocodile/common/response"
 	"crocodile/common/util"
 	"crocodile/common/wrapper"
 	pbauth "crocodile/service/auth/proto/auth"
+	"github.com/micro/go-plugins/wrapper/trace/opentracing"
 
-	"encoding/base64"
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/logging"
 	"github.com/micro/go-micro/client"
-	"strings"
 	"time"
 )
 
@@ -25,9 +23,15 @@ var (
 )
 
 func Init() {
+	t, io, err := wrapper.NewTracer("crocodile.srv.actuator", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
 	c := client.NewClient(
 		client.Retries(3),
 		client.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
+		client.Wrap(opentracing.NewClientWrapper(t)),
 	)
 
 	AuthClient = pbauth.NewAuthService("crocodile.srv.auth", c)
@@ -237,16 +241,14 @@ func UserCreate(c *gin.Context) {
 func UserLogin(c *gin.Context) {
 	// Authorization
 	var (
-		authorization string
-		app           response.Gin
-		data          []string
-		code          int32
-		body          []byte
-		userpass      []string
-		err           error
-		ctx           context.Context
-		reqUser       *pbauth.User
-		resp          *pbauth.Response
+		app     response.Gin
+		code    int32
+		user    string
+		pass    string
+		err     error
+		ctx     context.Context
+		reqUser *pbauth.User
+		resp    *pbauth.Response
 	)
 	ctx, ok := wrapper.ContextWithSpan(c)
 	if ok == false {
@@ -258,38 +260,15 @@ func UserLogin(c *gin.Context) {
 
 	app = response.Gin{c}
 	code = e.SUCCESS
-	if authorization, err = middle.GetAuthor(c); err != nil {
-		code = e.ERR_USER_PASS_FAIL
-		return
-	}
-
-	data = strings.Split(authorization, " ")
-	if len(data) != 2 {
-		code = e.ERR_USER_PASS_FAIL
-		app.Response(code, nil)
-		return
-	}
-	if data[0] != "Basic" {
-		code = e.ERR_USER_PASS_FAIL
-		app.Response(code, nil)
-		return
-	}
-
-	if body, err = base64.StdEncoding.DecodeString(data[1]); err != nil {
-		code = e.ERR_USER_PASS_FAIL
-		app.Response(code, nil)
-		return
-	}
-	userpass = strings.Split(string(body), ":")
-	if len(userpass) != 2 {
-		code = e.ERR_USER_PASS_FAIL
+	if user, pass, ok = c.Request.BasicAuth(); !ok {
+		code = e.ERR_LOGIN_USER_FAIL
 		app.Response(code, nil)
 		return
 	}
 
 	reqUser = &pbauth.User{
-		Username: userpass[0],
-		Password: userpass[1],
+		Username: user,
+		Password: pass,
 	}
 
 	if resp, err = AuthClient.LoginUser(ctx, reqUser); err != nil {

@@ -50,7 +50,7 @@ func main() {
 			go scheduler.Loop(exit, db)
 			return nil
 		}),
-		micro.WrapHandler(opentracing.NewHandlerWrapper()),
+		micro.WrapHandler(opentracing.NewHandlerWrapper(t)),
 	)
 
 	// Initialise service

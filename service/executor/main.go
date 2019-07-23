@@ -41,7 +41,7 @@ func main() {
 				broker.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
 			),
 		),
-		micro.WrapSubscriber(opentracing.NewSubscriberWrapper()),
+		micro.WrapSubscriber(opentracing.NewSubscriberWrapper(t)),
 	)
 
 	// Initialise service

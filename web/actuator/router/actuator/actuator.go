@@ -21,10 +21,15 @@ var (
 )
 
 func Init() {
+	t, io, err := wrapper.NewTracer("crocodile.srv.actuator", "")
+	if err != nil {
+		logging.Fatal(err)
+	}
+	defer io.Close()
 	c := client.NewClient(
 		client.Retries(3),
 		client.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
-		client.Wrap(opentracing.NewClientWrapper()),
+		client.Wrap(opentracing.NewClientWrapper(t)),
 	)
 	ActuatorClient = pbactuator.NewActuatorService("crocodile.srv.actuator", c)
 

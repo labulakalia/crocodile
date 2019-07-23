@@ -42,7 +42,7 @@ func main() {
 		micro.RegisterTTL(time.Second*30),
 		micro.RegisterInterval(time.Second*15),
 		micro.Registry(registry.Etcd(cfg.EtcdConfig.Endpoints...)),
-		micro.WrapHandler(opentracing.NewHandlerWrapper()),
+		micro.WrapHandler(opentracing.NewHandlerWrapper(t)),
 	)
 
 	// Initialise service
