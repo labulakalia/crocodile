@@ -1,0 +1,15 @@
+# p 策略 角色sub 资源object 动作action
+p, superAdmin2, project, read
+p, superAdmin2, project, write
+p, admin, project, read
+p, admin, project, write
+p, admin, asse, read
+p, admin, asse, write
+p, zhuangjia, project, write
+p, zhuangjia, asse, write
+p, shangshang, project, read
+p, shangshang, asse, read
+
+# g 用户user 角色sub
+g, quyuan, admin
+g, wenyin, zhuangjia
