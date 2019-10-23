@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
-	xormadapter "github.com/casbin/xorm-adapter"
+	"github.com/casbin/gorm-adapter/v2"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
 	"go.uber.org/zap"
@@ -35,7 +35,7 @@ m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
 	if err != nil {
 		log.Panic("NewModelFromString Err", zap.Error(err))
 	}
-	a, err := xormadapter.NewAdapter(dbcfg.Drivename, dbcfg.Dsn)
+	a, err := gormadapter.NewAdapter(dbcfg.Drivename, dbcfg.Dsn)
 	if err != nil {
 		log.Panic("NewAdapter Err", zap.Error(err))
 	}
