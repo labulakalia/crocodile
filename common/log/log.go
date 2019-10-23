@@ -8,90 +8,35 @@ import (
 	"os"
 )
 
-type Level uint8
-
-const (
-	DebugLevel Level = iota
-	InfoLevel
-	WarnLevel
-	ErrorLevel
-	PanicLevel
-	FatalLevel
-)
-
 var (
-	defaultLogLevel  = InfoLevel
-	defaultLogModule = "logger"
-	logger           *zap.Logger
+	_logger *zap.Logger
 )
 
-type ImportLog struct {
+type Level uint
+
+// 日志配置
+type logConfig struct {
 	LogPath    string
-	MaxSize    int
+	LogLevel   string
 	Compress   bool
+	MaxSize    int
 	MaxAge     int
 	MaxBackups int
 }
 
-type logOption struct {
-	*ImportLog
-	// 模块名称
-	ModuleName string
-
-	LogLevel Level
-}
-
-type LogOption interface {
-	apply(*logOption)
-}
-
-type funcLogOption struct {
-	f func(*logOption)
-}
-
-func (fdo *funcLogOption) apply(do *logOption) {
-	fdo.f(do)
-}
-
-func newFuncLogOption(f func(option *logOption)) *funcLogOption {
-	return &funcLogOption{f: f}
-}
-
-func ModuleName(moduleName string) LogOption {
-	return newFuncLogOption(func(o *logOption) {
-		o.ModuleName = moduleName
-	})
-}
-
-func LogLevel(loglevel Level) LogOption {
-	return newFuncLogOption(func(o *logOption) {
-		o.LogLevel = loglevel
-	})
-}
-
-// if params is zero, like LogPath ,log will console to os.Stdout
-// ServerName is zero,
-func defaultOption(log *ImportLog) *logOption {
-	return &logOption{
-		ImportLog:  log,
-		ModuleName: defaultLogModule,
-		LogLevel:   defaultLogLevel,
-	}
-}
-
-func getzapLevel(level Level) zapcore.Level {
+func getzapLevel(level string) zapcore.Level {
 	switch level {
-	case DebugLevel:
+	case "debug":
 		return zap.DebugLevel
-	case InfoLevel:
+	case "info":
 		return zap.InfoLevel
-	case WarnLevel:
+	case "warn":
 		return zap.WarnLevel
-	case ErrorLevel:
+	case "error":
 		return zap.ErrorLevel
-	case PanicLevel:
+	case "panic":
 		return zap.PanicLevel
-	case FatalLevel:
+	case "fatal":
 		return zap.FatalLevel
 	default:
 		return zap.InfoLevel
@@ -127,56 +72,114 @@ func newZapEncoder() zapcore.EncoderConfig {
 	}
 	return encoderConfig
 }
-
-func NewLogger(log *ImportLog, opt ...LogOption) {
-	if log == nil {
-		panic("Want Params Log, But Can get nil")
-	}
-	opts := defaultOption(log)
-
-	for _, o := range opt {
-		o.apply(opts)
-	}
-
-	hook := newLogWriter(opts.LogPath, opts.MaxSize, opts.Compress)
+func newLoggerCore(log *logConfig) zapcore.Core {
+	hook := newLogWriter(log.LogPath, log.MaxSize, log.Compress)
 
 	encoderConfig := newZapEncoder()
 
-	atomLevel := zap.NewAtomicLevelAt(getzapLevel(opts.LogLevel))
+	atomLevel := zap.NewAtomicLevelAt(getzapLevel(log.LogLevel))
 
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderConfig),
 		zapcore.NewMultiWriteSyncer(zapcore.AddSync(hook)),
 		atomLevel,
 	)
-	// 文件行号
+	return core
+}
+
+func newLoggerOptions() []zap.Option {
 	caller := zap.AddCaller()
 	callerskip := zap.AddCallerSkip(1)
 	// 开发者
+	zap.Fields()
 	development := zap.Development()
-	// 初始化字段
-	filed := zap.Fields(zap.String("ModuleName", opts.ModuleName))
+	options := []zap.Option{
+		caller,
+		callerskip,
+		development,
+	}
+	return options
+}
 
-	logger = zap.New(core, caller, callerskip, development, filed)
+type Option func(*logConfig)
+
+func LogPath(logpath string) Option {
+	return func(logcfg *logConfig) {
+		logcfg.LogPath = logpath
+	}
+}
+
+func Compress(compress bool) Option {
+	return func(logcfg *logConfig) {
+		logcfg.Compress = compress
+	}
+}
+
+func LogLevel(level string) Option {
+	return func(logcfg *logConfig) {
+		logcfg.LogLevel = level
+	}
+}
+
+func MaxSize(size int) Option {
+	return func(logcfg *logConfig) {
+		logcfg.MaxSize = size
+	}
+}
+
+func MaxAge(age int) Option {
+	return func(logcfg *logConfig) {
+		logcfg.MaxAge = age
+	}
+}
+
+func MaxBackups(backup int) Option {
+	return func(logcfg *logConfig) {
+		logcfg.MaxBackups = backup
+	}
+}
+
+func defaultOption() *logConfig {
+	return &logConfig{
+		LogPath:    "",
+		MaxSize:    10,
+		Compress:   false,
+		MaxAge:     7,
+		MaxBackups: 7,
+		LogLevel:   "info",
+	}
+}
+
+func NewLog(opts ...Option) error {
+
+	logcfg := defaultOption()
+	for _, opt := range opts {
+		opt(logcfg)
+	}
+	core := newLoggerCore(logcfg)
+
+	zapopts := newLoggerOptions()
+	_logger = zap.New(core, zapopts...)
+	return nil
 }
 
 func Debug(msg string, fields ...zap.Field) {
-	logger.Info(msg, fields...)
+	_logger.Info(msg, fields...)
 }
 
 func Info(msg string, fields ...zap.Field) {
-	logger.Info(msg, fields...)
+	_logger.Info(msg, fields...)
 }
 
 func Warn(msg string, fields ...zap.Field) {
-	logger.Warn(msg, fields...)
+	_logger.Warn(msg, fields...)
 }
 func Error(msg string, fields ...zap.Field) {
-	logger.Error(msg, fields...)
+	_logger.Error(msg, fields...)
 }
 func Panic(msg string, fields ...zap.Field) {
-	logger.Panic(msg, fields...)
+	_logger.Panic(msg, fields...)
 }
 func Fatal(msg string, fields ...zap.Field) {
-	logger.Fatal(msg, fields...)
+	_logger.Fatal(msg, fields...)
 }

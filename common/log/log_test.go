@@ -1,26 +1,39 @@
-package log_test
+package log
 
 import (
-	"github.com/labulaka521/crocodile/common/log"
+	"fmt"
 	"go.uber.org/zap"
+	"os"
 	"testing"
 )
 
 func TestNewLogger(t *testing.T) {
-	importlog := &log.ImportLog{
+	logcfg := &logConfig{
 		MaxSize:    10,
 		Compress:   true,
 		LogPath:    "",
 		MaxAge:     0,
 		MaxBackups: 0,
+		LogLevel:   "info",
 	}
-	log.NewLogger(importlog, log.ModuleName("mymodule"), log.LogLevel(log.InfoLevel))
+	err := NewLog(
+		LogPath(logcfg.LogPath),
+		LogLevel(logcfg.LogLevel),
+		Compress(logcfg.Compress),
+		MaxSize(logcfg.MaxSize),
+		MaxBackups(logcfg.MaxBackups),
+		MaxAge(logcfg.MaxAge),
+	)
+	if err != nil {
+		fmt.Printf("InitLog failed: %v", err)
+		os.Exit(1)
+	}
 
-	log.Info("TestLog", zap.String("test", "eeyeyyeye"))
+	Info("TestLog", zap.String("test", "eeyeyyeye"))
 
 	testsss()
 }
 
 func testsss() {
-	log.Info("wwww")
+	Info("wwww")
 }

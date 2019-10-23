@@ -1,0 +1,14 @@
+[log]
+LogPath = ""
+MaxSize = 10
+Compress = true
+MaxAge =  7
+MaxBackups = 10
+LogLevel  = "info"
+
+[db]
+Drivename = "sqlite3"
+Dsn = "db/core.db"
+MaxIdle = 10
+MaxConn = 20
+MaxQueryTime = 3
