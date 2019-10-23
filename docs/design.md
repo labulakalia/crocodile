@@ -1,12 +1,10 @@
 ## 用户权限
 ```go
-type roleId int
 type User struct {
     Id int `json:"id""` 
     Name string `json:"name""`
 
-    Avatar string `json:"avatar"`             // 用户图像
-    Role string `json:"role"`                   // 用户类型 regular admin
+    Role int `json:"role"`                   // 用户类型 regular admin
 
     Forbid int `json:"forbid"`                  // 禁止用户
     Email string `json:"email"`                 // 用户邮箱 日后任务的通知信息会发送给此邮件
@@ -42,7 +40,7 @@ type Permission struct {
 
 ## 主机组
 ```go
-type HostGroup {
+type HostGroup struct{
     Id int `json:"id"`
     Name string `json:"name"`
 
