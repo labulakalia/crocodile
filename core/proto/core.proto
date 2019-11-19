@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package crocodile.task;
+
+
+// run task interface
+service Task {
+    rpc RunTask(TaskReq) returns(TaskResp);
+}
+
+message TaskReq {
+    string task_id = 1;
+    int32 task_type = 2;
+    bytes task_data = 3;
+    int32 timeout = 4;
+}
+
+message TaskResp {
+    int32 code = 1;
+    string err_msg = 2;
+    bytes resp_data = 3;
+}
+
+// worker send Heartbeat to master server
+service Heartbeat {
+    rpc SendHb(HeartbeatReq) returns (Empty){};
+}
+
+message HeartbeatReq {
+    string ip = 1;
+    int32 port = 2;
+    repeated string running_task = 3;
+    string version = 4;
+    string hostname = 5;
+}
+
+message Empty {
+
+}

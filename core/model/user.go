@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/jwt"
 	"github.com/labulaka521/crocodile/common/log"
@@ -14,55 +13,11 @@ import (
 	"time"
 )
 
-type reqtype uint
-
-const (
-	Email reqtype = iota
-	UserName
-	Uid
-)
-
-// 检查存在的项
-func IsExist(ctx context.Context, reqType reqtype, value interface{}) (bool, error) {
-	check := "select COUNT(id) FROM crocodile_user WHERE "
-	switch reqType {
-	case Email:
-		check += "email=?"
-	case UserName:
-		check += "name=?"
-	case Uid:
-		check += "id=?"
-	default:
-		return false, errors.New("reqType Only Support email username")
-	}
-	conn, err := db.GetConn(ctx)
-	if err != nil {
-		return false, errors.Wrap(err, "sqlDb.GetConn")
-	}
-	defer conn.Close()
-
-	stmt, err := conn.PrepareContext(ctx, check)
-	if err != nil {
-		return false, errors.Wrap(err, "conn.PrepareContext")
-	}
-	defer stmt.Close()
-
-	res := 0
-	err = stmt.QueryRowContext(ctx, value).Scan(&res)
-	if err != nil && err != sql.ErrNoRows {
-		return false, errors.Wrap(err, "stmt.QueryRowContext")
-	}
-	if err == sql.ErrNoRows || res == 0 {
-		return false, nil
-	}
-	return true, nil
-}
-
 // 登录用户
 func LoginUser(ctx context.Context, name string, password string) (string, error) {
 	var (
 		hashpassword string
-		uid          int64
+		uid          string
 		forbid       int
 	)
 	loguser := `SELECT id, hashpassword, forbid FROM crocodile_user WHERE name=?`
@@ -83,7 +38,7 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 	if err != nil && err != sql.ErrNoRows {
 		return "", errors.Wrap(err, "stmt.QueryRowContext Scan")
 	}
-	if forbid != 0 {
+	if forbid == 1 {
 		return "", errors.Wrap(define.ErrForbid{name}, "")
 	}
 
@@ -122,12 +77,11 @@ func AddUser(ctx context.Context, u *define.User) error {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
 
-	pass, err := enforcer.AddRoleForUser(fmt.Sprintf("%d", u.Id),
-		define.GetUserByRole(u.Role))
+	ok, err := enforcer.AddRoleForUser(u.Id, define.GetUserByRole(u.Role))
 	if err != nil {
 		return err
 	}
-	if !pass {
+	if !ok {
 		return errors.New("AddRoleForUser failed")
 	}
 
@@ -135,28 +89,28 @@ func AddUser(ctx context.Context, u *define.User) error {
 }
 
 // 获取用户
-func GetUser(ctx context.Context, uid int64) ([]*define.User, error) {
+func GetUser(ctx context.Context, uid string) ([]define.User, error) {
 	getuser := `select id,name,role,forbid,email,createTime,updateTime,remark FROM crocodile_user `
 	args := []interface{}{}
-	users := []*define.User{}
-	if uid > 0 {
+	users := []define.User{}
+	if uid != "" {
 		getuser += "WHERE id=?"
 		args = append(args, uid)
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "db.Db.GetConn")
+		return users, errors.Wrap(err, "db.Db.GetConn")
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getuser)
 	if err != nil {
-		return nil, errors.Wrap(err, "conn.PrepareContext")
+		return users, errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "stmt.QueryContext")
+		return users, errors.Wrap(err, "stmt.QueryContext")
 	}
 	for rows.Next() {
 		var (
@@ -174,29 +128,61 @@ func GetUser(ctx context.Context, uid int64) ([]*define.User, error) {
 		}
 		user.CreateTime = utils.UnixToStr(createTime)
 		user.UpdateTime = utils.UnixToStr(updateTime)
-		users = append(users, &user)
+		users = append(users, user)
 	}
 	return users, nil
 }
 
 // 修改用户
-func ChangeUser(ctx context.Context, u *define.User) error {
-	changeuser := `UPDATE crocodile_user SET role=?,forbid=?,email=?,updateTime=?,remark=? WHERE id=? AND name=?`
+func ChangeUser(ctx context.Context, u *define.User, role define.Role) error {
+	//changeuser := `UPDATE crocodile_user SET role=?,forbid=?,email=?,updateTime=?,remark=? WHERE id=?`
+	var (
+		changeuser string
+		args       []interface{}
+	)
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.Db.GetConn")
 	}
 	defer conn.Close()
-
+	updateTime := time.Now().Unix()
+	switch role {
+	case define.AdminUser:
+		changeuser = `UPDATE crocodile_user SET role=?,forbid=?,email=?,updateTime=?,remark=? WHERE id=?`
+		args = append(args, u.Role, u.Forbid, u.Email, updateTime, u.Remark, u.Id)
+		// 修改权限表
+		ok, err := enforcer.DeleteUser(u.Id)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New("Delete user failed")
+		}
+		ok, err = enforcer.AddRoleForUser(u.Id, define.GetUserByRole(u.Role))
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New("AddRoleForUser failed")
+		}
+		err = enforcer.LoadPolicy()
+		if err != nil {
+			return errors.Wrap(err, "enforcer.LoadPolicy")
+		}
+	case define.NormalUser:
+		changeuser = `UPDATE crocodile_user SET email=?,updateTime=?,remark=? WHERE id=?`
+		args = append(args, u.Email, updateTime, u.Remark, u.Id)
+	}
 	stmt, err := conn.PrepareContext(ctx, changeuser)
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
-	updateTime := time.Now().Unix()
-	_, err = stmt.ExecContext(ctx, u.Role, u.Forbid, u.Email, updateTime, u.Remark, u.Id, u.Name)
+
+	_, err = stmt.ExecContext(ctx, args...)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
+
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -45,7 +46,7 @@ func newWorker(workerId int64) (*Worker, error) {
 }
 
 // 生成ID
-func (w *Worker) generateId() int64 {
+func (w *Worker) generateId() string {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -65,10 +66,10 @@ func (w *Worker) generateId() int64 {
 		w.timestamp = now
 	}
 	id := (now-sub)<<timeShift | w.workerId<<workerShift | w.number
-	return id
+	return strconv.FormatInt(id, 10)
 }
 
-func GetId() int64 {
+func GetId() string {
 	_once.Do(func() {
 		w, err := newWorker(defaultWorkerId)
 		if err != nil {

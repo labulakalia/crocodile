@@ -16,7 +16,7 @@ func TestNewLogger(t *testing.T) {
 		MaxBackups: 0,
 		LogLevel:   "info",
 	}
-	err := NewLog(
+	err := InitLog(
 		LogPath(logcfg.LogPath),
 		LogLevel(logcfg.LogLevel),
 		Compress(logcfg.Compress),
@@ -32,6 +32,7 @@ func TestNewLogger(t *testing.T) {
 	Info("TestLog", zap.String("test", "eeyeyyeye"))
 
 	testsss()
+
 }
 
 func testsss() {

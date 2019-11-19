@@ -11,10 +11,10 @@ const (
 
 type Claims struct {
 	jwt.StandardClaims
-	UId int64
+	UId string
 }
 
-func GenerateToken(uid int64) (token string, err error) {
+func GenerateToken(uid string) (token string, err error) {
 	var (
 		now         time.Time
 		expireTime  time.Time

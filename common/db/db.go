@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"time"
 )
 
 var (
@@ -15,7 +16,7 @@ type dbCfg struct {
 	Dsn               string
 	MaxIdleConnection int
 	MaxOpenConnection int
-	MaxQueryTime      int
+	MaxQueryTime      time.Duration
 }
 
 func GetConn(ctx context.Context) (*sql.Conn, error) {
@@ -45,7 +46,7 @@ func MaxOpenConnection(open int) Option {
 	}
 }
 
-func MaxQueryTime(query int) Option {
+func MaxQueryTime(query time.Duration) Option {
 	return func(dbcfg *dbCfg) {
 		dbcfg.MaxQueryTime = query
 	}

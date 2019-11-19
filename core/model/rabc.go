@@ -28,9 +28,9 @@ g = _, _
 e = some(where (p.eft == allow))
 
 [matchers]
-m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+m = g(r.sub, p.sub) && r.obj == p.obj && regexMatch(r.act, p.act)
 `
-	dbcfg := config.CoreConf.Db
+	dbcfg := config.CoreConf.Server.DB
 	m, err := model.NewModelFromString(modeltext)
 	if err != nil {
 		log.Panic("NewModelFromString Err", zap.Error(err))

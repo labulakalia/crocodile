@@ -7,10 +7,10 @@ import (
 	"os"
 )
 
-func InitLog() {
+func Init() {
 	logcfg := config.CoreConf.Log
 
-	err := log.NewLog(
+	err := log.InitLog(
 		log.LogPath(logcfg.LogPath),
 		log.LogLevel(logcfg.LogLevel),
 		log.Compress(logcfg.Compress),

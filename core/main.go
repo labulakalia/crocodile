@@ -1,16 +1,18 @@
 package main
 
 import (
-	"github.com/labulaka521/crocodile/core/config"
-	"github.com/labulaka521/crocodile/core/model"
-	"github.com/labulaka521/crocodile/core/router"
-	"github.com/labulaka521/crocodile/core/utils/log"
+	"fmt"
+	"github.com/labulaka521/crocodile/core/cmd"
+	"github.com/spf13/cobra"
+	"os"
 )
 
 func main() {
-	config.InitConf()
-	log.InitLog()
-	model.InitDb()
-	model.InitRabc()
-	router.InitRouter()
+	rootCmd := &cobra.Command{Use: "crocodile"}
+	rootCmd.AddCommand(cmd.Server())
+	rootCmd.AddCommand(cmd.Client())
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println("Execute failed", err)
+		os.Exit(1)
+	}
 }

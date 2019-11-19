@@ -11,9 +11,9 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/resp"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"time"
 )
 
+// POST /api/v1/user
 // @params
 // name
 // password
@@ -22,12 +22,17 @@ import (
 // remark option
 func RegistryUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
-		time.Duration(config.CoreConf.Db.MaxQueryTime)*time.Second)
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 	user := define.User{}
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
+		resp.Json(c, resp.ErrBadRequest, nil)
+		return
+	}
+	if user.Name == "" {
+		log.Error("User.Name is empty")
 		resp.Json(c, resp.ErrBadRequest, nil)
 		return
 	}
@@ -39,7 +44,7 @@ func RegistryUser(c *gin.Context) {
 	}
 	user.Id = utils.GetId()
 
-	exist, err := model.IsExist(ctx, model.UserName, user.Name)
+	exist, err := model.Check(ctx, model.TB_user, model.Name, user.Name)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
@@ -49,7 +54,7 @@ func RegistryUser(c *gin.Context) {
 		resp.Json(c, resp.ErrUserNameExist, nil)
 		return
 	}
-	exist, err = model.IsExist(ctx, model.Email, user.Email)
+	exist, err = model.Check(ctx, model.TB_user, model.Email, user.Email)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
@@ -66,19 +71,22 @@ func RegistryUser(c *gin.Context) {
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
+
 	resp.Json(c, resp.Success, nil)
 }
 
+// GET /api/v1/user
 // @params
 // 通过解析token的ID获取请求者的信息
 func GetUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
-		time.Duration(config.CoreConf.Db.MaxQueryTime)*time.Second)
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	uid := c.GetInt64("uid")
+	uid := c.GetString("uid")
 
-	exist, err := model.IsExist(ctx, model.Uid, uid)
+	log.Info("Check Uid " + uid)
+	exist, err := model.Check(ctx, model.TB_user, model.ID, uid)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
@@ -95,7 +103,7 @@ func GetUser(c *gin.Context) {
 		return
 	}
 	if len(users) != 1 {
-		log.Error("Get many users", zap.Int64("uid", uid))
+		log.Error("Get many users", zap.String("uid", uid))
 		resp.Json(c, resp.ErrBadRequest, nil)
 		return
 	}
@@ -106,10 +114,10 @@ func GetUser(c *gin.Context) {
 // 通过解析token的ID获取请求者的信息
 func GetUsers(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
-		time.Duration(config.CoreConf.Db.MaxQueryTime)*time.Second)
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	users, err := model.GetUser(ctx, 0)
+	users, err := model.GetUser(ctx, "")
 	if err != nil {
 		log.Error("GetUsers failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
@@ -128,7 +136,7 @@ func GetUsers(c *gin.Context) {
 // forbid
 func ChangeUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
-		time.Duration(config.CoreConf.Db.MaxQueryTime)*time.Second)
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
 	user := define.User{}
@@ -139,7 +147,7 @@ func ChangeUser(c *gin.Context) {
 		return
 	}
 
-	exist, err := model.IsExist(ctx, model.Uid, user.Id)
+	exist, err := model.Check(ctx, model.TB_user, model.ID, user.Id)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
@@ -148,20 +156,25 @@ func ChangeUser(c *gin.Context) {
 		resp.Json(c, resp.ErrUserNotExist, nil)
 		return
 	}
+	var role define.Role
+	if v, ok := c.Get("role"); ok {
+		role = v.(define.Role)
+	}
 
-	err = model.ChangeUser(ctx, &user)
+	err = model.ChangeUser(ctx, &user, role)
 	if err != nil {
 		log.Error("ChangeUser failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
+
 	resp.Json(c, resp.Success, nil)
 }
 
 // @params
 func LoginUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
-		time.Duration(config.CoreConf.Db.MaxQueryTime)*time.Second)
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 	username, password, ok := c.Request.BasicAuth()
 	if !ok {

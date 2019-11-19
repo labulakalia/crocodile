@@ -1,14 +1,23 @@
 [log]
-LogPath = ""
-MaxSize = 10
-Compress = true
-MaxAge =  7
-MaxBackups = 10
-LogLevel  = "info"
+logpath = ""
+maxsize = 10
+compress = true
+maxage =  7
+maxbackups = 10
+loglevel  = "info"
 
-[db]
-Drivename = "sqlite3"
-Dsn = "db/core.db"
-MaxIdle = 10
-MaxConn = 20
-MaxQueryTime = 3
+[server]
+port = 8080
+maxhttptime = "10s" # 秒
+maxrpctime = "10s" # 秒
+  [server.db]
+  drivename = "sqlite3"
+  dsn = "db/core.db"
+  maxidle = 10
+  maxconn = 20
+  maxquerytime = "10s"
+
+[client]
+port = 0
+serveraddr = "127.0.0.1:8080"
+maxrpctime = "10s" # 秒

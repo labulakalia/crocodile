@@ -142,15 +142,15 @@ func MaxBackups(backup int) Option {
 func defaultOption() *logConfig {
 	return &logConfig{
 		LogPath:    "",
-		MaxSize:    10,
-		Compress:   false,
+		MaxSize:    20,
+		Compress:   true,
 		MaxAge:     7,
 		MaxBackups: 7,
-		LogLevel:   "info",
+		LogLevel:   "debug",
 	}
 }
 
-func NewLog(opts ...Option) error {
+func InitLog(opts ...Option) error {
 
 	logcfg := defaultOption()
 	for _, opt := range opts {
