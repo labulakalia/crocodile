@@ -37,7 +37,6 @@ type Log struct {
 type Server struct {
 	Port        int
 	MaxHttpTime duration
-	MaxRPCTime  duration
 	DB          db
 }
 
@@ -52,7 +51,7 @@ type db struct {
 type Client struct {
 	Port       int
 	ServerAddr string
-	MaxRPCTime duration
+	HostGroup  string
 }
 
 type duration struct {

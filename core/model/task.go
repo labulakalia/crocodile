@@ -7,7 +7,6 @@ import (
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
-	"github.com/labulaka521/crocodile/core/schedule"
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
@@ -15,9 +14,6 @@ import (
 	"strings"
 	"time"
 )
-
-// 执行计划：
-//
 
 func CreateTask(ctx context.Context, t *define.Task) error {
 	createsql := `INSERT INTO crocodile_task 
@@ -32,25 +28,24 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 					childRunParallel,
 					cronExpr,
 					timeout,
-					runtime,
-					alarmTotal,
-					alarmUser,
+					alarmUserIds,
 					autoSwitch,
 					createByID,
 					hostGroupID,
 					remark,
 					createTime,
 					updateTime)
-				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
 	}
-
+	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, createsql)
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
+	defer stmt.Close()
 	createTime := time.Now().Unix()
 	taskdata, _ := json.Marshal(t.TaskData)
 	_, err = stmt.ExecContext(ctx,
@@ -65,9 +60,7 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 		t.ChildRunParallel,
 		t.CronExpr,
 		t.Timeout,
-		t.RunTime,
-		t.AlarmTotal,
-		strings.Join(t.AlarmUser, ","),
+		strings.Join(t.AlarmUserIds, ","),
 		t.AutoSwitch,
 		t.CreateByUId,
 		t.HostGroupId,
@@ -94,8 +87,6 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 						childRunParallel=?,
 						cronExpr=?,
 						timeout=?,
-						runtime=?,
-						alarmTotal=?,
 						alarmUser=?,
 						autoSwitch=?,
 						remark=?,
@@ -105,10 +96,12 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
 	}
+	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, changesql)
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
+	defer stmt.Close()
 	updateTime := time.Now().Unix()
 	taskdata, _ := json.Marshal(t.TaskData)
 	_, err = stmt.ExecContext(ctx,
@@ -122,9 +115,7 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 		t.ChildRunParallel,
 		t.CronExpr,
 		t.Timeout,
-		t.RunTime,
-		t.AlarmTotal,
-		strings.Join(t.AlarmUser, ","),
+		strings.Join(t.AlarmUserIds, ","),
 		t.AutoSwitch,
 		t.Remark,
 		updateTime,
@@ -142,10 +133,12 @@ func DeleteTask(ctx context.Context, id string) error {
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
 	}
+	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, deletesql)
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
+	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, id)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
@@ -181,9 +174,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 					t.childRunParallel,
 					t.cronExpr,
 					t.timeout,
-					t.runtime,
-					t.alarmTotal,
-					t.alarmUser,
+					t.alarmUserIds,
 					t.autoSwitch,
 					u.name,
 					t.createByID,
@@ -196,7 +187,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 				WHERE t.createByID == u.id AND t.hostGroupID = hg.id`
 	args := []interface{}{}
 	if id != "" {
-		getsql += " t.id = ?"
+		getsql += " AND t.id = ?"
 		args = append(args, id)
 	}
 
@@ -204,10 +195,12 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "db.GetConn")
 	}
+	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
 		return nil, errors.Wrap(err, "conn.PrepareContext")
 	}
+	defer stmt.Close()
 	res := []define.Task{}
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
@@ -219,7 +212,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 			parentTaskIds, childTaskIds string
 			createTime, updateTime      int64
 			taskdata                    string
-			alarmUser                   string
+			alarmUserids                string
 		)
 
 		err = rows.Scan(&t.Id,
@@ -233,9 +226,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 			&t.ChildRunParallel,
 			&t.CronExpr,
 			&t.Timeout,
-			&t.RunTime,
-			&t.AlarmTotal,
-			&alarmUser,
+			&alarmUserids,
 			&t.AutoSwitch,
 			&t.CreateBy,
 			&t.CreateByUId,
@@ -251,27 +242,43 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 		}
 		t.CreateTime = utils.UnixToStr(createTime)
 		t.UpdateTime = utils.UnixToStr(updateTime)
-		t.AlarmUser = []string{}
-		if alarmUser != "" {
-			t.AlarmUser = append(t.AlarmUser, strings.Split(alarmUser, ",")...)
+		t.AlarmUserIds = []string{}
+		if alarmUserids != "" {
+			t.AlarmUserIds = append(t.AlarmUserIds, strings.Split(alarmUserids, ",")...)
+		}
+		t.ParentTaskIds = []string{}
+		if parentTaskIds != "" {
+			t.ParentTaskIds = append(t.ParentTaskIds, strings.Split(parentTaskIds, ",")...)
+		}
+		t.ChildTaskIds = []string{}
+		if childTaskIds != "" {
+			t.ChildTaskIds = append(t.ChildTaskIds, strings.Split(childTaskIds, ",")...)
 		}
 		switch t.TaskType {
 		case define.Shell:
-			pro := tasktype.DataShell{}
-			err = json.Unmarshal([]byte(taskdata), &pro)
+			shell := tasktype.DataShell{}
+			err = json.Unmarshal([]byte(taskdata), &shell)
 			if err != nil {
+				log.Error("Unmarshal failed", zap.Error(err))
 				continue
 			}
-			t.TaskData = pro
+
+			if len(shell.Args) == 0 {
+				shell.Args = []interface{}{}
+			}
+			t.TaskData = shell
 		case define.Api:
 			api := tasktype.DataApi{}
 			err = json.Unmarshal([]byte(taskdata), &api)
 			if err != nil {
+				log.Error("Unmarshal failed", zap.Error(err))
 				continue
 			}
 			t.TaskData = api
+		default:
+			log.Error("Unsupport TaskType", zap.Any("type", t.TaskType))
+			continue
 		}
-
 		res = append(res, t)
 	}
 	return res, nil

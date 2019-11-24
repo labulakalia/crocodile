@@ -1,4 +1,8 @@
------BEGIN CERTIFICATE-----
+package tls
+
+const (
+	ServerName    = "crocodile"
+	TlsPemContext = `-----BEGIN CERTIFICATE-----
 MIIB7jCCAXUCCQDdUpmVV2WGNjAKBggqhkjOPQQDAjBhMQswCQYDVQQGEwJDTjEL
 MAkGA1UECAwCR0QxCzAJBgNVBAcMAlNaMRIwEAYDVQQDDAljcm9jb2RpbGUxJDAi
 BgkqhkiG9w0BCQEWFWxhYnVsYWthbGlhQGdtYWlsLmNvbTAeFw0xOTExMTcwMjU3
@@ -11,3 +15,15 @@ CCqGSM49BAMCA2cAMGQCMEQAIJnl/dZh+KoofscrEFzGY2WS6T7jgQVVpys58UAJ
 o7GT1H/6mvSNGFjkg2tdygIwa4qbubTOLzU2vmKAoRWtkfjcwpJHPoHezQ6cM77G
 oQjA53Tol+wWQsWU0AcBxtM0
 -----END CERTIFICATE-----
+`
+	TlskeyContent = `-----BEGIN EC PARAMETERS-----
+BgUrgQQAIg==
+-----END EC PARAMETERS-----
+-----BEGIN EC PRIVATE KEY-----
+MIGkAgEBBDBjrAXdMykiTmCCx9kDbW35jshan9IwywysRmO5Kl+LKSvT+AoiBjSr
+VvfpHych+EegBwYFK4EEACKhZANiAAQfBuCZLw+0dP/Ibksutr/zF6BHKkdiZ4cT
+xcL9BeAVNrsraeqB4AuR3RUG6NqTcBE81uH/hV+RVYLZSdPCZNlFVpDzar5m9Jcv
+q2hrmixRPN+plQyzkTV1pVCQn/zoY+Y=
+-----END EC PRIVATE KEY-----
+`
+)

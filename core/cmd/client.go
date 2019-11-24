@@ -1,15 +1,20 @@
 package cmd
 
 import (
+	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/router"
+	"github.com/labulaka521/crocodile/core/schedule"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"github.com/labulaka521/crocodile/core/utils/log"
+	mylog "github.com/labulaka521/crocodile/core/utils/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"net"
 	"os"
+	"strconv"
 )
 
-func Client() *cobra.Command {
+func CmdClient() *cobra.Command {
 	var (
 		cfg string
 	)
@@ -22,10 +27,24 @@ func Client() *cobra.Command {
 				os.Exit(0)
 			}
 			config.Init(cfg)
-			log.Init()
+			mylog.Init()
 		},
 		PostRunE: func(cmd *cobra.Command, args []string) error {
-			return router.Run(define.Client)
+			lis, err := router.GetListen(define.Client)
+			if err != nil {
+				return err
+			}
+			_, port, _ := net.SplitHostPort(lis.Addr().String())
+			intport, _ := strconv.Atoi(port)
+			err = schedule.InitClient(intport)
+			if err != nil {
+				log.Fatal("InitClient failed", zap.String("error", err.Error()))
+			}
+			err = router.Run(define.Client, lis)
+			if err != nil {
+				log.Fatal("router.Run failed", zap.String("error", err.Error()))
+			}
+			return nil
 		},
 	}
 	cmdClient.Flags().StringVarP(&cfg, "conf", "c", "", "server config [toml]")

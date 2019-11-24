@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
@@ -75,7 +76,7 @@ func CreateTask(c *gin.Context) {
 	resp.Json(c, resp.Success, nil)
 }
 
-// PATCH /api/v1/task
+// Put /api/v1/task
 func ChangeTask(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -199,6 +200,7 @@ func GetTasks(c *gin.Context) {
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 	hgs, err := model.GetTasks(ctx)
+
 	if err != nil {
 		log.Error("GetTasks failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)

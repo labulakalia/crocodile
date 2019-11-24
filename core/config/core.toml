@@ -9,7 +9,6 @@ loglevel  = "info"
 [server]
 port = 8080
 maxhttptime = "10s" # 秒
-maxrpctime = "10s" # 秒
   [server.db]
   drivename = "sqlite3"
   dsn = "db/core.db"
@@ -18,6 +17,6 @@ maxrpctime = "10s" # 秒
   maxquerytime = "10s"
 
 [client]
-port = 0
+port = 8081        # default rand port
 serveraddr = "127.0.0.1:8080"
-maxrpctime = "10s" # 秒
+hostgroup = "crocodile_hostgroup"

@@ -3,7 +3,7 @@ syntax = "proto3";
 package crocodile.task;
 
 
-// run task interface
+// keepalive connect
 service Task {
     rpc RunTask(TaskReq) returns(TaskResp);
 }
@@ -17,23 +17,31 @@ message TaskReq {
 
 message TaskResp {
     int32 code = 1;
-    string err_msg = 2;
+    bytes err_msg = 2;
     bytes resp_data = 3;
 }
 
 // worker send Heartbeat to master server
 service Heartbeat {
+    // registry host
+    rpc RegistryHost(RegistryReq) returns(Empty){};
     rpc SendHb(HeartbeatReq) returns (Empty){};
+}
+
+
+message RegistryReq {
+    string ip = 1;
+    int32 port = 2;
+    string hostname = 5;
+    string version = 4;
+    string hostgroup = 6;
 }
 
 message HeartbeatReq {
     string ip = 1;
     int32 port = 2;
     repeated string running_task = 3;
-    string version = 4;
-    string hostname = 5;
 }
 
 message Empty {
-
 }

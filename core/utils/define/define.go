@@ -52,7 +52,7 @@ type User struct {
 
 // 主机组
 type HostGroup struct {
-	Hosts       []string `json:"hosts"`       // WorkerId
+	Addrs       []string `json:"addrs"`       // WorkerId
 	CreateByUId string   `json:"createByUId"` // 创建人ID
 	CreateBy    string   `json:"createBy"`    // 创建人ID
 	common
@@ -61,12 +61,12 @@ type HostGroup struct {
 // 主机信息
 // 定时更新主机信息
 type Host struct {
-	HostName    string   `json:"hostname"`    // 主机名
-	IP          string   `json:"ip"`          // 主机IP
-	Port        int      `json:"port"`        // 运行端口
-	Online      int      `json:"online"`      // 主机是否在线
-	Version     string   `json:"version"`     // 版本号
-	RuningTasks []string `json:"runingTasks"` // 运行的任务  会依照优先级和任务数的多少来给执行端分配worker
+	Addr           string   `json:"addr"`        // 主机IP
+	HostName       string   `json:"hostname"`    // 主机名
+	Online         int      `json:"online"`      // 主机是否在线
+	Version        string   `json:"version"`     // 版本号
+	RuningTasks    []string `json:"runingTasks"` // 运行的任务  会依照优先级和任务数的多少来给执行端分配worker
+	LastUpdateTime int64    `json:"lastUpdatetime"`
 }
 
 // 任务
@@ -84,38 +84,35 @@ type Task struct {
 	HostGroup   string `json:"hostGroup"`                      // 执行计划
 	HostGroupId string `json:"hostGroupID" binding:"required"` // 主机组ID
 
-	CronExpr   string   `json:"cronExpr" binding:"required"` // 执行任务表达式
-	Timeout    int      `json:"timeout"`                     // 任务超时时间
-	RunTime    int      `json:"runTime"`                     // 运行次数
-	AlarmTotal int      `json:"alarmTotal"`                  // 报警次数
-	AlarmUser  []string `json:"alarmUser"`                   // 报警用户 多个用户
-	AutoSwitch int      `json:"autoSwitch"`                  // 运行失败自动切换到其他主机上
+	CronExpr     string   `json:"cronExpr" binding:"required"` // 执行任务表达式
+	Timeout      int      `json:"timeout"`                     // 任务超时时间
+	AlarmUserIds []string `json:"alarmUserIds"`                // 报警用户 多个用户
+	AutoSwitch   int      `json:"autoSwitch"`                  // 运行失败自动切换到其他主机上
 	common
-}
-
-// 执行计划
-type ExecPlan struct {
-	common
-	CronExpr    string   `json:"cronExpr" binding:"required"`    // 执行任务表达式
-	Timeout     int      `json:"timeout"`                        // 任务超时时间
-	RunTime     int      `json:"runTime"`                        // 运行次数
-	AlarmTotal  int      `json:"alarmTotal"`                     // 报警次数
-	AlarmUser   []string `json:"alarmUser"`                      // 报警用户 多个用户
-	AutoSwitch  int      `json:"autoSwitch"`                     // 运行失败自动切换到其他主机上
-	CreateBy    string   `json:"createBy"`                       // 创建人
-	CreateByUId string   `json:"createByUId"`                    // 创建人ID
-	HostGroup   string   `json:"hostGroup"`                      // 执行计划
-	HostGroupId string   `json:"hostGroupID" binding:"required"` // 主机组ID
 }
 
 // 日志
 type Log struct {
-	TaskId int `json:""`
+	RunByTaskId  string      `json:"runByTaskId"`
+	TaskResps    []*TaskResp `json:"taskResps"`
+	StartTimne   string      `json:"startTime"`
+	EndTime      string      `json:"endTime"`
+	TotalRunTime int         `json:"totalRunTime"`
 }
+
+type TaskRespType uint8
+
+const (
+	MasterTask = iota + 1
+	ParentTask
+	ChildTask
+)
 
 // 返回值
 type TaskResp struct {
-	Code   int
-	ErrMsg interface{}
-	Data   interface{}
+	TaskType TaskRespType `json:"taskType"` // 1 主任务 2 父任务 3 子任务
+	TaskId   string       `json:"taskId"`
+	Code     int32        `json:"code"`
+	ErrMsg   []byte       `json:"errMsg"`
+	Data     []byte       `json:"data"`
 }

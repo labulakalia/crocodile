@@ -8,6 +8,7 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"math/rand"
 	"strings"
 	"time"
 )
@@ -15,7 +16,7 @@ import (
 // 主机组
 
 func CreateHostgroup(ctx context.Context, hg *define.HostGroup) error {
-	createsql := `INSERT INTO crocodile_hostgroup (id,name,remark,createByID,hosts,createTime,updateTime) VALUES(?,?,?,?,?,?,?)`
+	createsql := `INSERT INTO crocodile_hostgroup (id,name,remark,createByID,addrs,createTime,updateTime) VALUES(?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.Db.GetConn")
@@ -25,14 +26,14 @@ func CreateHostgroup(ctx context.Context, hg *define.HostGroup) error {
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
-
+	defer stmt.Close()
 	createTime := time.Now().Unix()
 	_, err = stmt.ExecContext(ctx,
 		hg.Id,
 		hg.Name,
 		hg.Remark,
 		hg.CreateByUId,
-		strings.Join(hg.Hosts, ","),
+		strings.Join(hg.Addrs, ","),
 		createTime,
 		createTime)
 	if err != nil {
@@ -42,7 +43,7 @@ func CreateHostgroup(ctx context.Context, hg *define.HostGroup) error {
 }
 
 func ChangeHostGroup(ctx context.Context, hg *define.HostGroup) error {
-	changesql := `UPDATE crocodile_hostgroup SET hosts=?,remark=?,updateTime=? WHERE id=?`
+	changesql := `UPDATE crocodile_hostgroup SET addrs=?,remark=?,updateTime=? WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.Db.GetConn")
@@ -52,8 +53,8 @@ func ChangeHostGroup(ctx context.Context, hg *define.HostGroup) error {
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
-
-	_, err = stmt.ExecContext(ctx, strings.Join(hg.Hosts, ","), hg.Remark, time.Now().Unix(), hg.Id)
+	defer stmt.Close()
+	_, err = stmt.ExecContext(ctx, strings.Join(hg.Addrs, ","), hg.Remark, time.Now().Unix(), hg.Id)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
@@ -71,7 +72,7 @@ func DeleteHostGroup(ctx context.Context, id string) error {
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
-
+	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, id)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
@@ -79,14 +80,14 @@ func DeleteHostGroup(ctx context.Context, id string) error {
 	return nil
 }
 
-func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
+func getHostGroups(ctx context.Context, id, hgname string) ([]define.HostGroup, error) {
 	hgs := []define.HostGroup{}
 
 	sqlget := `SELECT 
 					hg.id,
 					hg.name,
 					hg.remark,
-					hg.hosts,
+					hg.addrs,
 					hg.createByID,
 					u.name,
 					hg.createTime,
@@ -95,6 +96,15 @@ func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
 					crocodile_hostgroup as hg,crocodile_user as u
 				WHERE
 					hg.createByID == u.id`
+	args := []interface{}{}
+	if id != "" {
+		sqlget += " AND hg.id=?"
+		args = append(args, id)
+	}
+	if hgname != "" {
+		sqlget += " AND hg.name=?"
+		args = append(args, hgname)
+	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return hgs, errors.Wrap(err, "db.Db.GetConn")
@@ -104,7 +114,8 @@ func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
 	if err != nil {
 		return hgs, errors.Wrap(err, "conn.PrepareContext")
 	}
-	rows, err := stmt.QueryContext(ctx)
+	defer stmt.Close()
+	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
 		return hgs, errors.Wrap(err, "stmt.QueryContext")
 	}
@@ -120,9 +131,9 @@ func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
 		if err != nil {
 			log.Info("Scan result failed", zap.Error(err))
 		}
-		hg.Hosts = []string{}
+		hg.Addrs = []string{}
 		if hosts != "" {
-			hg.Hosts = strings.Split(hosts, "")
+			hg.Addrs = strings.Split(hosts, ",")
 		}
 		hg.CreateTime = utils.UnixToStr(createTime)
 		hg.UpdateTime = utils.UnixToStr(updateTime)
@@ -130,4 +141,45 @@ func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
 		hgs = append(hgs, hg)
 	}
 	return hgs, nil
+}
+
+func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
+	return getHostGroups(ctx, "", "")
+}
+
+func GetHostGroupID(ctx context.Context, id string) (*define.HostGroup, error) {
+	hostgroups, err := getHostGroups(ctx, id, "")
+	if err != nil {
+		return nil, err
+	}
+	if len(hostgroups) != 1 {
+		return nil, errors.New("can not find hostgroup id: " + id)
+	}
+	return &hostgroups[0], nil
+}
+
+func GetHostGroupName(ctx context.Context, hg string) (*define.HostGroup, error) {
+	hostgroups, err := getHostGroups(ctx, "", hg)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(hostgroups) != 1 {
+		return nil, errors.New("can not find hostgroup name: " + hg)
+	}
+	return &hostgroups[0], nil
+}
+
+// get execute worker ip
+func RandAddrByGostGroup(ctx context.Context, hg *define.HostGroup) (string, error) {
+	if len(hg.Addrs) == 0 {
+		return "", errors.New("Can not find worker host")
+	}
+	randhostid := hg.Addrs[rand.Int()%len(hg.Addrs)]
+
+	host, err := GetHostByID(ctx, randhostid)
+	if err != nil {
+		return "", err
+	}
+	return host.Addr, nil
 }
