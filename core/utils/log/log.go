@@ -17,6 +17,7 @@ func Init() {
 		log.MaxSize(logcfg.MaxSize),
 		log.MaxBackups(logcfg.MaxBackups),
 		log.MaxAge(logcfg.MaxAge),
+		log.Format(logcfg.Format),
 	)
 	if err != nil {
 		fmt.Printf("InitLog failed: %v", err)

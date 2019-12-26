@@ -12,6 +12,11 @@ var (
 	_logger *zap.Logger
 )
 
+const (
+	FormatText = "text"
+	FormatJson = "json"
+)
+
 type Level uint
 
 // 日志配置
@@ -22,6 +27,7 @@ type logConfig struct {
 	MaxSize    int
 	MaxAge     int
 	MaxBackups int
+	Format     string
 }
 
 func getzapLevel(level string) zapcore.Level {
@@ -44,7 +50,7 @@ func getzapLevel(level string) zapcore.Level {
 }
 
 func newLogWriter(logpath string, maxsize int, compress bool) io.Writer {
-	if logpath == "" {
+	if logpath == "" || logpath == "-" {
 		return os.Stdout
 	} else {
 		return &lumberjack.Logger{
@@ -79,8 +85,15 @@ func newLoggerCore(log *logConfig) zapcore.Core {
 
 	atomLevel := zap.NewAtomicLevelAt(getzapLevel(log.LogLevel))
 
+	var encoder zapcore.Encoder
+	if log.Format == FormatJson {
+		encoder = zapcore.NewJSONEncoder(encoderConfig)
+	} else {
+		encoder = zapcore.NewConsoleEncoder(encoderConfig)
+	}
+
 	core := zapcore.NewCore(
-		zapcore.NewJSONEncoder(encoderConfig),
+		encoder,
 		zapcore.NewMultiWriteSyncer(zapcore.AddSync(hook)),
 		atomLevel,
 	)
@@ -88,10 +101,10 @@ func newLoggerCore(log *logConfig) zapcore.Core {
 }
 
 func newLoggerOptions() []zap.Option {
+	// 开启开发模式，堆栈跟踪
 	caller := zap.AddCaller()
 	callerskip := zap.AddCallerSkip(1)
 	// 开发者
-	zap.Fields()
 	development := zap.Development()
 	options := []zap.Option{
 		caller,
@@ -139,6 +152,17 @@ func MaxBackups(backup int) Option {
 	}
 }
 
+func Format(format string) Option {
+	return func(logcfg *logConfig) {
+		if format == FormatJson {
+			logcfg.Format = FormatJson
+		} else {
+			logcfg.Format = FormatText
+		}
+
+	}
+}
+
 func defaultOption() *logConfig {
 	return &logConfig{
 		LogPath:    "",
@@ -147,6 +171,7 @@ func defaultOption() *logConfig {
 		MaxAge:     7,
 		MaxBackups: 7,
 		LogLevel:   "debug",
+		Format:     FormatText,
 	}
 }
 

@@ -5,6 +5,6 @@ import (
 )
 
 func TestInit(t *testing.T) {
-	Init("/Users/labulakalia/workerspace/golang/crocodile/core/core.toml")
+	Init("/Users/labulakalia/workerspace/golang/crocodile/core/config/core.toml")
 	t.Logf("%+v", CoreConf)
 }

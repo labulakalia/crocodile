@@ -1,5 +1,7 @@
 package resp
 
+import "errors"
+
 var msgcode = map[int]string{
 	Success: "ok",
 
@@ -22,6 +24,14 @@ var msgcode = map[int]string{
 	ErrExecPlanNotExist: "执行计划不存在",
 
 	ErrInternalServer: "服务端错误",
+
+	ErrRpcDeadlineExceeded: "调用超时",
+	ErrRpcCanceled:         "取消调用",
+	ErrRpcUnauthenticated:  "密钥认证失败",
+	ErrRpcUnavailable:      "调用对端不可用",
+	ErrRpcUnknow:           "调用未知错误",
+	ErrRpcNotValidHost:     "未发现worker",
+	ErrRpcNotConn:          "连接目标主机失败",
 }
 
 // 获取请求的消息
@@ -35,4 +45,9 @@ func GetMsg(code int) string {
 		return msg
 	}
 	return "unknown"
+}
+
+func GetMsgErr(code int) error {
+	msg := GetMsg(code)
+	return errors.New(msg)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/middleware"
+	"github.com/labulaka521/crocodile/core/router/api/v1/host"
 	"github.com/labulaka521/crocodile/core/router/api/v1/hostgroup"
 	"github.com/labulaka521/crocodile/core/router/api/v1/task"
 	"github.com/labulaka521/crocodile/core/router/api/v1/user"
@@ -20,6 +21,7 @@ import (
 )
 
 func NewHttpRouter() *http.Server {
+	gin.SetMode("release")
 	router := gin.New()
 	//gin.SetMode(gin.ReleaseMode)
 	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl())
@@ -39,6 +41,7 @@ func NewHttpRouter() *http.Server {
 		rhg.POST("", hostgroup.CreateHostGroup)
 		rhg.PUT("", hostgroup.ChangeHostGroup)
 		rhg.DELETE("", hostgroup.DeleteHostGroup)
+
 	}
 	rt := v1.Group("/task")
 	{
@@ -46,7 +49,18 @@ func NewHttpRouter() *http.Server {
 		rt.POST("", task.CreateTask)
 		rt.PUT("", task.ChangeTask)
 		rt.DELETE("", task.DeleteTask)
+		rt.POST("/run", task.RunTask)
+		rt.PUT("/kill", task.KillTask)
+		rt.GET("/running", task.RunningTask)
+		rt.GET("/logs/", task.LogsTask)
 	}
+	rh := v1.Group("/host")
+	{
+		rh.GET("", host.GetHost)
+		rh.PUT("", host.StopHost)
+		rh.DELETE("", host.DeleteHost)
+	}
+
 	httpSrv := &http.Server{
 		Handler:      router,
 		ReadTimeout:  config.CoreConf.Server.MaxHttpTime.Duration,
@@ -90,11 +104,11 @@ func Run(mode define.RunMode, lis net.Listener) error {
 		httpServer := NewHttpRouter()
 		httpL := m.Match(cmux.HTTP1Fast())
 		go httpServer.Serve(httpL)
-		log.Info("Start Run Http Server", zap.String("addr", lis.Addr().String()))
+		log.Info("start run http server", zap.String("addr", lis.Addr().String()))
 	}
 	grpcL := m.Match(cmux.Any())
 	go gRPCServer.Serve(grpcL)
-	log.Info("Start Run gRPC Server", zap.String("addr", lis.Addr().String()))
+	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
 
 	return m.Serve()
 }

@@ -20,9 +20,11 @@ func Init(conf string) {
 }
 
 type coreConf struct {
-	Log    Log
-	Server Server
-	Client Client
+	SecretToken string
+	Log         Log
+	Pem         Pem
+	Server      Server
+	Client      Client
 }
 
 type Log struct {
@@ -32,6 +34,12 @@ type Log struct {
 	MaxAge     int
 	MaxBackups int
 	LogLevel   string
+	Format     string
+}
+
+type Pem struct {
+	CertFile string
+	KeyFile  string
 }
 
 type Server struct {

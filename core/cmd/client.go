@@ -14,7 +14,7 @@ import (
 	"strconv"
 )
 
-func CmdClient() *cobra.Command {
+func CmdClient(version string) *cobra.Command {
 	var (
 		cfg string
 	)
@@ -23,7 +23,7 @@ func CmdClient() *cobra.Command {
 		Short: "Start Run crocodile client",
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(cfg) == 0 {
-				cmd.Help()
+				_ = cmd.Help()
 				os.Exit(0)
 			}
 			config.Init(cfg)
@@ -36,13 +36,13 @@ func CmdClient() *cobra.Command {
 			}
 			_, port, _ := net.SplitHostPort(lis.Addr().String())
 			intport, _ := strconv.Atoi(port)
-			err = schedule.InitClient(intport)
+			err = schedule.RegistryClient(version, intport)
 			if err != nil {
-				log.Fatal("InitClient failed", zap.String("error", err.Error()))
+				log.Fatal("RegistryClient failed", zap.String("error", err.Error()))
 			}
 			err = router.Run(define.Client, lis)
 			if err != nil {
-				log.Fatal("router.Run failed", zap.String("error", err.Error()))
+				log.Fatal("router.Run failed", zap.Error(err))
 			}
 			return nil
 		},

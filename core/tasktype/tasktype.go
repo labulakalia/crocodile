@@ -22,6 +22,9 @@ func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 		if err != nil {
 			return nil, err
 		}
+		if len(shell.Args) == 0 {
+			shell.Args = []interface{}{}
+		}
 		return &shell, err
 
 	case define.Api:

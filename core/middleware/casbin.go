@@ -52,7 +52,7 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 
 	role, err := model.QueryUserRule(ctx, claims.UId)
 	if err != nil {
-		log.Error("QueryUserRule failed", zap.String("error", err.Error()))
+		log.Error("QueryUserRule failed", zap.Error(err))
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}

@@ -1,3 +1,7 @@
+# secret token
+secrettoken = "weinjuwiwiuwu"
+
+# log
 [log]
 logpath = ""
 maxsize = 10
@@ -5,7 +9,14 @@ compress = true
 maxage =  7
 maxbackups = 10
 loglevel  = "info"
+format = "text"
 
+# cert file
+[pem]
+certfile="core/cert/cert.pem"
+keyfile="core/cert/key.pem"
+
+# crocodile server
 [server]
 port = 8080
 maxhttptime = "10s" # 秒
@@ -16,6 +27,7 @@ maxhttptime = "10s" # 秒
   maxconn = 20
   maxquerytime = "10s"
 
+# crocodile client
 [client]
 port = 8081        # default rand port
 serveraddr = "127.0.0.1:8080"

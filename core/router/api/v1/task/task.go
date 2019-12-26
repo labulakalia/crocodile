@@ -54,7 +54,7 @@ func CreateTask(c *gin.Context) {
 	}
 	exist, err := model.Check(ctx, model.TB_task, model.Name, task.Name)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -68,7 +68,7 @@ func CreateTask(c *gin.Context) {
 
 	err = model.CreateTask(ctx, &task)
 	if err != nil {
-		log.Error("CreateTask failed", zap.String("error", err.Error()))
+		log.Error("CreateTask failed", zap.Error(err))
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -91,7 +91,7 @@ func ChangeTask(c *gin.Context) {
 	}
 	exist, err := model.Check(ctx, model.TB_task, model.ID, task.Id)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -210,14 +210,26 @@ func GetTasks(c *gin.Context) {
 
 }
 
-// 立即运行
-// GET /api/v1/task/run
+// 主动触发一个任务
+// POST /api/v1/task/run
 func RunTask(c *gin.Context) {
 
 }
 
+// 终止任务
+// PUT /api/v1/task/kill
+func KillTask(c *gin.Context) {
+
+}
+
+// 正在运行的任务
+// GET /api/v1/task/running
+func RunningTask(c *gin.Context) {
+
+}
+
 // 查看任务日志
-// GET /api/v1/task/logs
+// GET /api/v1/task/logs/[]
 func LogsTask(c *gin.Context) {
 
 }

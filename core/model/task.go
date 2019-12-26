@@ -7,6 +7,7 @@ import (
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
+	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
@@ -254,29 +255,13 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 		if childTaskIds != "" {
 			t.ChildTaskIds = append(t.ChildTaskIds, strings.Split(childTaskIds, ",")...)
 		}
-		switch t.TaskType {
-		case define.Shell:
-			shell := tasktype.DataShell{}
-			err = json.Unmarshal([]byte(taskdata), &shell)
-			if err != nil {
-				log.Error("Unmarshal failed", zap.Error(err))
-				continue
-			}
-
-			if len(shell.Args) == 0 {
-				shell.Args = []interface{}{}
-			}
-			t.TaskData = shell
-		case define.Api:
-			api := tasktype.DataApi{}
-			err = json.Unmarshal([]byte(taskdata), &api)
-			if err != nil {
-				log.Error("Unmarshal failed", zap.Error(err))
-				continue
-			}
-			t.TaskData = api
-		default:
-			log.Error("Unsupport TaskType", zap.Any("type", t.TaskType))
+		req := pb.TaskReq{
+			TaskType: int32(t.TaskType),
+			TaskData: []byte(taskdata),
+		}
+		t.TaskData, err = tasktype.GetDataRun(&req)
+		if err != nil {
+			log.Error("GetDataRun failed", zap.Any("type", t.TaskType))
 			continue
 		}
 		res = append(res, t)

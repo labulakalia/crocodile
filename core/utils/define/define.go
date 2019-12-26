@@ -1,5 +1,6 @@
 package define
 
+// Admin or Normal User
 type Role uint8
 
 const (
@@ -7,6 +8,7 @@ const (
 	AdminUser                  // 管理员 具有所有操作
 )
 
+// task type
 type TaskType uint8
 
 const (
@@ -14,11 +16,21 @@ const (
 	Api
 )
 
+// run crocodile as server or client
 type RunMode uint8
 
 const (
 	Server RunMode = iota + 1
 	Client
+)
+
+// task type (parent task,master task, child task)
+type TaskRespType uint8
+
+const (
+	MasterTask = iota + 1
+	ParentTask
+	ChildTask
 )
 
 func GetUserByRole(r Role) string {
@@ -35,10 +47,10 @@ func GetUserByRole(r Role) string {
 // 定义结构体
 type common struct {
 	Id         string `json:"id"`
-	Name       string `json:"name"`
-	CreateTime string `json:"createTime"` // 创建时间
-	UpdateTime string `json:"updateTime"` // 最后一次更新时间
-	Remark     string `json:"remark"`     // 备注
+	Name       string `json:"name,omitempty"`
+	CreateTime string `json:"createTime,omitempty"` // 创建时间
+	UpdateTime string `json:"updateTime,omitempty"` // 最后一次更新时间
+	Remark     string `json:"remark"`               // 备注
 }
 
 // 用户
@@ -52,21 +64,23 @@ type User struct {
 
 // 主机组
 type HostGroup struct {
-	Addrs       []string `json:"addrs"`       // WorkerId
-	CreateByUId string   `json:"createByUId"` // 创建人ID
-	CreateBy    string   `json:"createBy"`    // 创建人ID
+	HostsID []string `json:"addrs"`
+	//Hosts       []*Host `json:"hosts,omitempty"`       // WorkerId
+	CreateByUId string `json:"createByUId"` // 创建人ID
+	CreateBy    string `json:"createBy"`    // 创建人ID
 	common
 }
 
 // 主机信息
 // 定时更新主机信息
 type Host struct {
-	Addr           string   `json:"addr"`        // 主机IP
-	HostName       string   `json:"hostname"`    // 主机名
-	Online         int      `json:"online"`      // 主机是否在线
-	Version        string   `json:"version"`     // 版本号
-	RuningTasks    []string `json:"runingTasks"` // 运行的任务  会依照优先级和任务数的多少来给执行端分配worker
-	LastUpdateTime int64    `json:"lastUpdatetime"`
+	common
+	Addr               string `json:"addr"`     // 主机IP
+	HostName           string `json:"hostname"` // 主机名
+	Online             int    `json:"online"`   // 主机是否在线 0 not online,1 online
+	Version            string `json:"version"`  // 版本号
+	LastUpdateTimeUnix int64  `json:"lastUpdatetimeUnix"`
+	LastUpdateTime     string `json:"lastUpdatetime"`
 }
 
 // 任务
@@ -95,24 +109,17 @@ type Task struct {
 type Log struct {
 	RunByTaskId  string      `json:"runByTaskId"`
 	TaskResps    []*TaskResp `json:"taskResps"`
-	StartTimne   string      `json:"startTime"`
-	EndTime      string      `json:"endTime"`
+	StartTimne   int64       `json:"startTime"`
+	EndTime      int64       `json:"endTime"`
 	TotalRunTime int         `json:"totalRunTime"`
 }
 
-type TaskRespType uint8
-
-const (
-	MasterTask = iota + 1
-	ParentTask
-	ChildTask
-)
-
 // 返回值
 type TaskResp struct {
-	TaskType TaskRespType `json:"taskType"` // 1 主任务 2 父任务 3 子任务
-	TaskId   string       `json:"taskId"`
-	Code     int32        `json:"code"`
-	ErrMsg   []byte       `json:"errMsg"`
-	Data     []byte       `json:"data"`
+	TaskType   TaskRespType `json:"taskType"` // 1 主任务 2 父任务 3 子任务
+	TaskId     string       `json:"taskId"`
+	Code       int32        `json:"code"`
+	ErrMsg     string       `json:"errMsg"`
+	RespData   string       `json:"respdata"`
+	WorkerHost string       `json:"workerHost"`
 }
