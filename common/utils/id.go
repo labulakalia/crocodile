@@ -1,5 +1,6 @@
 package utils
 
+// snake id 雪花算法
 import (
 	"fmt"
 	"github.com/labulaka521/crocodile/common/log"
@@ -66,6 +67,8 @@ func (w *Worker) generateId() string {
 		w.timestamp = now
 	}
 	id := (now-sub)<<timeShift | w.workerId<<workerShift | w.number
+
+	fmt.Println("id", (now-sub)<<timeShift, w.workerId<<workerShift, w.number)
 	return strconv.FormatInt(id, 10)
 }
 
@@ -79,4 +82,11 @@ func GetId() string {
 	})
 
 	return _worker.generateId()
+}
+
+// 检查id 是否使用snake算法生成的id
+func CheckId(id string) error {
+	//id := "218793165740580864"
+
+	return nil
 }

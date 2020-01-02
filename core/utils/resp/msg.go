@@ -31,7 +31,7 @@ var msgcode = map[int]string{
 	ErrRpcUnavailable:      "调用对端不可用",
 	ErrRpcUnknow:           "调用未知错误",
 	ErrRpcNotValidHost:     "未发现worker",
-	ErrRpcNotConn:          "连接目标主机失败",
+	ErrRpcNotConnHost:      "未找到存活的worker",
 }
 
 // 获取请求的消息

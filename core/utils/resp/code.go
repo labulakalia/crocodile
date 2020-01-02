@@ -29,5 +29,5 @@ const (
 	ErrRpcUnavailable      = 10603
 	ErrRpcUnknow           = 10604
 	ErrRpcNotValidHost     = 10605
-	ErrRpcNotConn          = 10606
+	ErrRpcNotConnHost      = 10606
 )

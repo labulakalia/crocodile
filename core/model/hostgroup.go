@@ -32,7 +32,7 @@ func CreateHostgroup(ctx context.Context, hg *define.HostGroup) error {
 		hg.Id,
 		hg.Name,
 		hg.Remark,
-		hg.CreateByUId,
+		hg.CreateByUid,
 		strings.Join(hg.HostsID, ","),
 		createTime,
 		createTime)
@@ -126,7 +126,7 @@ func getHostGroups(ctx context.Context, id, hgname string) ([]define.HostGroup, 
 			createTime, updateTime int64
 		)
 		err := rows.Scan(&hg.Id, &hg.Name, &hg.Remark,
-			&addrs, &hg.CreateByUId, &hg.CreateBy, &createTime, &updateTime)
+			&addrs, &hg.CreateByUid, &hg.CreateBy, &createTime, &updateTime)
 		if err != nil {
 			log.Info("Scan result failed", zap.Error(err))
 			continue

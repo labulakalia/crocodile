@@ -13,3 +13,28 @@ func BenchmarkWorker_GenerateId(b *testing.B) {
 		b.Log(id)
 	}
 }
+
+func TestGetId(t *testing.T) {
+	worker, err := newWorker(2)
+	if err != nil {
+		t.Fatalf("NewWorker Err: %v", err)
+	}
+	id := worker.generateId()
+	id = worker.generateId()
+	t.Log(id)
+	err = CheckId(id)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log(8191 | 10)
+}
+
+func TestW(t *testing.T) {
+	a := 1       // 0001
+	b := 2       // 0010
+	c := 3       // 0011
+	t.Log(a | b) // 0011
+	t.Log(a | c) // 0011
+	t.Log(b | c) // 0011
+}

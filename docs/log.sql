@@ -4,6 +4,5 @@ CREATE TABLE crocodile_log (
     taskid VARCHAR(50) NOT NULL,
     starttime INT NOT NULL,
     endtime INT NOT NULL,
-    totalruntime INT NOT NULL,
     taskresps TEXT NOT NULL
 )

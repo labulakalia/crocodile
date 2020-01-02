@@ -48,9 +48,9 @@ func GetUserByRole(r Role) string {
 type common struct {
 	Id         string `json:"id"`
 	Name       string `json:"name,omitempty"`
-	CreateTime string `json:"createTime,omitempty"` // 创建时间
-	UpdateTime string `json:"updateTime,omitempty"` // 最后一次更新时间
-	Remark     string `json:"remark"`               // 备注
+	CreateTime string `json:"create_time,omitempty"` // 创建时间
+	UpdateTime string `json:"update_time,omitempty"` // 最后一次更新时间
+	Remark     string `json:"remark"`                // 备注
 }
 
 // 用户
@@ -66,8 +66,8 @@ type User struct {
 type HostGroup struct {
 	HostsID []string `json:"addrs"`
 	//Hosts       []*Host `json:"hosts,omitempty"`       // WorkerId
-	CreateByUId string `json:"createByUId"` // 创建人ID
-	CreateBy    string `json:"createBy"`    // 创建人ID
+	CreateByUid string `json:"create_byuid"` // 创建人ID
+	CreateBy    string `json:"create_by"`    // 创建人ID
 	common
 }
 
@@ -79,47 +79,55 @@ type Host struct {
 	HostName           string `json:"hostname"` // 主机名
 	Online             int    `json:"online"`   // 主机是否在线 0 not online,1 online
 	Version            string `json:"version"`  // 版本号
-	LastUpdateTimeUnix int64  `json:"lastUpdatetimeUnix"`
-	LastUpdateTime     string `json:"lastUpdatetime"`
+	LastUpdateTimeUnix int64  `json:"last_updatetimeunix"`
+	LastUpdateTime     string `json:"last_updatetime"`
 }
 
 // 任务
 type Task struct {
-	TaskType          TaskType    `json:"taskType"`          // 任务类型
-	TaskData          interface{} `json:"taskData"`          // 任务数据
-	Run               int         `json:"run"`               // 0 为不能运行 1 为可以运行
-	ParentTaskIds     []string    `json:"parentTaskIds"`     // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
-	ParentRunParallel int         `json:"parentRunParallel"` // 是否以并行运行父任务 0否 1是
-	ChildTaskIds      []string    `json:"childTaskIds"`      // 子任务 运行结束后运行子任务
-	ChildRunParallel  int         `json:"childRunParallel"`  // 是否以并行运行子任务 0否 1是
-	//RunByTask         int               `json:"runByTask"`         // 通过其他的任务调用运行 如果是被其他任务依赖而运行就不会运行此任务的父子任务 1 为 true
-	CreateBy    string `json:"createBy"`                       // 创建人
-	CreateByUId string `json:"createByUId"`                    // 创建人ID
-	HostGroup   string `json:"hostGroup"`                      // 执行计划
-	HostGroupId string `json:"hostGroupID" binding:"required"` // 主机组ID
+	TaskType          TaskType    `json:"task_type"`                       // 任务类型
+	TaskData          interface{} `json:"taskData"`                        // 任务数据
+	Run               int         `json:"run"`                             // 0 为不能运行 1 为可以运行
+	ParentTaskIds     []string    `json:"parent_taskids"`                  // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
+	ParentRunParallel int         `json:"parent_runparallel"`              // 是否以并行运行父任务 0否 1是
+	ChildTaskIds      []string    `json:"child_taskids"`                   // 子任务 运行结束后运行子任务
+	ChildRunParallel  int         `json:"child_runparallel"`               // 是否以并行运行子任务 0否 1是
+	CreateBy          string      `json:"create_by"`                       // 创建人
+	CreateByUid       string      `json:"create_byuid"`                    // 创建人ID
+	HostGroup         string      `json:"host_group"`                      // 执行计划
+	HostGroupId       string      `json:"host_groupid" binding:"required"` // 主机组ID
 
-	CronExpr     string   `json:"cronExpr" binding:"required"` // 执行任务表达式
+	Cronexpr     string   `json:"cronexpr" binding:"required"` // 执行任务表达式
 	Timeout      int      `json:"timeout"`                     // 任务超时时间
-	AlarmUserIds []string `json:"alarmUserIds"`                // 报警用户 多个用户
-	AutoSwitch   int      `json:"autoSwitch"`                  // 运行失败自动切换到其他主机上
+	AlarmUserIds []string `json:"alarm_userids"`               // 报警用户 多个用户
+	AutoSwitch   int      `json:"auto_switch"`                 // 运行失败自动切换到其他主机上
 	common
-}
-
-// 日志
-type Log struct {
-	RunByTaskId  string      `json:"runByTaskId"`
-	TaskResps    []*TaskResp `json:"taskResps"`
-	StartTimne   int64       `json:"startTime"`
-	EndTime      int64       `json:"endTime"`
-	TotalRunTime int         `json:"totalRunTime"`
 }
 
 // 返回值
 type TaskResp struct {
-	TaskType   TaskRespType `json:"taskType"` // 1 主任务 2 父任务 3 子任务
-	TaskId     string       `json:"taskId"`
+	TaskType   TaskRespType `json:"task_type"` // 1 主任务 2 父任务 3 子任务
+	TaskId     string       `json:"task_td"`
 	Code       int32        `json:"code"`
-	ErrMsg     string       `json:"errMsg"`
-	RespData   string       `json:"respdata"`
-	WorkerHost string       `json:"workerHost"`
+	ErrMsg     string       `json:"err_msg"`
+	RespData   string       `json:"resp_data"`
+	WorkerHost string       `json:"worker_host"`
+}
+
+// 运行的任务
+type RunTask struct {
+	Id            string `json:"id"`
+	Name          string `json:"name"`
+	StartTime     string `json:"start_time"`
+	StartTimeUnix int64  `json:"start_timeunix"`
+	RunTime       int    `json:"run_time"`
+}
+
+// 日志
+type Log struct {
+	RunByTaskId  string      `json:"run_bytaskId"`
+	TaskResps    []*TaskResp `json:"task_resps"`
+	StartTime    int64       `json:"start_time"`    // ms
+	EndTime      int64       `json:"end_time"`      // ms
+	TotalRunTime int         `json:"total_runtime"` // ms
 }

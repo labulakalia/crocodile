@@ -85,10 +85,12 @@ func PermissionControl() func(c *gin.Context) {
 
 		pass, err := checkAuth(c)
 		if err != nil {
+			log.Error("checkAuth failed", zap.Error(err))
 			code = resp.ErrUnauthorized
 			goto ERR
 		}
 		if !pass {
+			log.Error("checkAuth not pass ")
 			code = resp.ErrUnauthorized
 			goto ERR
 		}

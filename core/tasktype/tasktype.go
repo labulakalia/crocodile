@@ -10,7 +10,7 @@ import (
 )
 
 type TaskRuner interface {
-	Run(ctx context.Context) (*pb.TaskResp, error)
+	Run(ctx context.Context) *pb.TaskResp
 }
 
 // get api or shell
@@ -23,7 +23,7 @@ func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 			return nil, err
 		}
 		if len(shell.Args) == 0 {
-			shell.Args = []interface{}{}
+			shell.Args = []string{}
 		}
 		return &shell, err
 

@@ -51,7 +51,7 @@ func CreateHostGroup(c *gin.Context) {
 	}
 
 	hostgroup.Id = utils.GetId()
-	hostgroup.CreateByUId = c.GetString("uid")
+	hostgroup.CreateByUid = c.GetString("uid")
 
 	err = model.CreateHostgroup(ctx, &hostgroup)
 	if err != nil {

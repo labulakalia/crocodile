@@ -21,7 +21,7 @@ import (
 )
 
 func NewHttpRouter() *http.Server {
-	gin.SetMode("release")
+	//gin.SetMode("release")
 	router := gin.New()
 	//gin.SetMode(gin.ReleaseMode)
 	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl())
@@ -45,14 +45,15 @@ func NewHttpRouter() *http.Server {
 	}
 	rt := v1.Group("/task")
 	{
-		rt.GET("", task.GetTasks)
-		rt.POST("", task.CreateTask)
-		rt.PUT("", task.ChangeTask)
-		rt.DELETE("", task.DeleteTask)
-		rt.POST("/run", task.RunTask)
-		rt.PUT("/kill", task.KillTask)
+		rt.GET("/", task.GetTasks)
+		rt.GET("/info/:id", task.GetTask) // 获取指定task信息
+		rt.POST("/", task.CreateTask)
+		rt.PUT("/", task.ChangeTask)
+		rt.DELETE("/:id", task.DeleteTask)
+		rt.PUT("/run/:id", task.RunTask)
+		rt.PUT("/kill/:id", task.KillTask)
 		rt.GET("/running", task.RunningTask)
-		rt.GET("/logs/", task.LogsTask)
+		rt.GET("/log/:id", task.LogTask)
 	}
 	rh := v1.Group("/host")
 	{

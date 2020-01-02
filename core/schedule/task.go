@@ -35,11 +35,7 @@ func (ts *TaskService) RunTask(ctx context.Context, t *pb.TaskReq) (*pb.TaskResp
 		}
 		return taskresp, err
 	}
-	taskresp, err = r.Run(ctx)
-	if err != nil {
-		log.Info("Run failed", zap.String("error", err.Error()))
-		return taskresp, err
-	}
+	taskresp = r.Run(ctx)
 	log.Info("TaskResp", zap.Any("resp", taskresp))
 	return taskresp, nil
 }

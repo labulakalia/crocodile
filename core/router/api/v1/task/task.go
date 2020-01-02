@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"encoding/json"
-
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
@@ -63,7 +62,7 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 	task.Id = utils.GetId()
-	task.CreateByUId = c.GetString("uid")
+	task.CreateByUid = c.GetString("uid")
 	task.Run = 1
 
 	err = model.CreateTask(ctx, &task)
@@ -72,7 +71,7 @@ func CreateTask(c *gin.Context) {
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Add(task.Id, task.CronExpr)
+	schedule.Cron.Add(task.Id, task.Name, task.Cronexpr)
 	resp.Json(c, resp.Success, nil)
 }
 
@@ -97,7 +96,7 @@ func ChangeTask(c *gin.Context) {
 	}
 
 	if !exist {
-		resp.Json(c, resp.ErrHostgroupNotExist, nil)
+		resp.Json(c, resp.ErrTaskNotExist, nil)
 		return
 	}
 
@@ -131,7 +130,12 @@ func ChangeTask(c *gin.Context) {
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Add(task.Id, task.CronExpr)
+	if task.Run == 0 {
+		schedule.Cron.Del(task.Id)
+	} else {
+		schedule.Cron.Add(task.Id, task.Name, task.Cronexpr)
+	}
+
 	resp.Json(c, resp.Success, nil)
 }
 
@@ -141,14 +145,12 @@ func DeleteTask(c *gin.Context) {
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	task := define.Task{}
-	err := c.ShouldBindJSON(&task)
-	if err != nil {
-		log.Error("ShouldBindJSON failed", zap.Error(err))
+	taskid := c.Param("id")
+	if utils.CheckId(taskid) != nil {
 		resp.Json(c, resp.ErrBadRequest, nil)
 		return
 	}
-	exist, err := model.Check(ctx, model.TB_task, model.ID, task.Id)
+	exist, err := model.Check(ctx, model.TB_task, model.ID, taskid)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
@@ -171,7 +173,7 @@ func DeleteTask(c *gin.Context) {
 	// 这里只需要确定如果rule的用户类型是否为Admin
 	if role != define.AdminUser {
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TB_hostgroup, model.IDCreateByUID, task.Id, uid)
+		exist, err = model.Check(ctx, model.TB_hostgroup, model.IDCreateByUID, taskid, uid)
 		if err != nil {
 			log.Error("IsExist failed", zap.String("error", err.Error()))
 			resp.Json(c, resp.ErrInternalServer, nil)
@@ -183,13 +185,13 @@ func DeleteTask(c *gin.Context) {
 			return
 		}
 	}
-	err = model.DeleteTask(ctx, task.Id)
+	err = model.DeleteTask(ctx, taskid)
 	if err != nil {
 		log.Error("DeleteTask failed", zap.String("error", err.Error()))
 		resp.Json(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Del(task.Id)
+	schedule.Cron.Del(taskid)
 	resp.Json(c, resp.Success, nil)
 
 }
@@ -207,29 +209,73 @@ func GetTasks(c *gin.Context) {
 		return
 	}
 	resp.Json(c, resp.Success, hgs)
+}
 
+// GET /api/v1/task/:id
+func GetTask(c *gin.Context) {
+	taskid := c.Param("id")
+	if utils.CheckId(taskid) != nil {
+		resp.Json(c, resp.ErrBadRequest, nil)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	t, err := model.GetTaskByID(ctx, taskid)
+	if err != nil {
+		log.Error("GetTasks failed", zap.String("error", err.Error()))
+		resp.Json(c, resp.ErrInternalServer, nil)
+		return
+	}
+	resp.Json(c, resp.Success, t)
 }
 
 // 主动触发一个任务
-// POST /api/v1/task/run
+// POST /api/v1/task/run/:id
 func RunTask(c *gin.Context) {
-
+	taskid := c.Param("id")
+	if utils.CheckId(taskid) != nil {
+		resp.Json(c, resp.ErrBadRequest, nil)
+		return
+	}
+	schedule.Cron.RunTask(taskid)
+	resp.Json(c, resp.Success, nil)
 }
 
 // 终止任务
-// PUT /api/v1/task/kill
+// PATCH /api/v1/task/kill/:id
 func KillTask(c *gin.Context) {
-
+	log.Info("")
+	taskid := c.Param("id")
+	if utils.CheckId(taskid) != nil {
+		resp.Json(c, resp.ErrBadRequest, nil)
+		return
+	}
+	schedule.Cron.KillTask(taskid)
+	resp.Json(c, resp.Success, nil)
 }
 
 // 正在运行的任务
 // GET /api/v1/task/running
 func RunningTask(c *gin.Context) {
-
+	runningtasks := schedule.Cron.GetRunningtask()
+	resp.Json(c, resp.Success, runningtasks)
 }
 
 // 查看任务日志
-// GET /api/v1/task/logs/[]
-func LogsTask(c *gin.Context) {
-
+// GET /api/v1/task/log/:id
+func LogTask(c *gin.Context) {
+	taskid := c.Param("id")
+	if utils.CheckId(taskid) != nil {
+		resp.Json(c, resp.ErrBadRequest, nil)
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	logs, err := model.GetLog(ctx, taskid)
+	if err != nil {
+		resp.Json(c, resp.ErrInternalServer, nil)
+	}
+	resp.Json(c, resp.Success, logs)
 }

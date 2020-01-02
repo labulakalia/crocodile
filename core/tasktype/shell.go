@@ -2,22 +2,29 @@ package tasktype
 
 import (
 	"context"
-	"github.com/labulaka521/crocodile/common/log"
 	pb "github.com/labulaka521/crocodile/core/proto"
-	"go.uber.org/zap"
+	"os"
+	"os/exec"
 )
 
 type DataShell struct {
-	Name string        `json:"name"`
-	Args []interface{} `json:"args"`
+	Name string   `json:"name"`
+	Args []string `json:"args"`
 }
 
-func (ds *DataShell) Run(ctx context.Context) (*pb.TaskResp, error) {
-	log.Info("Start Run Command", zap.String("Name", ds.Name), zap.Any("args", ds.Args))
-	resp := &pb.TaskResp{
-		Code:     -1,
-		RespData: []byte(" 111"),
+// run shell command
+// do not return error
+func (ds *DataShell) Run(ctx context.Context) (resp *pb.TaskResp) {
+	shell := os.Getenv("SHELL")
+	resp = &pb.TaskResp{}
+	cmd := exec.CommandContext(ctx, shell, "-c", ds.Name)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		resp.Code = -1
+		resp.ErrMsg = []byte(err.Error())
+		return resp
 	}
-
-	return resp, nil
+	resp.RespData = output
+	resp.Code = 0
+	return resp
 }
