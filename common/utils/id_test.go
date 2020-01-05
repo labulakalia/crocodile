@@ -8,8 +8,7 @@ func BenchmarkWorker_GenerateId(b *testing.B) {
 		b.Fatalf("NewWorker Err: %v", err)
 	}
 	for i := 0; i < b.N; i++ {
-		id := worker.generateId()
-		id = id
+		id := worker.generateID()
 		b.Log(id)
 	}
 }
@@ -19,10 +18,10 @@ func TestGetId(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWorker Err: %v", err)
 	}
-	id := worker.generateId()
-	id = worker.generateId()
+	id := worker.generateID()
+	id = worker.generateID()
 	t.Log(id)
-	err = CheckId(id)
+	err = CheckID(id)
 	if err != nil {
 		t.Error(err)
 	}

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// 日志
+// ZapLogger zap logget middle
 func ZapLogger() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		start := time.Now()

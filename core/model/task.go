@@ -16,6 +16,7 @@ import (
 	"time"
 )
 
+// CreateTask create task
 func CreateTask(ctx context.Context, t *define.Task) error {
 	createsql := `INSERT INTO crocodile_task 
 					(id,
@@ -50,7 +51,7 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 	createTime := time.Now().Unix()
 	taskdata, _ := json.Marshal(t.TaskData)
 	_, err = stmt.ExecContext(ctx,
-		t.Id,
+		t.ID,
 		t.Name,
 		t.TaskType,
 		fmt.Sprintf("%s", taskdata),
@@ -63,8 +64,8 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 		t.Timeout,
 		strings.Join(t.AlarmUserIds, ","),
 		t.AutoSwitch,
-		t.CreateByUid,
-		t.HostGroupId,
+		t.CreateByUID,
+		t.HostGroupID,
 		t.Remark,
 		createTime,
 		createTime,
@@ -76,6 +77,7 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 	return nil
 }
 
+// ChangeTask change task
 func ChangeTask(ctx context.Context, t *define.Task) error {
 	changesql := `UPDATE crocodile_task 
 					SET hostGroupID=?,
@@ -106,7 +108,7 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 	updateTime := time.Now().Unix()
 	taskdata, _ := json.Marshal(t.TaskData)
 	_, err = stmt.ExecContext(ctx,
-		t.HostGroupId,
+		t.HostGroupID,
 		t.Run,
 		t.TaskType,
 		fmt.Sprintf("%s", taskdata),
@@ -120,7 +122,7 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 		t.AutoSwitch,
 		t.Remark,
 		updateTime,
-		t.Id,
+		t.ID,
 	)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
@@ -128,6 +130,7 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 	return nil
 }
 
+// DeleteTask delete task
 func DeleteTask(ctx context.Context, id string) error {
 	deletesql := `DELETE FROM crocodile_task WHERE id=?`
 	conn, err := db.GetConn(ctx)
@@ -147,10 +150,12 @@ func DeleteTask(ctx context.Context, id string) error {
 	return nil
 }
 
+// GetTasks get all tasks
 func GetTasks(ctx context.Context) ([]define.Task, error) {
 	return getTasks(ctx, "")
 }
 
+// GetTaskByID get task by id
 func GetTaskByID(ctx context.Context, id string) (*define.Task, error) {
 	tasks, err := getTasks(ctx, id)
 	if err != nil {
@@ -162,7 +167,7 @@ func GetTaskByID(ctx context.Context, id string) (*define.Task, error) {
 	return &tasks[0], nil
 }
 
-// 获取任务
+// getTasks get takls by id
 func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 	getsql := `SELECT t.id,
 					t.name,
@@ -216,7 +221,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 			alarmUserids                string
 		)
 
-		err = rows.Scan(&t.Id,
+		err = rows.Scan(&t.ID,
 			&t.Name,
 			&t.TaskType,
 			&taskdata,
@@ -230,9 +235,9 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 			&alarmUserids,
 			&t.AutoSwitch,
 			&t.CreateBy,
-			&t.CreateByUid,
+			&t.CreateByUID,
 			&t.HostGroup,
-			&t.HostGroupId,
+			&t.HostGroupID,
 			&t.Remark,
 			&createTime,
 			&updateTime,

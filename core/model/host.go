@@ -17,6 +17,7 @@ const (
 	maxWorkerTTL int64 = 60
 )
 
+// RegistryNewHost refistry new host
 func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 	hostsql := `INSERT INTO crocodile_host 
 					(id,hostname,
@@ -44,7 +45,7 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 		return "", errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
-	id := utils.GetId()
+	id := utils.GetID()
 	_, err = stmt.ExecContext(ctx,
 		id,
 		req.Hostname,
@@ -58,7 +59,8 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 	return id, nil
 }
 
-func UpdateRunningTask(ctx context.Context, hbreq *pb.HeartbeatReq) error {
+// UpdateHostHearbeat update host last recv hearbeat time
+func UpdateHostHearbeat(ctx context.Context, hbreq *pb.HeartbeatReq) error {
 	updatesql := `UPDATE crocodile_host set lastUpdateTimeUnix=? WHERE addr=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -79,8 +81,9 @@ func UpdateRunningTask(ctx context.Context, hbreq *pb.HeartbeatReq) error {
 	return nil
 }
 
+// get host by addr or id
 func getHosts(ctx context.Context, addr, id string) ([]*define.Host, error) {
-	getsql := "SELECT id,addr,hostname,runingTasks,version,lastUpdateTimeUnix FROM crocodile_host"
+	getsql := "SELECT id,addr,hostname,runingTasks,stop,version,lastUpdateTimeUnix FROM crocodile_host"
 	args := []interface{}{}
 	if addr != "" {
 		getsql += " WHERE addr=?"
@@ -113,7 +116,7 @@ func getHosts(ctx context.Context, addr, id string) ([]*define.Host, error) {
 			rtask string
 		)
 
-		err := rows.Scan(&h.Id, &h.Addr, &h.HostName, &rtask, &h.Version, &h.LastUpdateTimeUnix)
+		err := rows.Scan(&h.ID, &h.Addr, &h.HostName, &rtask, &h.Stop, &h.Version, &h.LastUpdateTimeUnix)
 		if err != nil {
 			log.Error("Scan failed", zap.Error(err))
 		}
@@ -126,10 +129,12 @@ func getHosts(ctx context.Context, addr, id string) ([]*define.Host, error) {
 	return hosts, nil
 }
 
+// GetHost get all hosts
 func GetHost(ctx context.Context) ([]*define.Host, error) {
 	return getHosts(ctx, "", "")
 }
 
+// GetHostByAddr get host by addr
 func GetHostByAddr(ctx context.Context, addr string) (*define.Host, error) {
 	hosts, err := getHosts(ctx, addr, "")
 	if err != nil {
@@ -141,6 +146,7 @@ func GetHostByAddr(ctx context.Context, addr string) (*define.Host, error) {
 	return hosts[0], nil
 }
 
+// ExistAddr check already exist
 func ExistAddr(ctx context.Context, addr string) (*define.Host, bool, error) {
 	hosts, err := getHosts(ctx, addr, "")
 	if err != nil {
@@ -152,7 +158,8 @@ func ExistAddr(ctx context.Context, addr string) (*define.Host, bool, error) {
 	return hosts[0], true, nil
 }
 
-func GetHostById(ctx context.Context, id string) (*define.Host, error) {
+// GetHostByID get host by hostid
+func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 	hosts, err := getHosts(ctx, "", id)
 	if err != nil {
 		return nil, err
@@ -160,8 +167,13 @@ func GetHostById(ctx context.Context, id string) (*define.Host, error) {
 	if len(hosts) != 1 {
 		return nil, errors.New("can not find hostid")
 	}
-	if hosts[0].Online == 0 {
-		return nil, errors.New(fmt.Sprintf("host %s is not online", hosts[0].Addr))
+	host := hosts[0]
+	if host.Online == 0 {
+		return nil, fmt.Errorf("host %s is not online", host.Addr)
 	}
+	if host.Stop == 0 {
+		return nil, fmt.Errorf("host %s is stop", host.Addr)
+	}
+
 	return hosts[0], nil
 }

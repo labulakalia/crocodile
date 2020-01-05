@@ -10,12 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// task log
+// SaveLog  save task reps log
 func SaveLog(ctx context.Context, tasklog *define.Log) error {
 	log.Info("start savelog", zap.Any("tasklog", tasklog))
 	savesql := `INSERT INTO crocodile_log
     (taskid,starttime,endtime,taskresps)
-VALUES
+	VALUES
     (?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -30,7 +30,7 @@ VALUES
 	if err != nil {
 		return errors.Wrap(err, "json.Marshal")
 	}
-	_, err = stmt.ExecContext(ctx, tasklog.RunByTaskId,
+	_, err = stmt.ExecContext(ctx, tasklog.RunByTaskID,
 		tasklog.StartTime, tasklog.EndTime, taskresps)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
@@ -38,6 +38,7 @@ VALUES
 	return nil
 }
 
+// GetLog get task resp log by taskid
 func GetLog(ctx context.Context, taskid string) ([]*define.Log, error) {
 	logs := []*define.Log{}
 	getsql := `SELECT starttime,endtime,taskresps FROM crocodile_log WHERE taskid=?`
@@ -71,7 +72,7 @@ func GetLog(ctx context.Context, taskid string) ([]*define.Log, error) {
 		}
 		getlog.TaskResps = taskrepos
 		getlog.TotalRunTime = int(getlog.EndTime - getlog.StartTime)
-		getlog.RunByTaskId = taskid
+		getlog.RunByTaskID = taskid
 		logs = append(logs, &getlog)
 	}
 	return logs, nil

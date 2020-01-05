@@ -8,7 +8,7 @@ var msgcode = map[int]string{
 	ErrUnauthorized: "非法请求",
 	ErrBadRequest:   "请求参数错误",
 
-	ErrUserPassword:  "用户名或者密码错误",
+	ErrUserPassword:  "请求参数错误",
 	ErrUserForbid:    "禁止登陆",
 	ErrEmailExist:    "邮箱已经存在",
 	ErrUserNameExist: "用户名已存在",
@@ -20,21 +20,19 @@ var msgcode = map[int]string{
 	ErrHostgroupExist:    "主机组已存在",
 	ErrHostgroupNotExist: "主机组不存在",
 
-	ErrExecPlanExist:    "执行计划已存在",
-	ErrExecPlanNotExist: "执行计划不存在",
 
 	ErrInternalServer: "服务端错误",
 
-	ErrRpcDeadlineExceeded: "调用超时",
-	ErrRpcCanceled:         "取消调用",
-	ErrRpcUnauthenticated:  "密钥认证失败",
-	ErrRpcUnavailable:      "调用对端不可用",
-	ErrRpcUnknow:           "调用未知错误",
-	ErrRpcNotValidHost:     "未发现worker",
-	ErrRpcNotConnHost:      "未找到存活的worker",
+	ErrRPCDeadlineExceeded: "调用超时",
+	ErrRPCCanceled:         "取消调用",
+	ErrRPCUnauthenticated:  "密钥认证失败",
+	ErrRPCUnavailable:      "调用对端不可用",
+	ErrRPCUnknow:           "调用未知错误",
+	ErrRPCNotValidHost:     "未发现worker",
+	ErrRPCNotConnHost:      "未找到存活的worker",
 }
 
-// 获取请求的消息
+// GetMsg get msg by code
 func GetMsg(code int) string {
 	var (
 		msg    string
@@ -47,6 +45,7 @@ func GetMsg(code int) string {
 	return "unknown"
 }
 
+// GetMsgErr get error msg by code
 func GetMsgErr(code int) error {
 	msg := GetMsg(code)
 	return errors.New(msg)

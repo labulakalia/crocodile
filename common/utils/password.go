@@ -4,6 +4,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// GenerateHashPass generate hashpassword by text password
 func GenerateHashPass(password string) (hashpassword string, err error) {
 	var (
 		generatepass []byte
@@ -15,6 +16,7 @@ func GenerateHashPass(password string) (hashpassword string, err error) {
 	return hashpassword, nil
 }
 
+// CheckHashPass check hashpassword valid
 func CheckHashPass(hashpass string, password string) (err error) {
 	if err = bcrypt.CompareHashAndPassword([]byte(hashpass), []byte(password)); err != nil {
 		return err

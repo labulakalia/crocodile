@@ -30,19 +30,19 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 	}
 
 	claims, err := jwt.ParseToken(token)
-	if err != nil || claims.UId == "" {
+	if err != nil || claims.UID == "" {
 		return false, err
 	}
 	if !claims.VerifyExpiresAt(time.Now().Unix(), false) {
 		return false, err
 	}
 
-	c.Set("uid", claims.UId)
+	c.Set("uid", claims.UID)
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	ok, err := model.Check(ctx, model.TB_user, model.UID, claims.UId)
+	ok, err := model.Check(ctx, model.TBUser, model.UID, claims.UID)
 	if err != nil {
 		return false, err
 	}
@@ -50,10 +50,10 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 		return false, nil
 	}
 
-	role, err := model.QueryUserRule(ctx, claims.UId)
+	role, err := model.QueryUserRule(ctx, claims.UID)
 	if err != nil {
 		log.Error("QueryUserRule failed", zap.Error(err))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	c.Set("role", role)
@@ -61,12 +61,12 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 	requrl := c.Request.URL.Path
 	method := c.Request.Method
 	enforcer := model.GetEnforcer()
-	return enforcer.Enforce(claims.UId, requrl, method)
+	return enforcer.Enforce(claims.UID, requrl, method)
 }
 
 var excludepath = []string{"login"}
 
-// 权限控制middle
+// PermissionControl 权限控制middle
 func PermissionControl() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var (
@@ -101,7 +101,7 @@ func PermissionControl() func(c *gin.Context) {
 	ERR:
 		// 解析失败返回错误
 		c.Writer.Header().Add("WWW-Authenticate", fmt.Sprintf("Bearer realm='%s'", resp.GetMsg(code)))
-		resp.Json(c, resp.ErrUnauthorized, nil)
+		resp.JSON(c, resp.ErrUnauthorized, nil)
 		c.Abort()
 		return
 	}

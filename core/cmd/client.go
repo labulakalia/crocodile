@@ -14,7 +14,9 @@ import (
 	"strconv"
 )
 
-func CmdClient(version string) *cobra.Command {
+
+// Client crocodile client
+func Client(version string) *cobra.Command {
 	var (
 		cfg string
 	)

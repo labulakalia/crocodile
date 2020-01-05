@@ -6,7 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func CmdVersion(version, commit, builddate string) *cobra.Command {
+// Version return current build message
+func Version(version, commit, builddate string) *cobra.Command {
 	cmdClient := &cobra.Command{
 		Use:   "version",
 		Short: "crocodile version",
@@ -19,16 +20,17 @@ func CmdVersion(version, commit, builddate string) *cobra.Command {
 	return cmdClient
 }
 
+// GeneratePemKey generate cert pem and key
 func GeneratePemKey() *cobra.Command {
 	var outdir string
 	cmdClient := &cobra.Command{
-		Use:   "pem",
-		Short: "generate cert cert and key",
+		Use:   "cert",
+		Short: "generate cert key",
 		Run: func(cmd *cobra.Command, args []string) {
 			if outdir == "" {
 				outdir = "."
 			}
-			err := cert.GeneratePem(outdir)
+			err := cert.GenerateCert(outdir)
 			if err != nil {
 				fmt.Println("GenerateCert failed: ", err)
 			}

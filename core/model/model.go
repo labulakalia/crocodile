@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// InitDb init db
 func InitDb() {
 	var (
 		err error
@@ -31,22 +32,31 @@ func InitDb() {
 type checkType uint
 
 const (
+	// Email check email
 	Email checkType = iota
+	// Name check name
 	Name
+	// ID check id
 	ID
+	// IDCreateByUID check ID CreateByUID
 	IDCreateByUID
+	// UID check uid
 	UID // uid正常
 )
 
+// Tb selcet table name
 type Tb string
 
 const (
-	TB_user      Tb = "crocodile_user"
-	TB_hostgroup Tb = "crocodile_hostgroup"
-	TB_task      Tb = "crocodile_task"
+	// TBUser select ccrocodile_user
+	TBUser Tb = "crocodile_user"
+	// TBHostgroup select ccrocodile_user
+	TBHostgroup Tb = "crocodile_hostgroup"
+    // TBTask select crocodile_task
+	TBTask Tb = "crocodile_task"
 )
 
-// 检查存在的项
+// Check check some msg is valid
 func Check(ctx context.Context, table Tb, checkType checkType, args ...interface{}) (bool, error) {
 	check := fmt.Sprintf("select COUNT(id) FROM %s WHERE ", table)
 	switch checkType {
@@ -89,6 +99,7 @@ func Check(ctx context.Context, table Tb, checkType checkType, args ...interface
 	return true, nil
 }
 
+// QueryUserRule query user rule by uid
 func QueryUserRule(ctx context.Context, uid string) (define.Role, error) {
 	conn, err := db.GetConn(ctx)
 	if err != nil {

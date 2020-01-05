@@ -3,13 +3,14 @@ package db
 import (
 	"context"
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // registry  sqlite3
 	"time"
 )
 
 var (
 	_db *sql.DB
 )
+
 
 type dbCfg struct {
 	DriveName         string
@@ -19,33 +20,42 @@ type dbCfg struct {
 	MaxQueryTime      time.Duration
 }
 
+// GetConn from db conn pool
 func GetConn(ctx context.Context) (*sql.Conn, error) {
 	return _db.Conn(ctx)
 }
 
+// Option is function option
 type Option func(*dbCfg)
 
+// Drivename  Set mysql or sqlite
 func Drivename(drivename string) Option {
 	return func(dbcfg *dbCfg) {
 		dbcfg.DriveName = drivename
 	}
 }
+
+// Dsn set dbCfg conn addr
 func Dsn(dsn string) func(*dbCfg) {
 	return func(dbcfg *dbCfg) {
 		dbcfg.Dsn = dsn
 	}
 }
+// MaxIdleConnection set sql db max idle conn
 func MaxIdleConnection(idle int) Option {
 	return func(dbcfg *dbCfg) {
 		dbcfg.MaxIdleConnection = idle
 	}
 }
+
+// MaxOpenConnection  set sql db  max open conn
 func MaxOpenConnection(open int) Option {
 	return func(dbcfg *dbCfg) {
 		dbcfg.MaxOpenConnection = open
 	}
 }
 
+// MaxQueryTime set sql conn exec max timeout
 func MaxQueryTime(query time.Duration) Option {
 	return func(dbcfg *dbCfg) {
 		dbcfg.MaxQueryTime = query
@@ -62,6 +72,7 @@ func defaultdbOption() *dbCfg {
 	}
 }
 
+// NewDb create new db
 func NewDb(opts ...Option) (err error) {
 
 	dbcfg := defaultdbOption()

@@ -15,11 +15,12 @@ import (
 )
 
 const (
+	// ServerName  cert comman name
 	ServerName = "crocodile"
 )
 
-// generate cert cert key file
-func GeneratePem(pemkeydir string) error {
+// GenerateCert generate cert cert key file
+func GenerateCert(pemkeydir string) error {
 	pemkeydir = strings.TrimRight(pemkeydir, "/")
 	_, err := os.Stat(pemkeydir)
 	if os.IsNotExist(err) {

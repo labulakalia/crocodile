@@ -3,16 +3,17 @@ package tasktype
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/utils/define"
 )
 
+// TaskRuner run task interface
 type TaskRuner interface {
 	Run(ctx context.Context) *pb.TaskResp
 }
 
+// GetDataRun get task type 
 // get api or shell
 func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 	switch define.TaskType(t.TaskType) {
@@ -27,8 +28,8 @@ func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 		}
 		return &shell, err
 
-	case define.Api:
-		var api DataApi
+	case define.API:
+		var api DataAPI
 		err := json.Unmarshal(t.TaskData, &api)
 		if err != nil {
 			return nil, err
@@ -36,7 +37,7 @@ func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 		return &api, err
 
 	default:
-		err := errors.New(fmt.Sprintf("Unsupport TaskType %d", t.TaskType))
+		err := fmt.Errorf("Unsupport TaskType %d", t.TaskType)
 		return nil, err
 	}
 }

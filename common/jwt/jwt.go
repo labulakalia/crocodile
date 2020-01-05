@@ -9,11 +9,13 @@ const (
 	secret = "WteHkuweywy_egf7263i,ewd"
 )
 
+// Claims Jwt token
 type Claims struct {
 	jwt.StandardClaims
-	UId string
+	UID string
 }
 
+// GenerateToken generate get token for uid
 func GenerateToken(uid string) (token string, err error) {
 	var (
 		now         time.Time
@@ -25,7 +27,7 @@ func GenerateToken(uid string) (token string, err error) {
 	expireTime = now.Add(7 * 24 * time.Hour)
 
 	claims = Claims{
-		UId: uid,
+		UID: uid,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireTime.Unix(),
 			Issuer:    "crocodile",
@@ -37,7 +39,7 @@ func GenerateToken(uid string) (token string, err error) {
 	return
 }
 
-// 解析token
+// ParseToken parse token is valid 
 func ParseToken(token string) (claims *Claims, err error) {
 	var (
 		tokenClaims *jwt.Token

@@ -8,9 +8,11 @@ import (
 )
 
 var (
+	// CoreConf crocodile conf
 	CoreConf = &coreConf{}
 )
 
+// Init Config
 func Init(conf string) {
 	_, err := toml.DecodeFile(conf, &CoreConf)
 	if err != nil {
@@ -22,11 +24,12 @@ func Init(conf string) {
 type coreConf struct {
 	SecretToken string
 	Log         Log
-	Pem         Pem
+	Cert         Cert
 	Server      Server
 	Client      Client
 }
 
+// Log Config
 type Log struct {
 	LogPath    string
 	MaxSize    int
@@ -37,14 +40,16 @@ type Log struct {
 	Format     string
 }
 
-type Pem struct {
+// Cert tls cert
+type Cert struct {
 	CertFile string
 	KeyFile  string
 }
 
+// Server crocodile server config
 type Server struct {
 	Port        int
-	MaxHttpTime duration
+	MaxHTTPTime duration
 	DB          db
 }
 
@@ -56,6 +61,7 @@ type db struct {
 	MaxQueryTime duration
 }
 
+// Client crocodile client config
 type Client struct {
 	Port       int
 	ServerAddr string
@@ -66,6 +72,7 @@ type duration struct {
 	time.Duration
 }
 
+// UnmarshalText parse 10s to time.Time
 func (d *duration) UnmarshalText(text []byte) error {
 	var err error
 	d.Duration, err = time.ParseDuration(string(text))

@@ -14,9 +14,9 @@ var (
 
 func main() {
 	rootCmd := &cobra.Command{Use: "crocodile"}
-	rootCmd.AddCommand(cmd.CmdClient(version))
-	rootCmd.AddCommand(cmd.CmdServer())
-	rootCmd.AddCommand(cmd.CmdVersion(version, commit, builddate))
+	rootCmd.AddCommand(cmd.Client(version))
+	rootCmd.AddCommand(cmd.Server())
+	rootCmd.AddCommand(cmd.Version(version, commit, builddate))
 	rootCmd.AddCommand(cmd.GeneratePemKey())
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println("rootCmd.Execute failed", err.Error())

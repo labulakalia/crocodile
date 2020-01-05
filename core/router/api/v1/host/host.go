@@ -10,7 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// get hosts
+// GetHost get all hosts, online and offline host
+// GET 
 func GetHost(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -19,21 +20,21 @@ func GetHost(c *gin.Context) {
 
 	if err != nil {
 		log.Error("GetHost failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.Json(c, resp.Success, hosts)
+	resp.JSON(c, resp.Success, hosts)
 }
 
-// 暂停主机分配任务
-// PUT /api/v1/host
+// StopHost stop run worker
+// PUT /api/v1/host/stop
 func StopHost(c *gin.Context) {
 	panic("implentment me")
+
 }
 
-// 删除主机
-// Delete /api/v1/host
-// 需要从所有的主机组中找出主机id并删除
+// DeleteHost delete host from 
+// DELETE /api/v1/host
 func DeleteHost(c *gin.Context) {
 	panic("implentment me")
 }

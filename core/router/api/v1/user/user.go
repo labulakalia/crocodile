@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// RegistryUser registry new user
 // POST /api/v1/user
 // @params
 // name
@@ -28,53 +29,54 @@ func RegistryUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.Json(c, resp.ErrBadRequest, nil)
+		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
 	if user.Name == "" {
 		log.Error("User.Name is empty")
-		resp.Json(c, resp.ErrBadRequest, nil)
+		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
 	user.Password, err = utils.GenerateHashPass(user.Password)
 	if err != nil {
 		log.Error("GenerateHashPass failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrBadRequest, user)
+		resp.JSON(c, resp.ErrBadRequest, user)
 		return
 	}
-	user.Id = utils.GetId()
+	user.ID = utils.GetID()
 
-	exist, err := model.Check(ctx, model.TB_user, model.Name, user.Name)
+	exist, err := model.Check(ctx, model.TBUser, model.Name, user.Name)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	if exist {
-		resp.Json(c, resp.ErrUserNameExist, nil)
+		resp.JSON(c, resp.ErrUserNameExist, nil)
 		return
 	}
-	exist, err = model.Check(ctx, model.TB_user, model.Email, user.Email)
+	exist, err = model.Check(ctx, model.TBUser, model.Email, user.Email)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	if exist {
-		resp.Json(c, resp.ErrEmailExist, nil)
+		resp.JSON(c, resp.ErrEmailExist, nil)
 		return
 	}
 
 	err = model.AddUser(ctx, &user)
 	if err != nil {
 		log.Error("AddUser failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 
-	resp.Json(c, resp.Success, nil)
+	resp.JSON(c, resp.Success, nil)
 }
 
+// GetUser get user
 // GET /api/v1/user
 // @params
 // 通过解析token的ID获取请求者的信息
@@ -86,30 +88,31 @@ func GetUser(c *gin.Context) {
 	uid := c.GetString("uid")
 
 	log.Info("Check Uid " + uid)
-	exist, err := model.Check(ctx, model.TB_user, model.ID, uid)
+	exist, err := model.Check(ctx, model.TBUser, model.ID, uid)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 	}
 	if !exist {
-		resp.Json(c, resp.ErrUserNotExist, nil)
+		resp.JSON(c, resp.ErrUserNotExist, nil)
 		return
 	}
 
 	users, err := model.GetUser(ctx, uid)
 	if err != nil {
 		log.Error("GetUser failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	if len(users) != 1 {
 		log.Error("Get many users", zap.String("uid", uid))
-		resp.Json(c, resp.ErrBadRequest, nil)
+		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	resp.Json(c, resp.Success, users[0])
+	resp.JSON(c, resp.Success, users[0])
 }
 
+// GetUsers get all users
 // @params
 // 通过解析token的ID获取请求者的信息
 func GetUsers(c *gin.Context) {
@@ -120,12 +123,13 @@ func GetUsers(c *gin.Context) {
 	users, err := model.GetUser(ctx, "")
 	if err != nil {
 		log.Error("GetUsers failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.Json(c, resp.Success, users)
+	resp.JSON(c, resp.Success, users)
 }
 
+// ChangeUser change user message
 // @params
 // id	required
 // name required
@@ -143,17 +147,17 @@ func ChangeUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.Json(c, resp.ErrBadRequest, nil)
+		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
 
-	exist, err := model.Check(ctx, model.TB_user, model.ID, user.Id)
+	exist, err := model.Check(ctx, model.TBUser, model.ID, user.ID)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 	}
 	if !exist {
-		resp.Json(c, resp.ErrUserNotExist, nil)
+		resp.JSON(c, resp.ErrUserNotExist, nil)
 		return
 	}
 	var role define.Role
@@ -164,33 +168,33 @@ func ChangeUser(c *gin.Context) {
 	err = model.ChangeUser(ctx, &user, role)
 	if err != nil {
 		log.Error("ChangeUser failed", zap.String("error", err.Error()))
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 
-	resp.Json(c, resp.Success, nil)
+	resp.JSON(c, resp.Success, nil)
 }
 
-// @params
+// LoginUser login user
 func LoginUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 	username, password, ok := c.Request.BasicAuth()
 	if !ok {
-		resp.Json(c, resp.ErrBadRequest, nil)
+		resp.JSON(c, resp.ErrBadRequest, nil)
 	}
 	token, err := model.LoginUser(ctx, username, password)
 
 	switch err := errors.Cause(err).(type) {
 	case nil:
-		resp.Json(c, resp.Success, token)
+		resp.JSON(c, resp.Success, token)
 	case define.ErrUserPass:
-		resp.Json(c, resp.ErrUserPassword, nil)
+		resp.JSON(c, resp.ErrUserPassword, nil)
 	case define.ErrForbid:
-		resp.Json(c, resp.ErrUserForbid, nil)
+		resp.JSON(c, resp.ErrUserForbid, nil)
 	default:
-		resp.Json(c, resp.ErrInternalServer, nil)
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		log.Info("LoginUser", zap.String("error", err.Error()))
 	}
 }

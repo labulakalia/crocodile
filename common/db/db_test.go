@@ -7,6 +7,7 @@ import (
 )
 
 func TestNewDb(t *testing.T) {
+
 	err := NewDb(Drivename("sqlite3"),
 		Dsn("sqlite3.db"),
 		MaxIdleConnection(10),

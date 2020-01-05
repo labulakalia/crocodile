@@ -16,8 +16,7 @@ import (
 	"time"
 )
 
-// grpc middleware
-
+// LoggerInterceptor grpc middleware log
 func LoggerInterceptor(ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
@@ -43,6 +42,7 @@ func LoggerInterceptor(ctx context.Context,
 	return resp, err
 }
 
+// RecoveryInterceptor get rpc panic
 func RecoveryInterceptor(ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,
@@ -57,6 +57,7 @@ func RecoveryInterceptor(ctx context.Context,
 
 }
 
+// CheckSecretInterceptor check token valid
 func CheckSecretInterceptor(ctx context.Context,
 	req interface{},
 	info *grpc.UnaryServerInfo,

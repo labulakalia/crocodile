@@ -20,7 +20,8 @@ import (
 	"net/http"
 )
 
-func NewHttpRouter() *http.Server {
+// NewHTTPRouter create http.Server
+func NewHTTPRouter() *http.Server {
 	//gin.SetMode("release")
 	router := gin.New()
 	//gin.SetMode(gin.ReleaseMode)
@@ -64,13 +65,14 @@ func NewHttpRouter() *http.Server {
 
 	httpSrv := &http.Server{
 		Handler:      router,
-		ReadTimeout:  config.CoreConf.Server.MaxHttpTime.Duration,
-		WriteTimeout: config.CoreConf.Server.MaxHttpTime.Duration,
+		ReadTimeout:  config.CoreConf.Server.MaxHTTPTime.Duration,
+		WriteTimeout: config.CoreConf.Server.MaxHTTPTime.Duration,
 	}
 	return httpSrv
 
 }
 
+// GetListen get listen addr by server or client
 func GetListen(mode define.RunMode) (net.Listener, error) {
 	var (
 		addr string
@@ -88,6 +90,7 @@ func GetListen(mode define.RunMode) (net.Listener, error) {
 	return lis, err
 }
 
+// Run start run http or grpc Server
 func Run(mode define.RunMode, lis net.Listener) error {
 	var (
 		gRPCServer *grpc.Server
@@ -102,7 +105,7 @@ func Run(mode define.RunMode, lis net.Listener) error {
 
 	m = cmux.New(lis)
 	if mode == define.Server {
-		httpServer := NewHttpRouter()
+		httpServer := NewHTTPRouter()
 		httpL := m.Match(cmux.HTTP1Fast())
 		go httpServer.Serve(httpL)
 		log.Info("start run http server", zap.String("addr", lis.Addr().String()))

@@ -1,59 +1,76 @@
 package define
 
-// Admin or Normal User
+// Role Admin or Normal User
 type Role uint8
 
 const (
+	// NormalUser define normal user
 	NormalUser Role = iota + 1 // 普通用户 只对自已创建的主机或者主机组具有操作权限
-	AdminUser                  // 管理员 具有所有操作
+	// AdminUser define admin user
+	AdminUser // 管理员 具有所有操作
 )
 
-// task type
-type TaskType uint8
-
-const (
-	Shell TaskType = iota + 1
-	Api
-)
-
-// run crocodile as server or client
-type RunMode uint8
-
-const (
-	Server RunMode = iota + 1
-	Client
-)
-
-// task type (parent task,master task, child task)
-type TaskRespType uint8
-
-const (
-	MasterTask = iota + 1
-	ParentTask
-	ChildTask
-)
-
-func GetUserByRole(r Role) string {
+func (r Role) String() string {
 	switch r {
 	case AdminUser:
 		return "Admin"
 	case NormalUser:
 		return "Normal"
 	default:
-		return ""
+		return "Unknow Role type"
 	}
+}
+
+// TaskType task type
+// shell
+// api
+type TaskType uint8
+
+const (
+	// Shell Rum Command
+	Shell TaskType = iota + 1
+	// API run http req
+	API
+)
+
+// RunMode crocodile run mode
+// run crocodile as server or client
+type RunMode uint8
+
+const (
+	// Server run crocodile as server
+	Server RunMode = iota + 1
+	// Client run crocodile as client
+	Client
+)
+
+// TaskRespType task type (parent task,master task, child task)
+type TaskRespType uint8
+
+const (
+	// MasterTask task as master run
+	MasterTask = iota + 1
+	// ParentTask task as a task's parent task run
+	ParentTask
+	// ChildTask task as a task's child task run
+	ChildTask
+)
+
+// GetTaskid get task id in post
+type GetTaskid struct {
+	ID string `json:"id"`
 }
 
 // 定义结构体
 type common struct {
-	Id         string `json:"id"`
+	ID         string `json:"id"`
 	Name       string `json:"name,omitempty"`
 	CreateTime string `json:"create_time,omitempty"` // 创建时间
 	UpdateTime string `json:"update_time,omitempty"` // 最后一次更新时间
 	Remark     string `json:"remark"`                // 备注
 }
 
-// 用户
+// User user msg
 type User struct {
 	Role     Role   `json:"role" binding:"gte=1,lte=2"`     // 用户类型: 2 管理员 1 普通用户
 	Forbid   int    `json:"forbid" binding:"gte=0,lte=1"`   // 禁止用户: 0 未禁止 1 已禁止
@@ -62,28 +79,27 @@ type User struct {
 	common
 }
 
-// 主机组
+// HostGroup define hostgroup
 type HostGroup struct {
-	HostsID []string `json:"addrs"`
-	//Hosts       []*Host `json:"hosts,omitempty"`       // WorkerId
-	CreateByUid string `json:"create_byuid"` // 创建人ID
-	CreateBy    string `json:"create_by"`    // 创建人ID
+	HostsID     []string `json:"addrs"`        // 主机host
+	CreateByUID string   `json:"create_byuid"` // 创建人ID
+	CreateBy    string   `json:"create_by"`    // 创建人ID
 	common
 }
 
-// 主机信息
-// 定时更新主机信息
+// Host worker host
 type Host struct {
 	common
 	Addr               string `json:"addr"`     // 主机IP
 	HostName           string `json:"hostname"` // 主机名
 	Online             int    `json:"online"`   // 主机是否在线 0 not online,1 online
 	Version            string `json:"version"`  // 版本号
+	Stop               int    `json:"stop"`     // 0 为不能运行 1 为可以运行
 	LastUpdateTimeUnix int64  `json:"last_updatetimeunix"`
 	LastUpdateTime     string `json:"last_updatetime"`
 }
 
-// 任务
+// Task define Task
 type Task struct {
 	TaskType          TaskType    `json:"task_type"`                       // 任务类型
 	TaskData          interface{} `json:"taskData"`                        // 任务数据
@@ -93,9 +109,9 @@ type Task struct {
 	ChildTaskIds      []string    `json:"child_taskids"`                   // 子任务 运行结束后运行子任务
 	ChildRunParallel  int         `json:"child_runparallel"`               // 是否以并行运行子任务 0否 1是
 	CreateBy          string      `json:"create_by"`                       // 创建人
-	CreateByUid       string      `json:"create_byuid"`                    // 创建人ID
+	CreateByUID       string      `json:"create_byuid"`                    // 创建人ID
 	HostGroup         string      `json:"host_group"`                      // 执行计划
-	HostGroupId       string      `json:"host_groupid" binding:"required"` // 主机组ID
+	HostGroupID       string      `json:"host_groupid" binding:"required"` // 主机组ID
 
 	Cronexpr     string   `json:"cronexpr" binding:"required"` // 执行任务表达式
 	Timeout      int      `json:"timeout"`                     // 任务超时时间
@@ -104,28 +120,28 @@ type Task struct {
 	common
 }
 
-// 返回值
+// TaskResp run task resp message
 type TaskResp struct {
 	TaskType   TaskRespType `json:"task_type"` // 1 主任务 2 父任务 3 子任务
-	TaskId     string       `json:"task_td"`
+	TaskID     string       `json:"task_td"`
 	Code       int32        `json:"code"`
 	ErrMsg     string       `json:"err_msg"`
 	RespData   string       `json:"resp_data"`
 	WorkerHost string       `json:"worker_host"`
 }
 
-// 运行的任务
+// RunTask running task message
 type RunTask struct {
-	Id            string `json:"id"`
+	ID            string `json:"id"`
 	Name          string `json:"name"`
 	StartTime     string `json:"start_time"`
 	StartTimeUnix int64  `json:"start_timeunix"`
 	RunTime       int    `json:"run_time"`
 }
 
-// 日志
+// Log task log
 type Log struct {
-	RunByTaskId  string      `json:"run_bytaskId"`
+	RunByTaskID  string      `json:"run_bytaskId"`
 	TaskResps    []*TaskResp `json:"task_resps"`
 	StartTime    int64       `json:"start_time"`    // ms
 	EndTime      int64       `json:"end_time"`      // ms

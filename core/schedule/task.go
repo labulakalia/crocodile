@@ -14,13 +14,12 @@ import (
 	"strings"
 )
 
-// run worker
-// implementation proto task interface
-
+// TaskService implementation proto task interface
 type TaskService struct {
 	Auth Auth
 }
 
+// RunTask run task by rpc
 func (ts *TaskService) RunTask(ctx context.Context, t *pb.TaskReq) (*pb.TaskResp, error) {
 	log.Info("runTask", zap.Any("task", t))
 	var (
@@ -40,12 +39,12 @@ func (ts *TaskService) RunTask(ctx context.Context, t *pb.TaskReq) (*pb.TaskResp
 	return taskresp, nil
 }
 
-// run core server
-// implementation proto task interface
+// HeartbeatService implementation proto Heartbeat interface
 type HeartbeatService struct {
 	Auth Auth
 }
 
+// RegistryHost client registry
 func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryReq) (*pb.Empty, error) {
 	var (
 		id string
@@ -68,7 +67,7 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 		}
 
 	} else {
-		id = host.Id
+		id = host.ID
 	}
 	hb := pb.HeartbeatReq{
 		Ip:   ip,
@@ -97,6 +96,7 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	return &pb.Empty{}, err
 }
 
+// SendHb client send hearbeat
 func (hs *HeartbeatService) SendHb(ctx context.Context, hb *pb.HeartbeatReq) (*pb.Empty, error) {
 
 	p, ok := peer.FromContext(ctx)
@@ -106,6 +106,6 @@ func (hs *HeartbeatService) SendHb(ctx context.Context, hb *pb.HeartbeatReq) (*p
 	ip, _, _ := net.SplitHostPort(p.Addr.String())
 	hb.Ip = ip
 	log.Info("recv hearbeat", zap.String("addr", fmt.Sprintf("%s:%d", ip, hb.Port)))
-	err := model.UpdateRunningTask(ctx, hb)
+	err := model.UpdateHostHearbeat(ctx, hb)
 	return &pb.Empty{}, err
 }

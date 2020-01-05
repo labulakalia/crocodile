@@ -7,11 +7,13 @@ import (
 	"os/exec"
 )
 
+// DataShell task run shell 
 type DataShell struct {
 	Name string   `json:"name"`
 	Args []string `json:"args"`
 }
 
+// Run implment TaskRuner
 // run shell command
 // do not return error
 func (ds *DataShell) Run(ctx context.Context) (resp *pb.TaskResp) {

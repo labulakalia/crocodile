@@ -2,7 +2,7 @@ package define
 
 import "fmt"
 
-// 用户密码错误
+// ErrUserPass user pass err
 type ErrUserPass struct {
 	Err error
 }
@@ -11,7 +11,7 @@ func (u ErrUserPass) Error() string {
 	return "username or password error: " + u.Err.Error()
 }
 
-// 用户禁止登陆
+// ErrForbid user forbid login err
 type ErrForbid struct {
 	Name string
 }

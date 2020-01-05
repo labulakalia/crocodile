@@ -13,7 +13,8 @@ import (
 	"os"
 )
 
-func CmdServer() *cobra.Command {
+// Server crocodile server
+func Server() *cobra.Command {
 	var (
 		cfg string
 	)

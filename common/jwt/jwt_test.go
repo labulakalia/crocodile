@@ -15,7 +15,7 @@ func TestGenerateToken(t *testing.T) {
 	var (
 		err error
 	)
-	token, err = GenerateToken(123432)
+	token, err = GenerateToken("121212121")
 	if err != nil {
 		t.Errorf("GenerateToken failed: %v", err)
 	}

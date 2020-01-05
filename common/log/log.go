@@ -13,11 +13,13 @@ var (
 )
 
 const (
+	// FormatText format log text
 	FormatText = "text"
-	FormatJson = "json"
+	// FormatJSON format log json
+	FormatJSON = "json"
 )
 
-type Level uint
+// type Level uint
 
 // 日志配置
 type logConfig struct {
@@ -52,12 +54,11 @@ func getzapLevel(level string) zapcore.Level {
 func newLogWriter(logpath string, maxsize int, compress bool) io.Writer {
 	if logpath == "" || logpath == "-" {
 		return os.Stdout
-	} else {
-		return &lumberjack.Logger{
-			Filename: logpath,
-			MaxSize:  maxsize,
-			Compress: compress,
-		}
+	}
+	return &lumberjack.Logger{
+		Filename: logpath,
+		MaxSize:  maxsize,
+		Compress: compress,
 	}
 }
 
@@ -86,7 +87,7 @@ func newLoggerCore(log *logConfig) zapcore.Core {
 	atomLevel := zap.NewAtomicLevelAt(getzapLevel(log.LogLevel))
 
 	var encoder zapcore.Encoder
-	if log.Format == FormatJson {
+	if log.Format == FormatJSON {
 		encoder = zapcore.NewJSONEncoder(encoderConfig)
 	} else {
 		encoder = zapcore.NewConsoleEncoder(encoderConfig)
@@ -114,48 +115,57 @@ func newLoggerOptions() []zap.Option {
 	return options
 }
 
+// Option function option
 type Option func(*logConfig)
 
-func LogPath(logpath string) Option {
+// Path set logpath
+// if is zero will print,or write file
+func Path(logpath string) Option {
 	return func(logcfg *logConfig) {
 		logcfg.LogPath = logpath
 	}
 }
 
+// Compress compress log
 func Compress(compress bool) Option {
 	return func(logcfg *logConfig) {
 		logcfg.Compress = compress
 	}
 }
 
-func LogLevel(level string) Option {
+// Level set log level default info
+func Level(level string) Option {
 	return func(logcfg *logConfig) {
 		logcfg.LogLevel = level
 	}
 }
 
+// MaxSize Log Max Size
 func MaxSize(size int) Option {
 	return func(logcfg *logConfig) {
 		logcfg.MaxSize = size
 	}
 }
 
+// MaxAge log store day
 func MaxAge(age int) Option {
 	return func(logcfg *logConfig) {
 		logcfg.MaxAge = age
 	}
 }
 
+// MaxBackups total store log 
 func MaxBackups(backup int) Option {
 	return func(logcfg *logConfig) {
 		logcfg.MaxBackups = backup
 	}
 }
 
+// Format log json or text
 func Format(format string) Option {
 	return func(logcfg *logConfig) {
-		if format == FormatJson {
-			logcfg.Format = FormatJson
+		if format == FormatJSON {
+			logcfg.Format = FormatJSON
 		} else {
 			logcfg.Format = FormatText
 		}
@@ -175,6 +185,7 @@ func defaultOption() *logConfig {
 	}
 }
 
+// InitLog conf
 func InitLog(opts ...Option) error {
 
 	logcfg := defaultOption()
@@ -188,23 +199,32 @@ func InitLog(opts ...Option) error {
 	return nil
 }
 
+// Debug output log
 func Debug(msg string, fields ...zap.Field) {
 	_logger.Info(msg, fields...)
 }
 
+// Info output log
 func Info(msg string, fields ...zap.Field) {
 	_logger.Info(msg, fields...)
 }
 
+// Warn output log
 func Warn(msg string, fields ...zap.Field) {
 	_logger.Warn(msg, fields...)
 }
+
+// Error output log
 func Error(msg string, fields ...zap.Field) {
 	_logger.Error(msg, fields...)
 }
+
+// Panic output panic
 func Panic(msg string, fields ...zap.Field) {
 	_logger.Panic(msg, fields...)
 }
+
+// Fatal output log
 func Fatal(msg string, fields ...zap.Field) {
 	_logger.Fatal(msg, fields...)
 }

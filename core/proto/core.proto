@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package crocodile.task;
 
-
 // keepalive connect
 service Task {
     rpc RunTask(TaskReq) returns(TaskResp);

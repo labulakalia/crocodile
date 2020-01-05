@@ -13,6 +13,7 @@ var (
 	enforcer *casbin.Enforcer
 )
 
+// InitRabc init rabc
 func InitRabc() {
 	modeltext := `
 [request_definition]
@@ -47,6 +48,7 @@ m = g(r.sub, p.sub) && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)
 
 }
 
+// GetEnforcer get casbin auth
 func GetEnforcer() *casbin.Enforcer {
 	return enforcer
 }

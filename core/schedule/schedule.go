@@ -20,11 +20,12 @@ import (
 )
 
 var (
+	// Cron schedule loop
 	Cron *cacheSchedule
 )
 
 const (
-	defaultRpcTimeout       = time.Second * 3
+	defaultRPCTimeout       = time.Second * 3
 	defaultHearbeatInterval = time.Second * 50
 )
 
@@ -43,7 +44,7 @@ type cacheSchedule struct {
 	sch1 sync.Map
 }
 
-// start run already exists task from db
+// Init start run already exists task from db
 func Init() error {
 	Cron = &cacheSchedule{
 		sch: make(map[string]*task),
@@ -58,25 +59,25 @@ func Init() error {
 	}
 
 	for _, t := range eps {
-		Cron.Add(t.Id, t.Name, t.Cronexpr)
+		Cron.Add(t.ID, t.Name, t.Cronexpr)
 	}
 	log.Info("init task success", zap.Int("Total", len(eps)))
 	return nil
 }
 
-// add task to schedule
-func (s *cacheSchedule) Add(taskId, taskName string, cronExpr string) {
-	s.Del(taskId)
+// Add task to schedule
+func (s *cacheSchedule) Add(taskID, taskName string, cronExpr string) {
+	s.Del(taskID)
 	t := task{
 		name:     taskName,
 		cronexpr: cronExpr,
 		close:    make(chan struct{}),
 	}
 	s.Lock()
-	s.sch[taskId] = &t
+	s.sch[taskID] = &t
 	s.Unlock()
-	log.Info("Add Task success", zap.String("taskid", taskId), zap.String("name", taskName))
-	go s.runSchedule(taskId)
+	log.Info("Add Task success", zap.String("taskid", taskID), zap.String("name", taskName))
+	go s.runSchedule(taskID)
 }
 
 // del schedule
@@ -144,27 +145,6 @@ func (s *cacheSchedule) runSchedule(taskid string) {
 			return
 		case <-time.After(next.Sub(now)):
 			go s.RunTask(taskid)
-			//go func() {
-			//	if t.running {
-			//		log.Info("Task is running,so not run now", zap.String("taskid", taskid))
-			//		return
-			//	}
-			//	t.running = true
-			//	t.starttime = time.Now().Unix()
-			//	defer func() {
-			//		t.running = false
-			//	}()
-			//	tasklog, err := s.RunTask(taskid)
-			//	if err != nil {
-			//		log.Error("RunTask failed", zap.String("taskid", taskid), zap.String("error", err.Error()))
-			//		return
-			//	}
-			//	err = model.SaveLog(context.Background(), tasklog)
-			//	if err != nil {
-			//		log.Error("model.SaveLog failed", zap.String("error", err.Error()))
-			//		return
-			//	}
-			//}()
 		}
 	}
 }
@@ -210,7 +190,7 @@ func (s *cacheSchedule) runTaskReal(id string) (*define.Log, error) {
 	}
 
 	resplog := define.Log{
-		RunByTaskId: id,
+		RunByTaskID: id,
 	}
 
 	if task.Run == 0 {
@@ -223,8 +203,8 @@ func (s *cacheSchedule) runTaskReal(id string) (*define.Log, error) {
 		resplog.TaskResps = append(resplog.TaskResps, parentresplogs...)
 	}
 	// start run task
-	log.Info("start run main task", zap.String("taskid", task.Id))
-	runresp := s.runTask(task.Id, define.MasterTask)
+	log.Info("start run main task", zap.String("taskid", task.ID))
+	runresp := s.runTask(task.ID, define.MasterTask)
 	resplog.TaskResps = append(resplog.TaskResps, runresp)
 	// start run childtasks
 	if len(task.ChildTaskIds) != 0 {
@@ -268,7 +248,7 @@ func (s *cacheSchedule) runMultiTasks(RunParallel int, tasktype define.TaskRespT
 // realy run task
 func (s *cacheSchedule) runTask(id string, tasktype define.TaskRespType) *define.TaskResp {
 	taskresp := &define.TaskResp{
-		TaskId:   id,
+		TaskID:   id,
 		Code:     resp.ErrInternalServer,
 		ErrMsg:   resp.GetMsg(resp.ErrInternalServer),
 		TaskType: tasktype,
@@ -283,23 +263,23 @@ func (s *cacheSchedule) runTask(id string, tasktype define.TaskRespType) *define
 		return taskresp
 	}
 
-	hg, err := model.GetHostGroupID(ctx, task.HostGroupId)
+	hg, err := model.GetHostGroupID(ctx, task.HostGroupID)
 	if err != nil {
 		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
 		return taskresp
 	}
 
 	if len(hg.HostsID) == 0 {
-		taskresp.Code = resp.ErrRpcNotValidHost
-		taskresp.ErrMsg = resp.GetMsg(resp.ErrRpcNotValidHost)
+		taskresp.Code = resp.ErrRPCNotValidHost
+		taskresp.ErrMsg = resp.GetMsg(resp.ErrRPCNotValidHost)
 		return taskresp
 	}
 
-	conn, err := tryGetRpcConn(ctx, hg)
+	conn, err := tryGetRCCConn(ctx, hg)
 	if err != nil {
 		log.Error("tryGetRpcConn failed", zap.String("error", err.Error()))
-		taskresp.Code = resp.ErrRpcNotConnHost
-		taskresp.ErrMsg = resp.GetMsg(resp.ErrRpcNotConnHost)
+		taskresp.Code = resp.ErrRPCNotConnHost
+		taskresp.ErrMsg = resp.GetMsg(resp.ErrRPCNotConnHost)
 		return taskresp
 	}
 
@@ -309,7 +289,7 @@ func (s *cacheSchedule) runTask(id string, tasktype define.TaskRespType) *define
 		return taskresp
 	}
 	taskreq := &pb.TaskReq{
-		TaskId:   task.Id,
+		TaskId:   task.ID,
 		TaskType: int32(task.TaskType),
 		TaskData: tdata,
 		Timeout:  int32(task.Timeout),
@@ -325,14 +305,14 @@ func (s *cacheSchedule) runTask(id string, tasktype define.TaskRespType) *define
 	} else {
 		taskctx, taskcancel = context.WithCancel(context.Background())
 	}
-	s.addctxcancel(task.Id, taskcancel)
+	s.addctxcancel(task.ID, taskcancel)
 	var errmsg []byte
 	taskclient := pb.NewTaskClient(conn)
 	rpcTaskResp, err := taskclient.RunTask(taskctx, taskreq)
 
 	if err != nil {
 		log.Error("RunTask failed", zap.Error(err))
-		errcode := dealRpcErr(err)
+		errcode := dealRPCErr(err)
 		taskresp.Code = int32(errcode)
 		taskresp.ErrMsg = resp.GetMsg(errcode)
 	} else {
@@ -363,7 +343,7 @@ func (s *cacheSchedule) GetRunningtask() []*define.RunTask {
 			continue
 		}
 		runtask := define.RunTask{
-			Id:            taskid,
+			ID:            taskid,
 			Name:          task.name,
 			StartTime:     utils.UnixToStr(task.starttime),
 			StartTimeUnix: task.starttime,

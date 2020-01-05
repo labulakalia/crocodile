@@ -11,7 +11,8 @@ type response struct {
 	Data interface{} `json:"data,omitempty"`
 }
 
-func Json(c *gin.Context, code int, data interface{}) {
+// JSON gin resp to json
+func JSON(c *gin.Context, code int, data interface{}) {
 	c.JSON(200, response{
 		Code: code,
 		Msg:  GetMsg(code),

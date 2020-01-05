@@ -9,9 +9,10 @@ import (
 	"time"
 )
 
+// DataAPI http req task 
 // TODO 获取期望的值，不在于返回码为准备
-type DataApi struct {
-	Url     string            `json:"url"`
+type DataAPI struct {
+	URL     string            `json:"url"`
 	Method  string            `json:"method"`
 	PayLoad string            `json:"payload"`
 	Header  map[string]string `json:"header"`
@@ -22,11 +23,10 @@ type DataApi struct {
 // Body
 // Test
 
-// http req api
-// form post
-func (da *DataApi) Run(ctx context.Context) (taskresp *pb.TaskResp) {
+// Run implment TaskRun interface
+func (da *DataAPI) Run(ctx context.Context) (taskresp *pb.TaskResp) {
 	taskresp = &pb.TaskResp{}
-	req, err := http.NewRequest(da.Method, da.Url, strings.NewReader(da.PayLoad))
+	req, err := http.NewRequest(da.Method, da.URL, strings.NewReader(da.PayLoad))
 	if err != nil {
 		taskresp.Code = -1
 		taskresp.ErrMsg = []byte(err.Error())

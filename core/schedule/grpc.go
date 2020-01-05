@@ -60,7 +60,7 @@ func (cg *cachegRPCConn) addgRPCClientConn(addr string, conn *grpc.ClientConn) {
 	cg.Unlock()
 }
 
-// Get Grpc Client Conn
+// NewgRPCConn Get Grpc Client Conn
 func NewgRPCConn(addr string) (*grpc.ClientConn, error) {
 
 	conn := cachegRPCConnM.GetgRPCClientConn(addr)
@@ -73,7 +73,7 @@ func NewgRPCConn(addr string) (*grpc.ClientConn, error) {
 	//}
 	//c := credentials.NewTLS(&tls.Config{ServerName: texttls.ServerName, RootCAs: cp})
 
-	c, err := credentials.NewClientTLSFromFile(config.CoreConf.Pem.CertFile, cert.ServerName)
+	c, err := credentials.NewClientTLSFromFile(config.CoreConf.Cert.CertFile, cert.ServerName)
 	if err != nil {
 		log.Error("credentials.NewClientTLSFromFile failed", zap.Error(err))
 		return nil, err
@@ -91,9 +91,9 @@ func NewgRPCConn(addr string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-// new gRPC server
+// NewgRPCServer new gRPC server
 func NewgRPCServer(mode define.RunMode) (*grpc.Server, error) {
-	c, err := credentials.NewServerTLSFromFile(config.CoreConf.Pem.CertFile, config.CoreConf.Pem.KeyFile)
+	c, err := credentials.NewServerTLSFromFile(config.CoreConf.Cert.CertFile, config.CoreConf.Cert.KeyFile)
 	if err != nil {
 		log.Error("credentials.NewServerTLSFromFile failed", zap.Error(err))
 		return nil, err
@@ -115,11 +115,12 @@ func NewgRPCServer(mode define.RunMode) (*grpc.Server, error) {
 	return grpcserver, nil
 }
 
+// Auth check rpc request valid
 type Auth struct {
 	SecretToken string
 }
 
-// implement PerRPCCredentials interface
+// GetRequestMetadata implement PerRPCCredentials interface
 func (a *Auth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
 	return map[string]string{
 		"secret_token": a.SecretToken,
@@ -133,19 +134,19 @@ func (a *Auth) RequireTransportSecurity() bool {
 }
 
 // get rpc conn
-func tryGetRpcConn(ctx context.Context, hg *define.HostGroup) (*grpc.ClientConn, error) {
+func tryGetRCCConn(ctx context.Context, hg *define.HostGroup) (*grpc.ClientConn, error) {
 	i := 0
 	for i < len(hg.HostsID) {
 		i++
-		hostid, err := model.RandHostId(hg)
+		hostid, err := model.RandHostID(hg)
 		if err != nil {
-			log.Error("model.RandHostId failed", zap.String("error", err.Error()))
+			log.Error("model.RandHostID failed", zap.String("error", err.Error()))
 			continue
 		}
 
-		host, err := model.GetHostById(ctx, hostid)
+		host, err := model.GetHostByID(ctx, hostid)
 		if err != nil {
-			log.Error("model.GetHostById failed", zap.String("error", err.Error()))
+			log.Error("model.GetHostByID failed", zap.String("error", err.Error()))
 			continue
 		}
 
@@ -163,14 +164,14 @@ func tryGetRpcConn(ctx context.Context, hg *define.HostGroup) (*grpc.ClientConn,
 	return nil, errors.New("can not get valid grpc conn")
 }
 
-// registry client to server
+// RegistryClient registry client to server
 func RegistryClient(version string, port int) error {
 	conn, err := NewgRPCConn(config.CoreConf.Client.ServerAddr)
 	if err != nil {
 		return err
 	}
 	hbClient := pb.NewHeartbeatClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRpcTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
 	defer cancel()
 	hostname, _ := os.Hostname()
 	regHost := pb.RegistryReq{
@@ -196,7 +197,7 @@ func sendhb(client pb.HeartbeatClient, port int) {
 	for {
 		select {
 		case <-timer.C:
-			ctx, cancel := context.WithTimeout(context.Background(), defaultRpcTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
 			defer cancel()
 			hbreq := &pb.HeartbeatReq{Port: int32(port)}
 			_, err := client.SendHb(ctx, hbreq)
@@ -208,19 +209,19 @@ func sendhb(client pb.HeartbeatClient, port int) {
 	}
 }
 
-func dealRpcErr(err error) int {
+func dealRPCErr(err error) int {
 	statusErr, ok := status.FromError(err)
 	if ok {
 		switch statusErr.Code() {
 		case codes.DeadlineExceeded:
-			return resp.ErrRpcDeadlineExceeded
+			return resp.ErrRPCDeadlineExceeded
 		case codes.Canceled:
-			return resp.ErrRpcCanceled
+			return resp.ErrRPCCanceled
 		case codes.Unauthenticated:
-			return resp.ErrRpcUnauthenticated
+			return resp.ErrRPCUnauthenticated
 		case codes.Unavailable:
-			return resp.ErrRpcUnavailable
+			return resp.ErrRPCUnavailable
 		}
 	}
-	return resp.ErrRpcUnknow
+	return resp.ErrRPCUnknow
 }
