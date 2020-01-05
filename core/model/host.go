@@ -3,6 +3,8 @@ package model
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
@@ -10,7 +12,6 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (
@@ -177,3 +178,69 @@ func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 
 	return hosts[0], nil
 }
+
+// StopHost will stop run worker in hostid
+func StopHost(ctx context.Context, hostid string, stop int) error {
+	stopsql := `UPDATE crocodile_host SET stop=?`
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+	stmt, err := conn.PrepareContext(ctx, stopsql)
+	if err != nil {
+		return errors.Wrap(err, "conn.PrepareContext")
+	}
+	_, err = stmt.ExecContext(ctx, stop)
+	if err != nil {
+		return errors.Wrap(err, "stmt.ExecContext")
+	}
+	return nil
+}
+
+// DeleteHost will delete host
+func DeleteHost(ctx context.Context, hostid string) error {
+	err := StopHost(ctx, hostid, 0)
+	if err != nil {
+		return errors.Wrap(err, "StopHost")
+	}
+	go deleteHostFromHostGroup(hostid)
+	return nil
+}
+
+func deleteHostFromHostGroup(hostid string) error {
+	hostgroups, err := GetHostGroups(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "GetHostGroups")
+	}
+	for _,hostgroup := range hostgroups {
+		newhostid,ok := deletefromslice(hostid,hostgroup.HostsID)
+		if !ok {
+			continue
+		}
+		hostgroup.HostsID = newhostid
+		err = ChangeHostGroup(context.Background(), &hostgroup)
+		if err != nil {
+			log.Error("CHangeHostGroup failed", zap.String("hostgroupid", hostgroup.ID))
+		}
+	}
+	return nil
+}
+
+// delete from slice
+func deletefromslice(deleteid string, ids []string) ([]string, bool) {
+	var existid = -1
+	for index, id := range ids {
+		if id == deleteid {
+			existid = index
+			break
+		}
+	}
+	if existid == -1 {
+		// no found delete id
+		return nil,false
+	}
+	ids = append(ids[:existid-1],ids[existid:]...)
+	return ids, true
+}
+

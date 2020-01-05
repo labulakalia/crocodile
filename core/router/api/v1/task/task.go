@@ -146,13 +146,17 @@ func DeleteTask(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-
-	taskid := c.Param("id")
-	if utils.CheckID(taskid) != nil {
+	deletetask := define.GetTaskid{}
+	err := c.ShouldBindJSON(&deletetask)
+	if err != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	exist, err := model.Check(ctx, model.TBTask, model.ID, taskid)
+	if utils.CheckID(deletetask.ID) != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	exist, err := model.Check(ctx, model.TBTask, model.ID, deletetask.ID)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -175,7 +179,7 @@ func DeleteTask(c *gin.Context) {
 	// 这里只需要确定如果rule的用户类型是否为Admin
 	if role != define.AdminUser {
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, taskid, uid)
+		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, deletetask.ID, uid)
 		if err != nil {
 			log.Error("IsExist failed", zap.String("error", err.Error()))
 			resp.JSON(c, resp.ErrInternalServer, nil)
@@ -187,13 +191,13 @@ func DeleteTask(c *gin.Context) {
 			return
 		}
 	}
-	err = model.DeleteTask(ctx, taskid)
+	err = model.DeleteTask(ctx, deletetask.ID)
 	if err != nil {
 		log.Error("DeleteTask failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Del(taskid)
+	schedule.Cron.Del(deletetask.ID)
 	resp.JSON(c, resp.Success, nil)
 
 }
@@ -215,13 +219,14 @@ func GetTasks(c *gin.Context) {
 }
 
 // GetTask get a task
-// GET /api/v1/task/:id
+// GET /api/v1/task/info?id=idididi
 func GetTask(c *gin.Context) {
-	taskid := c.Param("id")
+	taskid := c.Query("id")
 	if utils.CheckID(taskid) != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
+	
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
@@ -235,27 +240,36 @@ func GetTask(c *gin.Context) {
 }
 
 // RunTask start run task now
-// PUT /api/v1/task/run/:id
+// PUT /api/v1/task/run
 func RunTask(c *gin.Context) {
-	taskid := c.Param("id")
-	if utils.CheckID(taskid) != nil {
+	runtask := define.GetTaskid{}
+	err := c.ShouldBindJSON(&runtask)
+	if err != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	schedule.Cron.RunTask(taskid)
+	if utils.CheckID(runtask.ID) != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	schedule.Cron.RunTask(runtask.ID)
 	resp.JSON(c, resp.Success, nil)
 }
 
 // KillTask kill running task
 // PUT /api/v1/task/kill/:id
 func KillTask(c *gin.Context) {
-	log.Info("")
-	taskid := c.Param("id")
-	if utils.CheckID(taskid) != nil {
+	runtask := define.GetTaskid{}
+	err := c.ShouldBindJSON(&runtask)
+	if err != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	schedule.Cron.KillTask(taskid)
+	if utils.CheckID(runtask.ID) != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	schedule.Cron.KillTask(runtask.ID)
 	resp.JSON(c, resp.Success, nil)
 }
 
@@ -267,9 +281,9 @@ func RunningTask(c *gin.Context) {
 }
 
 // LogTask get task log
-// GET /api/v1/task/log/:id
+// GET /api/v1/task/log?id=ididididid
 func LogTask(c *gin.Context) {
-	taskid := c.Param("id")
+	taskid := c.Query("id")
 	if utils.CheckID(taskid) != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return

@@ -12,7 +12,7 @@ loglevel  = "info"
 format = "text"
 
 # cert file
-[pem]
+[cert]
 certfile="core/cert/cert.pem"
 keyfile="core/cert/key.pem"
 

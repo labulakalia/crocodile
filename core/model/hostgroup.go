@@ -82,7 +82,7 @@ func DeleteHostGroup(ctx context.Context, id string) error {
 	return nil
 }
 
-// getHostGroups by id or hostgroupname
+// getHostGroups return hostgroup by id or hostgroupname
 func getHostGroups(ctx context.Context, id, hgname string) ([]define.HostGroup, error) {
 	hgs := []define.HostGroup{}
 
@@ -147,12 +147,12 @@ func getHostGroups(ctx context.Context, id, hgname string) ([]define.HostGroup, 
 	return hgs, nil
 }
 
-// GetHostGroups get all hostgroup
+// GetHostGroups return all hostgroup
 func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
 	return getHostGroups(ctx, "", "")
 }
 
-// GetHostGroupID get hostgroup by id
+// GetHostGroupID return hostgroup by id
 func GetHostGroupID(ctx context.Context, id string) (*define.HostGroup, error) {
 	hostgroups, err := getHostGroups(ctx, id, "")
 	if err != nil {
@@ -164,7 +164,7 @@ func GetHostGroupID(ctx context.Context, id string) (*define.HostGroup, error) {
 	return &hostgroups[0], nil
 }
 
-// GetHostGroupName get hostgroup by name
+// GetHostGroupName return hostgroup by name
 func GetHostGroupName(ctx context.Context, hg string) (*define.HostGroup, error) {
 	hostgroups, err := getHostGroups(ctx, "", hg)
 	if err != nil {
@@ -177,7 +177,7 @@ func GetHostGroupName(ctx context.Context, hg string) (*define.HostGroup, error)
 	return &hostgroups[0], nil
 }
 
-// RandHostID get execute worker ip
+// RandHostID return execute worker ip
 func RandHostID(hg *define.HostGroup) (string, error) {
 	if len(hg.HostsID) == 0 {
 		return "", errors.New("Can not find worker host")
