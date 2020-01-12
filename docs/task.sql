@@ -18,6 +18,9 @@ CREATE TABLE crocodile_task (
         timeout INT DEFAULT 0,
         alarmUserIds VARCHAR(1000),
         autoSwitch INT DEFAULT 0,
+        expectCode INT,
+        expectContent TEXT,
+        exprContent VARCHAR(5)
         remark VARCHAR(50),
         createTime INT NOT NULL,
         updateTime INT NOT NULL

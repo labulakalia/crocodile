@@ -19,12 +19,13 @@ var msgcode = map[int]string{
 
 	ErrHostgroupExist:    "主机组已存在",
 	ErrHostgroupNotExist: "主机组不存在",
+	ErrHostNotDeleteNeedDown: "worker不能删除，请先将worker下线",
 
 
 	ErrInternalServer: "服务端错误",
 
-	ErrRPCDeadlineExceeded: "调用超时",
-	ErrRPCCanceled:         "取消调用",
+	ErrCtxDeadlineExceeded: "调用超时",
+	ErrCtxCanceled:         "取消调用",
 	ErrRPCUnauthenticated:  "密钥认证失败",
 	ErrRPCUnavailable:      "调用对端不可用",
 	ErrRPCUnknow:           "调用未知错误",

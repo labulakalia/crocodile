@@ -1,22 +1,26 @@
 package tasktype
 
 import (
+	"bytes"
 	"context"
-	pb "github.com/labulaka521/crocodile/core/proto"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"net/http"
-	"strings"
-	"time"
+	"github.com/labulaka521/crocodile/common/log"
+	"github.com/labulaka521/crocodile/core/utils/resp"
+	"go.uber.org/zap"
 )
 
-// DataAPI http req task 
+var _ TaskRuner = &DataAPI{}
+
+
+// DataAPI http req task
 // TODO 获取期望的值，不在于返回码为准备
 type DataAPI struct {
 	URL     string            `json:"url"`
 	Method  string            `json:"method"`
 	PayLoad string            `json:"payload"`
 	Header  map[string]string `json:"header"`
-	Timeout int               `json:"timeout"` // s
 }
 
 // Header
@@ -24,32 +28,60 @@ type DataAPI struct {
 // Test
 
 // Run implment TaskRun interface
-func (da *DataAPI) Run(ctx context.Context) (taskresp *pb.TaskResp) {
-	taskresp = &pb.TaskResp{}
-	req, err := http.NewRequest(da.Method, da.URL, strings.NewReader(da.PayLoad))
-	if err != nil {
-		taskresp.Code = -1
-		taskresp.ErrMsg = []byte(err.Error())
-		return
-	}
-	for hk, hb := range da.Header {
-		req.Header.Add(hk, hb)
-	}
-	client := http.Client{Timeout: time.Second * time.Duration(da.Timeout)}
+func (da *DataAPI) Run(ctx context.Context) io.ReadCloser {
+	pr, pw := io.Pipe()
+	go func() {
+		var exitCode = DefaultExitCode
+		defer pw.Close()
+		defer func() {
+			pw.Write([]byte(fmt.Sprintf("%3d", exitCode))) // write exitCode,total 3 byte
+		}()
+		// go1.13 use NewRequestWithContext
 
-	resp, err := client.Do(req)
-	if err != nil {
-		taskresp.Code = -1
-		taskresp.ErrMsg = []byte(err.Error())
-		return
-	}
-	taskresp.Code = int32(resp.StatusCode)
-	respbody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		taskresp.Code = -1
-		taskresp.ErrMsg = []byte(err.Error())
-		return
-	}
-	taskresp.RespData = respbody
-	return
+		req, err := http.NewRequestWithContext(ctx,da.Method, da.URL, bytes.NewReader([]byte(da.PayLoad)))
+		if err != nil {
+			pw.Write([]byte(err.Error()))
+			log.Error("NewRequest failed", zap.Error(err))
+			return
+		}
+
+		for k,v := range da.Header {
+			req.Header.Add(k, v)
+		}
+
+		client := http.DefaultClient
+		doresp, err := client.Do(req)
+		if err != nil {
+			log.Error("client Do failed", zap.Error(err))
+			var customerr bytes.Buffer
+			switch ctx.Err() {
+			case context.DeadlineExceeded:
+				customerr.WriteString(resp.GetMsg(resp.ErrCtxDeadlineExceeded))
+			case context.Canceled:
+				customerr.WriteString(resp.GetMsg(resp.ErrCtxCanceled))
+			default:
+				customerr.WriteString(err.Error())
+			}
+			pw.Write(customerr.Bytes())
+			return
+		}
+		var out = make([]byte, 1024)
+		for {
+			n, err := doresp.Body.Read(out)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				log.Error("Read failed", zap.Error(err))
+				return
+			}
+			if n > 0 {
+				pw.Write(out[:n])
+			}
+		}
+		if doresp.StatusCode > 0 {
+			exitCode = doresp.StatusCode
+		}
+	}()
+	return pr
 }

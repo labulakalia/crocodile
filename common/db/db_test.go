@@ -13,6 +13,7 @@ func TestNewDb(t *testing.T) {
 		MaxIdleConnection(10),
 		MaxQueryTime(3),
 		MaxQueryTime(3),
+		MaxOpenConnection(3),
 	)
 	if err != nil {
 		t.Fatalf("NewDb Err: %v", err)

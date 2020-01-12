@@ -55,6 +55,7 @@ func NewHTTPRouter() *http.Server {
 		rt.PUT("/kill", task.KillTask)
 		rt.GET("/running", task.RunningTask)
 		rt.GET("/log", task.LogTask)
+		rt.GET("/log/ws", task.RealTimeLogTask)
 	}
 	rh := v1.Group("/host")
 	{

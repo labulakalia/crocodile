@@ -168,14 +168,6 @@ func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 	if len(hosts) != 1 {
 		return nil, errors.New("can not find hostid")
 	}
-	host := hosts[0]
-	if host.Online == 0 {
-		return nil, fmt.Errorf("host %s is not online", host.Addr)
-	}
-	if host.Stop == 0 {
-		return nil, fmt.Errorf("host %s is stop", host.Addr)
-	}
-
 	return hosts[0], nil
 }
 
@@ -203,6 +195,20 @@ func DeleteHost(ctx context.Context, hostid string) error {
 	err := StopHost(ctx, hostid, 0)
 	if err != nil {
 		return errors.Wrap(err, "StopHost")
+	}
+	deletehostsql := `DELETE FROM crocodile_host WHERE id=?`
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+	stmt, err := conn.PrepareContext(ctx, deletehostsql)
+	if err != nil {
+		return errors.Wrap(err, "conn.PrepareContext")
+	}
+	_, err = stmt.ExecContext(ctx, hostid)
+	if err != nil {
+		return errors.Wrap(err, "stmt.ExecContext")
 	}
 	go deleteHostFromHostGroup(hostid)
 	return nil
@@ -238,9 +244,8 @@ func deletefromslice(deleteid string, ids []string) ([]string, bool) {
 	}
 	if existid == -1 {
 		// no found delete id
-		return nil,false
+		return ids,false
 	}
-	ids = append(ids[:existid-1],ids[existid:]...)
+	ids = append(ids[:existid],ids[existid+1:]...)
 	return ids, true
 }
-

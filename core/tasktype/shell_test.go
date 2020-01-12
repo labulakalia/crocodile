@@ -1,27 +1,49 @@
 package tasktype
 
 import (
+	"bytes"
+
 	"context"
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
 	"testing"
-	"time"
 )
 
 func TestDataShell_Run(t *testing.T) {
 	var data TaskRuner = &DataShell{
-		Name: "ls",
+		Command: "ping 127.0.0.1 -c 3",
 	}
-	resp := data.Run(context.Background())
-	t.Log(resp)
-}
-
-func TestDataApi_Run(t *testing.T) {
-	//var data TaskRuner = &DataApi{
-	//	Url:"http://httpbin.org",
-	//	Method:"GET",
-	//}
-	//resp := data.Run(context.Background())
-	//t.Log(resp)
-
-	t.Log(time.Now().UnixNano() / 1e6)
-	t.Log(time.Now().Unix())
+	reader := data.Run(context.Background())
+	defer reader.Close()
+	var (
+		lastrecv []byte
+		out      = make([]byte, 1024)
+		buf      bytes.Buffer
+	)
+	for {
+		n, err := reader.Read(out)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Error(err)
+			break
+		}
+		if n > 0 {
+			fmt.Printf("%s", out[:n])
+			lastrecv = out[:n]
+			buf.Write(out[:n])
+		}
+	}
+	code, err := strconv.Atoi(strings.TrimLeft(string(lastrecv), " "))
+	if err != nil {
+		t.Errorf("change str %s to int failed", strings.TrimLeft(string(lastrecv), " "))
+		return
+	}
+	buf.Truncate(len(buf.Bytes()) - 4) // remove return code in run write
+	if code != 0 {
+		t.Errorf("status code is %d, not 0", code)
+	}
 }

@@ -241,6 +241,7 @@ func GetTask(c *gin.Context) {
 
 // RunTask start run task now
 // PUT /api/v1/task/run
+// {"id": id}
 func RunTask(c *gin.Context) {
 	runtask := define.GetTaskid{}
 	err := c.ShouldBindJSON(&runtask)
@@ -257,7 +258,8 @@ func RunTask(c *gin.Context) {
 }
 
 // KillTask kill running task
-// PUT /api/v1/task/kill/:id
+// PUT /api/v1/task/kill
+// {"id": id}
 func KillTask(c *gin.Context) {
 	runtask := define.GetTaskid{}
 	err := c.ShouldBindJSON(&runtask)
@@ -296,4 +298,11 @@ func LogTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrInternalServer, nil)
 	}
 	resp.JSON(c, resp.Success, logs)
+}
+
+
+// RealTimeLogTask return real time log 
+// GET /api/v1/task/log/ws?id=ididididid
+func RealTimeLogTask(c *gin.Context) {
+	resp.JSON(c, resp.Success, nil)
 }

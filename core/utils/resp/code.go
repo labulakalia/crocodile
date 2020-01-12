@@ -5,7 +5,7 @@ const (
 	Success = 0
 	// ErrBadRequest 非法请求
 	ErrBadRequest   = 10400
-	// ErrUnauthorized 请求参数错误
+	// ErrUnauthorized 非法请求
 	ErrUnauthorized = 10401
 	// ErrUserPassword 请求参数错误
 	ErrUserPassword  = 10402
@@ -27,14 +27,16 @@ const (
 	ErrHostgroupExist    = 10418
 	// ErrHostgroupNotExist 主机组不存在
 	ErrHostgroupNotExist = 10419
+	// ErrHostNotDeleteNeedDown 请先将worker下线后再删除
+	ErrHostNotDeleteNeedDown = 10429
 
 	// ErrInternalServer 服务端错误
 	ErrInternalServer = 10500
+	// ErrCtxDeadlineExceeded 调用超时
+	ErrCtxDeadlineExceeded = 10600
+	// ErrCtxCanceled 取消调用
+	ErrCtxCanceled         = 10601
 
-	// ErrRPCDeadlineExceeded 调用超时
-	ErrRPCDeadlineExceeded = 10600
-	// ErrRPCCanceled 取消调用
-	ErrRPCCanceled         = 10601
 	// ErrRPCUnauthenticated  密钥认证失败
 	ErrRPCUnauthenticated  = 10602
 	// ErrRPCUnavailable 调用对端不可用

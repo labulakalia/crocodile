@@ -3,6 +3,10 @@ package schedule
 import (
 	"context"
 	"fmt"
+	"io"
+	"net"
+	"strings"
+
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/model"
 	pb "github.com/labulaka521/crocodile/core/proto"
@@ -10,9 +14,9 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/peer"
-	"net"
-	"strings"
 )
+
+var _ pb.TaskServer = &TaskService{}
 
 // TaskService implementation proto task interface
 type TaskService struct {
@@ -20,24 +24,48 @@ type TaskService struct {
 }
 
 // RunTask run task by rpc
-func (ts *TaskService) RunTask(ctx context.Context, t *pb.TaskReq) (*pb.TaskResp, error) {
-	log.Info("runTask", zap.Any("task", t))
-	var (
-		taskresp *pb.TaskResp
-	)
-	r, err := tasktype.GetDataRun(t)
+// if start run,every output must be output by stream.Send
+// return err must be err
+func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) error {
+	log.Info("runTask", zap.Any("task", req.GetTaskId()))
+	
+	r, err := tasktype.GetDataRun(req)
 	if err != nil {
-		taskresp = &pb.TaskResp{
-			Code:     -1,
-			ErrMsg:   []byte(err.Error()),
-			RespData: nil,
+		err = stream.Send(&pb.TaskResp{Resp: []byte(err.Error())})
+		if err != nil {
+			log.Error("Send failed", zap.Error(err))
 		}
-		return taskresp, err
+		return nil
 	}
-	taskresp = r.Run(ctx)
-	log.Info("TaskResp", zap.Any("resp", taskresp))
-	return taskresp, nil
+
+	out := r.Run(stream.Context())
+	defer out.Close()
+	var buf = make([]byte, 1024)
+	for {
+		n, err := out.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			// if read failed please send default err code -1
+			log.Error("Read failed From", zap.Error(err))
+			err = stream.Send(&pb.TaskResp{Resp: []byte(err.Error() + fmt.Sprintf("%3d", tasktype.DefaultExitCode))})
+			if err != nil {
+				log.Error("Send failed", zap.Error(err))
+			}
+			return nil
+		}
+		if n > 0 {
+			resp := pb.TaskResp{Resp: buf[:n]}
+			err = stream.Send(&resp)
+			if err != nil {
+				log.Error("stream.Send failed", zap.Error(err))
+			}
+		}
+	}
 }
+
+
 
 // HeartbeatService implementation proto Heartbeat interface
 type HeartbeatService struct {

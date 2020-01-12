@@ -2,31 +2,39 @@ package schedule
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"time"
-
-	"github.com/labulaka521/crocodile/core/config"
-	"github.com/labulaka521/crocodile/core/model"
-	"github.com/labulaka521/crocodile/core/utils/resp"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/status"
-	"os"
-
+	"fmt"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/cert"
+	"github.com/labulaka521/crocodile/core/config"
+	"github.com/labulaka521/crocodile/core/middleware"
+	"github.com/labulaka521/crocodile/core/model"
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"sync"
-
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/labulaka521/crocodile/core/utils/resp"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
+	"os"
+	"sync"
+	"time"
 )
 
-// rpc conn control
+
+const (
+	// RPC connect timeout
+	defaultRPCTimeout       = time.Second * 3
+	// worker send hearbeat ttl
+	defaultHearbeatInterval = time.Second * 5
+)
+
+
 var (
+	// rpc conn control
 	cachegRPCConnM *cachegRPCConn
 )
 
@@ -41,51 +49,45 @@ type cachegRPCConn struct {
 	conn map[string]*grpc.ClientConn
 }
 
-func (cg *cachegRPCConn) GetgRPCClientConn(addr string) *grpc.ClientConn {
+// getgRPCClientConn return conn or nil
+func (cg *cachegRPCConn) getgRPCClientConn(addr string) *grpc.ClientConn {
 	cg.Lock()
 	conn, exist := cg.conn[addr]
 	cg.Unlock()
-	if exist {
+	if exist && conn.GetState() == connectivity.Ready {
 		return conn
 	}
+	conn.Close()
 	return nil
 }
 
 func (cg *cachegRPCConn) addgRPCClientConn(addr string, conn *grpc.ClientConn) {
-	if cg.GetgRPCClientConn(addr) != nil {
-		return
-	}
 	cg.Lock()
 	cg.conn[addr] = conn
 	cg.Unlock()
 }
 
 // NewgRPCConn Get Grpc Client Conn
-func NewgRPCConn(addr string) (*grpc.ClientConn, error) {
-
-	conn := cachegRPCConnM.GetgRPCClientConn(addr)
+func NewgRPCConn(ctx context.Context,addr string) (*grpc.ClientConn, error) {
+	conn := cachegRPCConnM.getgRPCClientConn(addr)
 	if conn != nil {
 		return conn, nil
 	}
-	//cp := x509.NewCertPool()
-	//if !cp.AppendCertsFromPEM([]byte(texttls.TlsPemContext)) {
-	//	return nil, fmt.Errorf("credentials: failed to append certificates")
-	//}
-	//c := credentials.NewTLS(&tls.Config{ServerName: texttls.ServerName, RootCAs: cp})
 
 	c, err := credentials.NewClientTLSFromFile(config.CoreConf.Cert.CertFile, cert.ServerName)
 	if err != nil {
 		log.Error("credentials.NewClientTLSFromFile failed", zap.Error(err))
 		return nil, err
 	}
-
-	conn, err = grpc.Dial(addr, grpc.WithTransportCredentials(c),
+	rpcctx, cancel := context.WithTimeout(ctx, defaultRPCTimeout)
+	defer cancel()
+	conn, err = grpc.DialContext(rpcctx, addr, grpc.WithTransportCredentials(c),
 		grpc.WithPerRPCCredentials(
-			&Auth{SecretToken: config.CoreConf.SecretToken}))
-
+			&Auth{SecretToken: config.CoreConf.SecretToken},
+		),
+		grpc.WithBlock())
 	if err != nil {
-		log.Error("grpc.Dial", zap.String("error", err.Error()))
-		return nil, err
+		return nil, errors.Wrap(err, "grpc.DialContext")
 	}
 	cachegRPCConnM.addgRPCClientConn(addr, conn)
 	return conn, nil
@@ -101,9 +103,9 @@ func NewgRPCServer(mode define.RunMode) (*grpc.Server, error) {
 	auth := Auth{SecretToken: config.CoreConf.SecretToken}
 	grpcserver := grpc.NewServer(grpc.Creds(c),
 		grpc_middleware.WithUnaryServerChain(
-			RecoveryInterceptor,
-			LoggerInterceptor,
-			CheckSecretInterceptor,
+			middleware.RecoveryInterceptor,
+			middleware.LoggerInterceptor,
+			middleware.CheckSecretInterceptor,
 		),
 	)
 	switch mode {
@@ -133,8 +135,18 @@ func (a *Auth) RequireTransportSecurity() bool {
 	return true
 }
 
+// try Get grpc client conn
+// TODO
+// 调度算法
+// - 随机
+// - 最少任务数
+// - 权重
+// - 轮询执行
 // get rpc conn
 func tryGetRCCConn(ctx context.Context, hg *define.HostGroup) (*grpc.ClientConn, error) {
+	queryctx, querycancel := context.WithTimeout(ctx,
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer querycancel()
 	i := 0
 	for i < len(hg.HostsID) {
 		i++
@@ -144,29 +156,37 @@ func tryGetRCCConn(ctx context.Context, hg *define.HostGroup) (*grpc.ClientConn,
 			continue
 		}
 
-		host, err := model.GetHostByID(ctx, hostid)
+		host, err := model.GetHostByID(queryctx, hostid)
 		if err != nil {
 			log.Error("model.GetHostByID failed", zap.String("error", err.Error()))
 			continue
 		}
 
-		conn, err := NewgRPCConn(host.Addr)
+		if host.Online == 0 {
+			log.Warn("host is offline", zap.String("addr", host.Addr))
+			continue
+		}
+		if host.Stop == 1 {
+			log.Warn("host is stop worker", zap.String("addr", host.Addr))
+			continue
+		}
+		conn, err := NewgRPCConn(ctx,host.Addr)
 		if err != nil {
 			log.Error("GetRpcConn failed", zap.String("error", err.Error()))
 			continue
 		}
-		// idle
-		if conn.GetState() <= connectivity.Ready {
+		// when only conn is Ready, direct return this conn,otherse
+		if conn.GetState() == connectivity.Ready {
 			return conn, nil
 		}
 		conn.Close()
 	}
-	return nil, errors.New("can not get valid grpc conn")
+	return nil, fmt.Errorf("can not get valid grpc conn from hostgroup: %s",hg.Name)
 }
 
 // RegistryClient registry client to server
 func RegistryClient(version string, port int) error {
-	conn, err := NewgRPCConn(config.CoreConf.Client.ServerAddr)
+	conn, err := NewgRPCConn(context.Background(),config.CoreConf.Client.ServerAddr)
 	if err != nil {
 		return err
 	}
@@ -214,9 +234,9 @@ func dealRPCErr(err error) int {
 	if ok {
 		switch statusErr.Code() {
 		case codes.DeadlineExceeded:
-			return resp.ErrRPCDeadlineExceeded
+			return resp.ErrCtxDeadlineExceeded
 		case codes.Canceled:
-			return resp.ErrRPCCanceled
+			return resp.ErrCtxCanceled
 		case codes.Unauthenticated:
 			return resp.ErrRPCUnauthenticated
 		case codes.Unavailable:

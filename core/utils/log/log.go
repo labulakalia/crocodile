@@ -21,7 +21,7 @@ func Init() {
 		log.Format(logcfg.Format),
 	)
 	if err != nil {
-		fmt.Printf("InitLog failed: %v", err)
+		fmt.Printf("InitLog failed: %v\n", err)
 		os.Exit(1)
 	}
 }

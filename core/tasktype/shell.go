@@ -1,32 +1,68 @@
 package tasktype
 
 import (
+	"bytes"
 	"context"
-	pb "github.com/labulaka521/crocodile/core/proto"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"github.com/labulaka521/crocodile/core/utils/resp"
 )
 
-// DataShell task run shell 
+var _ TaskRuner = &DataShell{}
+
+// DataShell task run shell
 type DataShell struct {
-	Name string   `json:"name"`
-	Args []string `json:"args"`
+	Command string `json:"command"`
 }
+
 
 // Run implment TaskRuner
 // run shell command
-// do not return error
-func (ds *DataShell) Run(ctx context.Context) (resp *pb.TaskResp) {
-	shell := os.Getenv("SHELL")
-	resp = &pb.TaskResp{}
-	cmd := exec.CommandContext(ctx, shell, "-c", ds.Name)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		resp.Code = -1
-		resp.ErrMsg = []byte(err.Error())
-		return resp
-	}
-	resp.RespData = output
-	resp.Code = 0
-	return resp
+// return io.ReadCloser
+func (ds *DataShell)Run(ctx context.Context) io.ReadCloser {
+	pr, pw := io.Pipe()
+	go func() {
+		var exitCode = DefaultExitCode
+		defer pw.Close()
+		defer func() {
+			pw.Write([]byte(fmt.Sprintf("%3d", exitCode))) // write exitCode,total 3 byte
+		}()
+		// tell the command to write to our pipe
+		shell := os.Getenv("SHELL")
+
+		cmd := exec.CommandContext(ctx, shell, "-c", ds.Command)
+		cmd.Stdout = pw
+		cmd.Stderr = pw
+		err := cmd.Start()
+		if err != nil {
+			pw.Write([]byte(err.Error()))
+			return
+		}
+
+		err = cmd.Wait()
+		if err != nil {
+			var customerr bytes.Buffer
+			// deal err
+			// if context err,will change err to custom msg
+			switch ctx.Err() {
+			case context.DeadlineExceeded:
+				customerr.WriteString(resp.GetMsg(resp.ErrCtxDeadlineExceeded))
+			case context.Canceled:
+				customerr.WriteString(resp.GetMsg(resp.ErrCtxCanceled))
+			default:
+				customerr.WriteString(err.Error())
+			}
+			pw.Write(customerr.Bytes())
+			// try to get the exit code
+			if exitError, ok := err.(*exec.ExitError); ok {
+				exitCode = exitError.ExitCode()
+			}
+		} else {
+			exitCode = 0
+		}
+
+	}()
+	return pr
 }

@@ -4,7 +4,7 @@ CREATE TABLE crocodile_host (
                                 addr VARCHAR(20) UNIQUE NOT NULL,
                                 hostname VARCHAR(10) NOT NULL,
                                 runingTasks TEXT DEFAULT '',
-                                stop INT DEFAULT 1,
+                                stop INT DEFAULT 0,
                                 version VARCHAR(10) NOT NULL,
                                 lastUpdateTimeUnix INT NOT NULL
 )

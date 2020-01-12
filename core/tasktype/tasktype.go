@@ -4,27 +4,34 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/utils/define"
 )
 
+const (
+	// DefaultExitCode default err code if not get run task code
+	DefaultExitCode int = -1
+)
+
 // TaskRuner run task interface
+// Please Implment io.ReadCloser
+// reader last 3 byte must be exit code
 type TaskRuner interface {
-	Run(ctx context.Context) *pb.TaskResp
+	Run(ctx context.Context) (out io.ReadCloser)
 }
 
-// GetDataRun get task type 
+// GetDataRun get task type
 // get api or shell
 func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
+
 	switch define.TaskType(t.TaskType) {
 	case define.Shell:
 		var shell DataShell
 		err := json.Unmarshal(t.TaskData, &shell)
 		if err != nil {
 			return nil, err
-		}
-		if len(shell.Args) == 0 {
-			shell.Args = []string{}
 		}
 		return &shell, err
 

@@ -40,7 +40,7 @@ func Client(version string) *cobra.Command {
 			intport, _ := strconv.Atoi(port)
 			err = schedule.RegistryClient(version, intport)
 			if err != nil {
-				log.Fatal("RegistryClient failed", zap.String("error", err.Error()))
+				log.Fatal("RegistryClient failed", zap.String("error", err.Error()))		
 			}
 			err = router.Run(define.Client, lis)
 			if err != nil {

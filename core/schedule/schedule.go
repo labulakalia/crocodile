@@ -1,22 +1,26 @@
 package schedule
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"sync"
+	"time"
+
+	"github.com/labulaka521/crocodile/common/errgroup"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
+	"github.com/labulaka521/crocodile/core/alarm"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	pb "github.com/labulaka521/crocodile/core/proto"
+	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/labulaka521/crocodile/core/utils/resp"
-	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
-	"sync"
-	"time"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -24,24 +28,32 @@ var (
 	Cron *cacheSchedule
 )
 
-const (
-	defaultRPCTimeout       = time.Second * 3
-	defaultHearbeatInterval = time.Second * 50
-)
-
+// task running status
 type task struct {
+	sync.RWMutex
+	once sync.Once
 	name      string
 	cronexpr  string
-	close     chan struct{} // stop schedule
-	running   bool          // task is running
-	ctxcancel context.CancelFunc
-	starttime int64 // run task time(ms)
+	close     chan struct{}        // stop schedule
+	running   bool                 // task is running
+	ctxcancel context.CancelFunc   // store cancelfunc could cancel all task by this cancel
+	starttime int64                // run task time(ms)
+	endtime   int64                // end run task time(ms)
+	logcaches map[string]LogCacher // task runing logcaches
+
+	// // unexpectlogcache LogCacher            // unexecpt log,if has log, will exist bug
+	// runninghost     string              // current run task on host
+	// runningtask     string              // running task id parent,master,child task
+	// runningtasktype define.TaskRespType // running task id parent,master,child task type
+	errTaskID   string              // run fail task's id
+	errCode     int                 // failed task return code
+	errMsg      string              // task run failed errmsg
+	errTasktype define.TaskRespType // failed task type
 }
 
 type cacheSchedule struct {
 	sync.RWMutex
-	sch  map[string]*task
-	sch1 sync.Map
+	sch map[string]*task
 }
 
 // Init start run already exists task from db
@@ -80,10 +92,14 @@ func (s *cacheSchedule) Add(taskID, taskName string, cronExpr string) {
 	go s.runSchedule(taskID)
 }
 
-// del schedule
+// Del schedule task
+// if delete taskid,this taskid must be remove from other task's child or parent
 func (s *cacheSchedule) Del(id string) {
 	t, ok := s.gettask(id)
 	if ok {
+		if t.running && t.ctxcancel != nil {
+			t.ctxcancel()
+		}
 		s.Lock()
 		close(t.close)
 		delete(s.sch, id)
@@ -110,20 +126,20 @@ func (s *cacheSchedule) gettask(id string) (*task, bool) {
 	s.RLock()
 	defer s.RUnlock()
 	t, ok := s.sch[id]
+	if ok && t.logcaches == nil {
+		t.logcaches = make(map[string]LogCacher)
+	}
 	return t, ok
 }
 
-// add context cancel func to task
-func (s *cacheSchedule) addctxcancel(taskid string, cancel context.CancelFunc) {
-	t, exist := s.gettask(taskid)
-	if !exist {
-		log.Error("addctxcancel failed,task is not exist", zap.String("taskid", taskid))
-		return
-	}
-	t.ctxcancel = cancel
+// saveLog save task resp log
+func (s *cacheSchedule) saveLog(t *task) error {
+	// read all log
+	// put logcache to locachepool
+	return nil
 }
 
-// start run cronexpr schedule
+// runSchedule start run cronexpr schedule
 func (s *cacheSchedule) runSchedule(taskid string) {
 	t, exist := s.gettask(taskid)
 	if !exist {
@@ -149,192 +165,296 @@ func (s *cacheSchedule) runSchedule(taskid string) {
 	}
 }
 
+// RunTask start run a task
 func (s *cacheSchedule) RunTask(taskid string) {
+	var masterlogcache LogCacher
 	log.Info("start run task", zap.String("taskid", taskid))
+	masterlogcache = cachepool.Get().(LogCacher) // this log cache is main
 	t, exist := s.gettask(taskid)
 	if !exist {
-		log.Error("taskid not exist", zap.String("taskid", taskid))
+		log.Error("this is bug, taskid not exist", zap.String("taskid", taskid), zap.Any("sch", s.sch))
+		// logcache.WriteStringf("taskid %s not exist", taskid)
+		cachepool.Put(masterlogcache)
 		return
 	}
+	t.Lock()
+	t.logcaches[taskid] = masterlogcache
+	t.Unlock()
 
+	// if master task is running,will do not run this time
 	if t.running {
 		log.Info("task is running,so not run now", zap.String("taskid", taskid))
+		masterlogcache.WriteStringf("taskid %s is running, so not run now", taskid)
 		return
 	}
 	t.running = true
 	t.starttime = time.Now().Unix()
 	defer func() {
 		t.running = false
+		t.endtime = time.Now().Unix()
 	}()
-	tasklog, err := s.runTaskReal(taskid)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// save control ctx
+	t.ctxcancel = cancel
+	task, err := model.GetTaskByID(context.Background(), taskid)
 	if err != nil {
-		log.Error("runtask failed", zap.String("taskid", taskid), zap.String("error", err.Error()))
+		log.Error("model.GettaskById failed", zap.String("id", taskid), zap.Error(err))
+		masterlogcache.WriteStringf("can not get task %s from db", taskid)
 		return
 	}
-	err = model.SaveLog(context.Background(), tasklog)
-	if err != nil {
-		log.Error("model.SaveLog failed", zap.String("error", err.Error()))
-		return
-	}
-}
 
-// start run task by execplanid
-func (s *cacheSchedule) runTaskReal(id string) (*define.Log, error) {
-	ctx, cancel := context.WithTimeout(context.Background(),
-		config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	defer cancel()
-	startTime := time.Now().UnixNano() / 1e6
-	task, err := model.GetTaskByID(ctx, id)
-	if err != nil {
-		return nil, errors.Wrap(err, "model.GetTaskByID")
-	}
-
-	resplog := define.Log{
-		RunByTaskID: id,
-	}
-
+	// TODO delete judge run, onlu use it in cron
 	if task.Run == 0 {
-		return nil, errors.New(fmt.Sprintf("task %s forbid run", id))
-	}
-	// start run parent task
-	if len(task.ParentTaskIds) != 0 {
-		log.Info("start Run parenttasks", zap.Strings("taskids", task.ParentTaskIds))
-		parentresplogs := s.runMultiTasks(task.ParentRunParallel, define.ParentTask, task.ParentTaskIds...)
-		resplog.TaskResps = append(resplog.TaskResps, parentresplogs...)
-	}
-	// start run task
-	log.Info("start run main task", zap.String("taskid", task.ID))
-	runresp := s.runTask(task.ID, define.MasterTask)
-	resplog.TaskResps = append(resplog.TaskResps, runresp)
-	// start run childtasks
-	if len(task.ChildTaskIds) != 0 {
-		log.Info("start sun childtasks", zap.Strings("taskids", task.ChildTaskIds))
-		childresplogs := s.runMultiTasks(task.ChildRunParallel, define.ChildTask, task.ChildTaskIds...)
-		resplog.TaskResps = append(resplog.TaskResps, childresplogs...)
+		log.Error("model.GettaskById failed", zap.Error(err))
+		masterlogcache.WriteStringf("task %s[%s] is forbid run", task.Name, taskid)
+		return
 	}
 
-	endTime := time.Now().UnixNano() / 1e6
-	resplog.StartTime = startTime
-	resplog.EndTime = endTime
-	return &resplog, nil
+	// if exist a err task,will stop all task
+	g := errgroup.WithCancel(ctx)
+	g.GOMAXPROCS(1)
+	// parent tasks
+	g.Go(func(ctx context.Context) error {
+		return s.runMultiTasks(ctx, task.ParentRunParallel, define.ParentTask, task.ID, task.ParentTaskIds...)
+	})
+	// master task
+	g.Go(func(ctx context.Context) error {
+		return s.runTask(ctx, task.ID, task.ID, define.MasterTask)
+	})
+	// childs task
+	g.Go(func(ctx context.Context) error {
+		return s.runMultiTasks(ctx, task.ChildRunParallel, define.ChildTask, task.ID, task.ChildTaskIds...)
+	})
+	err = g.Wait()
+	if err != nil {
+		log.Error("run failed", zap.Error(err))
+	}
+	// TODO save log
+	s.saveLog(t)
 }
 
 // run multi tasks
-func (s *cacheSchedule) runMultiTasks(RunParallel int, tasktype define.TaskRespType, taskids ...string) []*define.TaskResp {
-	taskresp := make([]*define.TaskResp, 0, len(taskids))
-
-	if RunParallel == 1 {
-		var wg sync.WaitGroup
-		wg.Add(len(taskids))
-		for _, id := range taskids {
-			go func(id string) {
-				runresp := s.runTask(id, tasktype)
-				taskresp = append(taskresp, runresp)
-				wg.Done()
-			}(id)
-		}
-		wg.Wait()
-	} else {
-		for _, id := range taskids {
-			runresp := s.runTask(id, tasktype)
-			taskresp = append(taskresp, runresp)
-		}
+// if hash one task err, will exit all task
+// TODO: task run err whether influence  other task
+// TODO: multi task set RunParallel total
+func (s *cacheSchedule) runMultiTasks(ctx context.Context, RunParallel int,
+	tasktype define.TaskRespType, runbyid string, taskids ...string) error {
+	if len(taskids) == 0 {
+		return nil
 	}
-
-	return taskresp
-
+	log.Info("Start Run Task", zap.Strings("taskids", taskids), zap.String("tasktype", tasktype.String()))
+	var maxproc int
+	if RunParallel == 1 {
+		maxproc = len(taskids)
+	} else {
+		maxproc = 1
+	}
+	g := errgroup.WithCancel(ctx)
+	g.GOMAXPROCS(maxproc)
+	for _, id := range taskids {
+		g.Go(func(ctx context.Context) error {
+			return s.runTask(ctx, id, runbyid, tasktype)
+		})
+	}
+	err := g.Wait()
+	return err
 }
 
-// realy run task
-func (s *cacheSchedule) runTask(id string, tasktype define.TaskRespType) *define.TaskResp {
-	taskresp := &define.TaskResp{
-		TaskID:   id,
-		Code:     resp.ErrInternalServer,
-		ErrMsg:   resp.GetMsg(resp.ErrInternalServer),
-		TaskType: tasktype,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(),
-		config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	defer cancel()
-
-	task, err := model.GetTaskByID(ctx, id)
-	if err != nil {
-		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
-		return taskresp
-	}
-
-	hg, err := model.GetHostGroupID(ctx, task.HostGroupID)
-	if err != nil {
-		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
-		return taskresp
-	}
-
-	if len(hg.HostsID) == 0 {
-		taskresp.Code = resp.ErrRPCNotValidHost
-		taskresp.ErrMsg = resp.GetMsg(resp.ErrRPCNotValidHost)
-		return taskresp
-	}
-
-	conn, err := tryGetRCCConn(ctx, hg)
-	if err != nil {
-		log.Error("tryGetRpcConn failed", zap.String("error", err.Error()))
-		taskresp.Code = resp.ErrRPCNotConnHost
-		taskresp.ErrMsg = resp.GetMsg(resp.ErrRPCNotConnHost)
-		return taskresp
-	}
-
-	tdata, err := json.Marshal(task.TaskData)
-	if err != nil {
-		log.Error("json.Marshal", zap.Error(err))
-		return taskresp
-	}
-	taskreq := &pb.TaskReq{
-		TaskId:   task.ID,
-		TaskType: int32(task.TaskType),
-		TaskData: tdata,
-		Timeout:  int32(task.Timeout),
-	}
+// runTask start run task,log will store
+func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
+	runbyid /*run by id*/ string, taskresptype define.TaskRespType) error {
 	var (
-		taskcancel context.CancelFunc
+		// real need task status
+		// realtask *task
+		logcache LogCacher
+
+		// recverr      error
+		taskrespcode = tasktype.DefaultExitCode
+		// recv grpc stream
+		taskresp *pb.TaskResp
+		// error
+		err error
+		// task data
+		taskdata *define.Task
+		// task's hostgroup
+		hg *define.HostGroup
+		// worker conn
+		conn *grpc.ClientConn
+		// task run data
+		tdata []byte
+		// recv grpc stream
+		taskrespstream pb.Task_RunTaskClient
+		// grpc client
+		taskclient pb.TaskClient
+		taskreq    *pb.TaskReq
+		cancel     context.CancelFunc
 		taskctx    context.Context
 	)
+	var output []byte
+	// whenn func exit,check res and judge whatever alarm
 
-	if task.Timeout > 0 {
-		taskctx, taskcancel = context.WithTimeout(context.Background(), time.Second*time.Duration(task.Timeout))
-
-	} else {
-		taskctx, taskcancel = context.WithCancel(context.Background())
+	runbytask, exist := s.gettask(runbyid)
+	if !exist {
+		// if happen,this is a bug,
+		log.Error("this is a bug,task should exist,but can not get task,", zap.String("taskid", runbyid), zap.Any("allschedule", s.sch))
+		err = fmt.Errorf("[bug] can not get taskid %s from schuedle: %v", id, s.sch)
+		return err
 	}
-	s.addctxcancel(task.ID, taskcancel)
-	var errmsg []byte
-	taskclient := pb.NewTaskClient(conn)
-	rpcTaskResp, err := taskclient.RunTask(taskctx, taskreq)
+	if taskresptype == define.MasterTask {
+		runbytask.RLock()
+		logcache, exist = runbytask.logcaches[id]
+		runbytask.RUnlock()
+		if !exist {
+			// it happen,it is a bug
+			warnbug := fmt.Sprintf("[bug] can get master task's %s logcache from logcaches: %v", id, runbytask.logcaches)
+			log.Error(warnbug)
+			logcache = cachepool.Get().(LogCacher)
+			logcache.WriteString(warnbug)
+			runbytask.Lock()
+			runbytask.logcaches[id] = logcache
+			runbytask.Unlock()
+		}
+	} else {
+		logcache = cachepool.Get().(LogCacher)
+		runbytask.Lock()
+		runbytask.logcaches[id] = logcache
+		runbytask.Unlock()
+	}
 
+
+	queryctx, querycancel := context.WithTimeout(ctx,
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer querycancel()
+
+
+	// TODO cache task run data and hostgroup
+	taskdata, err = model.GetTaskByID(queryctx, id)
 	if err != nil {
-		log.Error("RunTask failed", zap.Error(err))
-		errcode := dealRPCErr(err)
-		taskresp.Code = int32(errcode)
-		taskresp.ErrMsg = resp.GetMsg(errcode)
+		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
+		logcache.WriteStringf("Get Task id %s failed: %v", id, err)
+		// return err
+		goto Check
+	}
+	logcache.WriteStringf("Start Prepare Task %s[%s]", taskdata.Name, id)
+	logcache.WriteStringf("Start Conn Worker Host For Task %s[%s]", taskdata.Name, id)
+	// Get hsotgroup
+	hg, err = model.GetHostGroupID(queryctx, taskdata.HostGroupID)
+	if err != nil {
+		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
+		logcache.WriteStringf("Get Task %s[%s]'s HostGroup failed: %v", taskdata.Name, id, err)
+		goto Check
+	}
+	// check hostgroup
+	if len(hg.HostsID) == 0 {
+		err = fmt.Errorf("HostGroup %s[%s] not valid worker", hg.Name, taskdata.HostGroupID)
+		log.Error("Get failed", zap.Error(err))
+		logcache.WriteString(err.Error())
+		goto Check
+	}
+	// try conn hg's host
+	conn, err = tryGetRCCConn(ctx, hg)
+	if err != nil {
+		log.Error("tryGetRpcConn failed", zap.String("error", err.Error()))
+		logcache.WriteStringf("Get Conn from hostgroup %s[%s] failed: %v", taskdata.HostGroupID, hg.Name, err)
+		goto Check
+	}
+	// runbytask.runninghost = conn.Target()
+
+	logcache.WriteStringf("Success Conn Worker Host[%s]", conn.Target())
+
+	logcache.WriteStringf("Start Get Task %s[%s] Run Data", taskdata.Name, id)
+	// Marshal task data
+	tdata, err = json.Marshal(taskdata.TaskData)
+	if err != nil {
+		log.Error("json.Marshal", zap.Error(err))
+		logcache.WriteStringf("Marshal task %s[%s]'s RunData [%v] failed: %v", taskdata.Name, id, taskdata.TaskData, err)
+		goto Check
+	}
+
+	// task run data
+	taskreq = &pb.TaskReq{
+		TaskId:   id,
+		TaskType: int32(taskdata.TaskType),
+		TaskData: tdata,
+	}
+
+	logcache.WriteStringf("Success Get Task %s[%s] Run Data ", taskdata.Name, id)
+
+	logcache.WriteStringf("Start Run Task %s[%s] On Host[%s]", taskdata.Name, id, conn.Target())
+
+	// taskctx only use RunTask
+	if taskdata.Timeout > 0 {
+		taskctx, cancel = context.WithTimeout(ctx, time.Second*time.Duration(taskdata.Timeout))
 	} else {
-		var genresp bytes.Buffer
-		errmsg = rpcTaskResp.ErrMsg
-		genresp.Write(rpcTaskResp.RespData)
-		taskresp.RespData = genresp.String()
-		genresp.Reset()
-
-		genresp.Write(rpcTaskResp.ErrMsg)
-		taskresp.ErrMsg = genresp.String()
-		taskresp.Code = rpcTaskResp.Code
-	}
-	if errmsg == nil {
-		errmsg = []byte("")
+		taskctx, cancel = context.WithCancel(ctx)
 	}
 
-	taskresp.WorkerHost = conn.Target()
-	return taskresp
+	defer cancel()
+	taskclient = pb.NewTaskClient(conn)
+
+	taskrespstream, err = taskclient.RunTask(taskctx, taskreq)
+	if err != nil {
+		log.Error("Run task failed", zap.Error(err))
+		logcache.WriteStringf("Run Task %s[%s] TaskData [%v] failed:%v", taskdata.Name, id, taskreq, err)
+		goto Check
+	}
+
+	// RunTask default resp code
+
+	logcache.WriteStringf("---------------- Task %s[%s] Start Output----------------", taskdata.Name, id)
+	// defer logcache.WriteStringf("---------------- Task %s[%s] Start Output----------------", realtask.name, id)
+	for {
+		// Recv return err is nil or io.EOF
+		// the last lastrecv must be return code 3 byte
+		taskresp, err = taskrespstream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+				taskrespcode = logcache.GetCode()
+				break
+			}
+			taskrespcode = dealRPCErr(err)
+
+			logcache.WriteStringf("Task %s[%s] Run Fail: %v", taskdata.Name, id, resp.GetMsg(taskrespcode))
+			// Alarm
+			log.Error("Recv failed", zap.Error(err))
+			err = resp.GetMsgErr(taskrespcode)
+			break
+		}
+		logcache.Write(taskresp.GetResp())
+		output = append(output, taskresp.GetResp()...)
+	}
+	logcache.WriteStringf("---------------- Task %s[%s] End Output-------------------", taskdata.Name, id)
+	// return err
+	goto Check
+Check:
+	var errmsg string
+	if err != nil {
+		errmsg = " Error" + err.Error()
+	}
+	logcache.WriteStringf("\nTask %s[%s] Run Over Return Code: %d"+errmsg, taskdata.Name, id, taskrespcode)
+	
+	var alarmerr error
+	// if a task fail other task will return context.Canceled,but it can not alarm
+	// because the first err task always alarm,so other task do not alarm
+	// and the first err task's errmsg will save tasking
+	runbytask.once.Do(func() {
+		// check task resp
+		alarmerr := alarm.CheckAlarm(id, runbyid, taskresptype, taskrespcode, output, err)
+		if alarmerr != nil {
+			//  task run err
+			runbytask.errTaskID = id
+			runbytask.errCode = taskrespcode
+			runbytask.errMsg = alarmerr.Error()
+			runbytask.errTasktype = taskresptype
+		}
+	})
+
+	return alarmerr
 }
 
-// get all running task
+// GetRunningtask return all running task
 func (s *cacheSchedule) GetRunningtask() []*define.RunTask {
 	runtasks := []*define.RunTask{}
 	s.RLock()
