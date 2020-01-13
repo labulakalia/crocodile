@@ -11,12 +11,21 @@ import (
 )
 
 // SaveLog  save task reps log
-func SaveLog(ctx context.Context, tasklog *define.Log) error {
-	log.Info("start savelog", zap.Any("tasklog", tasklog))
+func SaveLog(ctx context.Context, l *define.Log) error {
+	log.Info("start savelog", zap.Any("tasklog", l))
 	savesql := `INSERT INTO crocodile_log
-    (taskid,starttime,endtime,taskresps)
-	VALUES
-    (?,?,?,?)`
+				(taskid,
+				starttime,
+				endtime,
+				totalruntime,
+				status,
+				taskresps,
+				errcode,
+				errmsg,
+				errtasktype,
+				errtaskid)
+			VALUES
+			(?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
@@ -26,12 +35,14 @@ func SaveLog(ctx context.Context, tasklog *define.Log) error {
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
-	taskresps, err := json.Marshal(tasklog.TaskResps)
+	taskresps, err := json.Marshal(l.TaskResps)
 	if err != nil {
 		return errors.Wrap(err, "json.Marshal")
 	}
-	_, err = stmt.ExecContext(ctx, tasklog.RunByTaskID,
-		tasklog.StartTime, tasklog.EndTime, taskresps)
+	_, err = stmt.ExecContext(ctx, l.RunByTaskID,
+		l.StartTime, l.EndTime, l.TotalRunTime,
+		l.Status, taskresps, l.ErrCode, l.ErrMsg,
+		l.ErrTasktype, l.ErrTaskID)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}

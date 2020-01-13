@@ -24,6 +24,7 @@ func (r Role) String() string {
 // TaskType task type
 // shell
 // api
+// TaskDataType
 type TaskType uint8
 
 const (
@@ -45,6 +46,7 @@ const (
 )
 
 // TaskRespType task type (parent task,master task, child task)
+// TaskRunType
 type TaskRespType uint8
 
 const (
@@ -159,33 +161,41 @@ const (
 	Fail
 )
 
-// TaskResp run task resp message
-type TaskResp struct {
-	TaskType   TaskRespType `json:"task_type"` // 1 主任务 2 父任务 3 子任务
-	TaskID     string       `json:"task_td"`
-	Code       int32        `json:"code"`
-	RespData   string       `json:"resp_data"` // 任务的返回日志
-	Status     resstatus    `json:"status"`    // 任务的执行结果
-	ErrMsg     string       `json:"err_msg"`   // 错误原因
-	WorkerHost string       `json:"worker_host"`
-}
-
 // RunTask running task message
 type RunTask struct {
-	ID            string       `json:"id"`
-	Name          string       `json:"name"`
-	StartTime     string       `json:"start_time"`
-	StartTimeUnix int64        `json:"start_timeunix"`
-	RunTime       int          `json:"run_time"`
-	Tasktype      TaskRespType `json:"tasktype"`
-	RunHost       string       `json:"run_host"`
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	StartTimeStr string       `json:"start_timestr"`
+	StartTime    int64        `json:"start_time"`
+	RunTime      int          `json:"run_time"`
+	Tasktype     TaskRespType `json:"tasktype"`
+	TaskTypeStr  string       `json:"task_typestr"` // 1 主任务 2 父任务 3 子任务
+	RunHost      string       `json:"run_host"`
+}
+
+// TaskResp run task resp message
+type TaskResp struct {
+	TaskID      string       `json:"task_td"`
+	LogData     string       `json:"resp_data"`    // task run log data
+	Code        int          `json:"code"`         // return code
+	TaskType    TaskRespType `json:"task_type"`    // 1 主任务 2 父任务 3 子任务
+	TaskTypeStr string       `json:"task_typestr"` // 1 主任务 2 父任务 3 子任务
+	RunHost     string       `json:"run_host"`     // task run host
 }
 
 // Log task log
 type Log struct {
-	RunByTaskID  string      `json:"run_bytaskId"`
-	TaskResps    []*TaskResp `json:"task_resps"`
-	StartTime    int64       `json:"start_time"`    // ms
-	EndTime      int64       `json:"end_time"`      // ms
-	TotalRunTime int         `json:"total_runtime"` // ms
+	RunByTaskID    string       `json:"run_bytaskId"`
+	StartTime      int64        `json:"start_time"`      // ms
+	StartTimeStr   string       `json:"start_timestr"`   // ms
+	EndTime        int64        `json:"end_timeunix"`    // ms
+	EndTimeStr     string       `json:"end_timestr"`     // ms
+	TotalRunTime   int          `json:"total_runtime"`   // ms
+	Status         int          `json:"status"`          // 任务运行结果 0 失败 1 成功
+	TaskResps      []*TaskResp  `json:"task_resps"`      // 任务执行过程日志
+	ErrCode        int          `json:"err_code"`        // err code
+	ErrMsg         string       `json:"err_msg"`         // 错误原因
+	ErrTasktype    TaskRespType `json:"err_tasktype"`    // err task type
+	ErrTaskTypeStr string       `json:"err_tasktypestr"` // 1 主任务 2 父任务 3 子任务
+	ErrTaskID      string       `json:"err_taskid"`      // task failed id
 }

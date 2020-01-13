@@ -3,12 +3,19 @@ secrettoken = "weinjuwiwiuwu"
 
 # log
 [log]
+# if "" Stdout
 logpath = ""
+# log size (M)
 maxsize = 10
+# compress log
 compress = true
+# log save  time (day)
 maxage =  7
+# save total log file total
 maxbackups = 10
+# log level
 loglevel  = "info"
+# text or json output
 format = "text"
 
 # cert file
@@ -29,6 +36,9 @@ maxhttptime = "10s" # 秒
 
 # crocodile client
 [client]
+# client port
 port = 8081        # default rand port
+# crocodile server addr
 serveraddr = "127.0.0.1:8080"
+# client's hostgroup is exist hostgroup must be exist
 hostgroup = "crocodile_hostgroup"

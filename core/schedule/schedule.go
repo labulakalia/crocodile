@@ -31,7 +31,7 @@ var (
 // task running status
 type task struct {
 	sync.RWMutex
-	once sync.Once
+	once      sync.Once
 	name      string
 	cronexpr  string
 	close     chan struct{}        // stop schedule
@@ -45,6 +45,7 @@ type task struct {
 	// runninghost     string              // current run task on host
 	// runningtask     string              // running task id parent,master,child task
 	// runningtasktype define.TaskRespType // running task id parent,master,child task type
+	status      int                 // task run res fail: 0 success:1
 	errTaskID   string              // run fail task's id
 	errCode     int                 // failed task return code
 	errMsg      string              // task run failed errmsg
@@ -133,10 +134,35 @@ func (s *cacheSchedule) gettask(id string) (*task, bool) {
 }
 
 // saveLog save task resp log
-func (s *cacheSchedule) saveLog(t *task) error {
+func (s *cacheSchedule) saveLog(runbyid string, t *task) error {
 	// read all log
 	// put logcache to locachepool
-	return nil
+	tasklog := &define.Log{
+		RunByTaskID:    runbyid,
+		StartTime:      t.starttime,
+		StartTimeStr:   utils.UnixToStr(t.starttime / 1e3),
+		EndTime:    t.endtime,
+		EndTimeStr:        utils.UnixToStr(t.endtime / 1e3),
+		TotalRunTime:   int(t.endtime - t.starttime),
+		Status:         t.status,
+		ErrCode:        t.errCode,
+		ErrMsg:         t.errMsg,
+		ErrTasktype:    t.errTasktype,
+		ErrTaskTypeStr: t.errTasktype.String(),
+		ErrTaskID:      t.errTaskID,
+		TaskResps: make([]*define.TaskResp,0,len(t.logcaches)),
+	}
+	for id, logcache := range t.logcaches {
+		taskresp := logcache.Get().(define.TaskResp)
+		taskresp.TaskID = id
+		taskresp.TaskType = taskresp.TaskType
+		taskresp.LogData = logcache.ReadAll()
+		tasklog.TaskResps = append(tasklog.TaskResps,&taskresp)
+	}
+	// save log
+	err := model.SaveLog(context.Background(), tasklog)
+
+	return err
 }
 
 // runSchedule start run cronexpr schedule
@@ -188,10 +214,10 @@ func (s *cacheSchedule) RunTask(taskid string) {
 		return
 	}
 	t.running = true
-	t.starttime = time.Now().Unix()
+	t.starttime = time.Now().UnixNano() / 1e6
 	defer func() {
 		t.running = false
-		t.endtime = time.Now().Unix()
+		t.endtime = time.Now().UnixNano() / 1e6
 	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -231,7 +257,10 @@ func (s *cacheSchedule) RunTask(taskid string) {
 		log.Error("run failed", zap.Error(err))
 	}
 	// TODO save log
-	s.saveLog(t)
+	err = s.saveLog(taskid, t)
+	if err != nil {
+		log.Error("save task log failed", zap.Error(err))
+	}
 }
 
 // run multi tasks
@@ -322,11 +351,9 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		runbytask.Unlock()
 	}
 
-
 	queryctx, querycancel := context.WithTimeout(ctx,
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer querycancel()
-
 
 	// TODO cache task run data and hostgroup
 	taskdata, err = model.GetTaskByID(queryctx, id)
@@ -434,7 +461,14 @@ Check:
 		errmsg = " Error" + err.Error()
 	}
 	logcache.WriteStringf("\nTask %s[%s] Run Over Return Code: %d"+errmsg, taskdata.Name, id, taskrespcode)
-	
+	// save taskrespcode,TaskType,RunHost
+	// 5byte 1 byte 
+	tmptaskrep := define.TaskResp{
+		Code: taskrespcode,
+		TaskType: taskresptype,
+		RunHost: conn.Target(),
+	}
+	logcache.Save(tmptaskrep)
 	var alarmerr error
 	// if a task fail other task will return context.Canceled,but it can not alarm
 	// because the first err task always alarm,so other task do not alarm
@@ -444,6 +478,7 @@ Check:
 		alarmerr := alarm.CheckAlarm(id, runbyid, taskresptype, taskrespcode, output, err)
 		if alarmerr != nil {
 			//  task run err
+			runbytask.status = 0 // task fail
 			runbytask.errTaskID = id
 			runbytask.errCode = taskrespcode
 			runbytask.errMsg = alarmerr.Error()
@@ -463,11 +498,11 @@ func (s *cacheSchedule) GetRunningtask() []*define.RunTask {
 			continue
 		}
 		runtask := define.RunTask{
-			ID:            taskid,
-			Name:          task.name,
-			StartTime:     utils.UnixToStr(task.starttime),
-			StartTimeUnix: task.starttime,
-			RunTime:       int(time.Now().Unix() - task.starttime),
+			ID:           taskid,
+			Name:         task.name,
+			StartTimeStr: utils.UnixToStr(task.starttime),
+			StartTime:    task.starttime,
+			RunTime:      int(time.Now().Unix() - task.starttime),
 		}
 		runtasks = append(runtasks, &runtask)
 	}

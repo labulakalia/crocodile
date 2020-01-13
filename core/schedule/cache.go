@@ -55,17 +55,22 @@ type LogCacher interface {
 	// Close will can not Read, and clean buf
 	Close() (err error)
 	// ReadAll data from buf
-	ReadAll() (p []byte, err error)
+	ReadAll() (p string)
 	// GetCode return task return code
 	GetCode() int
+	// SetRunHost save task run host
+	Save(interface{})
+	// GetRunHost task run host addr
+	Get() interface{}
 }
 
 var _ LogCacher = &LogCache{}
 
 // LogCache otehr could read latest data from buf and do not clean it
 type LogCache struct {
-	buf   *bytes.Buffer
-	close bool
+	buf     *bytes.Buffer
+	close   bool
+	runhost interface{}
 }
 
 // NewLogCache return impl LogCache struct
@@ -123,12 +128,13 @@ func (l *LogCache) WriteStringf(tmpl string, args ...interface{}) (n int, err er
 func (l *LogCache) Close() (err error) {
 	l.close = true
 	l.buf.Reset()
+	// logcache.P
 	return
 }
 
 // ReadAll will Get All recv data
-func (l *LogCache) ReadAll() (p []byte, err error) {
-	p = l.buf.Bytes()
+func (l *LogCache) ReadAll() (p string) {
+	p = l.buf.String()
 	return
 }
 
@@ -149,4 +155,14 @@ func (l *LogCache) GetCode() int {
 	log.Error("thia is bug,recv buf is nether than 3, get code failed")
 	return tasktype.DefaultExitCode
 
+}
+
+// Save save task run data 
+func (l *LogCache) Save(data interface{}) {
+	l.runhost = data
+}
+
+// Get task run host data
+func (l *LogCache) Get() interface{} {
+	return l.runhost
 }
