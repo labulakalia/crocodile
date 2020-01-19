@@ -187,7 +187,6 @@ func defaultOption() *logConfig {
 
 // InitLog conf
 func InitLog(opts ...Option) error {
-
 	logcfg := defaultOption()
 	for _, opt := range opts {
 		opt(logcfg)
@@ -201,7 +200,7 @@ func InitLog(opts ...Option) error {
 
 // Debug output log
 func Debug(msg string, fields ...zap.Field) {
-	_logger.Info(msg, fields...)
+	_logger.Debug(msg, fields...)
 }
 
 // Info output log

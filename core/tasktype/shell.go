@@ -31,7 +31,7 @@ func (ds *DataShell)Run(ctx context.Context) io.ReadCloser {
 		}()
 		// tell the command to write to our pipe
 		shell := os.Getenv("SHELL")
-
+		// can run awk
 		cmd := exec.CommandContext(ctx, shell, "-c", ds.Command)
 		cmd.Stdout = pw
 		cmd.Stderr = pw

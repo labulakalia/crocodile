@@ -39,7 +39,8 @@ maxhttptime = "10s" # 秒
 [client]
 port = 8081        # default rand port
 serveraddr = "127.0.0.1:8080"
-hostgroup = "crocodile_hostgroup"`
+hostgroup = "crocodile_hostgroup"
+weight = 100`
 
 func TestInit(t *testing.T) {
 	testfile := "/tmp/crocodile.toml"

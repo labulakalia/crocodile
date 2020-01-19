@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/model"
@@ -16,7 +17,53 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-var _ pb.TaskServer = &TaskService{}
+var (
+	// client need implment
+	_ pb.TaskServer = &TaskService{}
+	// server need implment
+	_ pb.HeartbeatServer = &HeartbeatService{}
+)
+
+var (
+	lock        sync.RWMutex
+	runningtask *runningcache
+)
+
+// InitWorker will set task running and save context.CancelFunc
+func InitWorker() {
+	runningtask = &runningcache{
+		running: make(map[string]context.CancelFunc),
+	}
+}
+
+type runningcache struct {
+	sync.RWMutex
+	running map[string]context.CancelFunc
+}
+
+// Add set task is running in runningtask
+func (t *runningcache) Add(id string, taskcancel context.CancelFunc) {
+	t.Lock()
+	t.running[id] = taskcancel
+	t.Unlock()
+}
+
+// Del will delete task from tskrunning
+func (t *runningcache) Del(id string) {
+	t.Lock()
+	delete(t.running, id)
+	t.Unlock()
+}
+
+func (t *runningcache) Cancel(id string) {
+	t.RLock()
+	taskcancel, ok := t.running[id]
+	t.RUnlock()
+	if !ok {
+		return
+	}
+	taskcancel()
+}
 
 // TaskService implementation proto task interface
 type TaskService struct {
@@ -27,8 +74,10 @@ type TaskService struct {
 // if start run,every output must be output by stream.Send
 // return err must be err
 func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) error {
-	log.Info("runTask", zap.Any("task", req.GetTaskId()))
-	
+	log.Debug("recv new task ,start run", zap.Any("task", req))
+
+	// save running task
+
 	r, err := tasktype.GetDataRun(req)
 	if err != nil {
 		err = stream.Send(&pb.TaskResp{Resp: []byte(err.Error())})
@@ -38,7 +87,10 @@ func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) er
 		return nil
 	}
 
-	out := r.Run(stream.Context())
+	taskctx, taskcancel := context.WithCancel(stream.Context())
+	runningtask.Add(req.GetTaskId(), taskcancel)
+	defer runningtask.Del(req.GetTaskId())
+	out := r.Run(taskctx)
 	defer out.Close()
 	var buf = make([]byte, 1024)
 	for {
@@ -60,12 +112,11 @@ func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) er
 			err = stream.Send(&resp)
 			if err != nil {
 				log.Error("stream.Send failed", zap.Error(err))
+				return nil
 			}
 		}
 	}
 }
-
-
 
 // HeartbeatService implementation proto Heartbeat interface
 type HeartbeatService struct {
@@ -77,11 +128,13 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	var (
 		id string
 	)
+
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return &pb.Empty{}, errors.New("Registry failed")
 	}
 	ip, _, _ := net.SplitHostPort(p.Addr.String())
+	log.Debug("registryHost new worker", zap.Any("req", req))
 	req.Ip = ip
 	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
 	host, exist, err := model.ExistAddr(ctx, addr)
@@ -97,15 +150,15 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	} else {
 		id = host.ID
 	}
-	hb := pb.HeartbeatReq{
-		Ip:   ip,
-		Port: req.Port,
-	}
-	_, err = hs.SendHb(ctx, &hb)
-	if err != nil {
-		log.Error("Send hearbeat failed", zap.String("error", err.Error()))
-		return &pb.Empty{}, err
-	}
+	// hb := pb.HeartbeatReq{
+	// 	Ip:   ip,
+	// 	Port: req.Port,
+	// }
+	// _, err = hs.SendHb(ctx, &hb)
+	// if err != nil {
+	// 	log.Error("Send hearbeat failed", zap.String("error", err.Error()))
+	// 	return &pb.Empty{}, err
+	// }
 	if req.Hostgroup != "" {
 		hgs, err := model.GetHostGroupName(ctx, req.Hostgroup)
 		if err != nil {
@@ -124,7 +177,7 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	return &pb.Empty{}, err
 }
 
-// SendHb client send hearbeat
+// SendHb recv heatneat from client
 func (hs *HeartbeatService) SendHb(ctx context.Context, hb *pb.HeartbeatReq) (*pb.Empty, error) {
 
 	p, ok := peer.FromContext(ctx)
@@ -133,7 +186,7 @@ func (hs *HeartbeatService) SendHb(ctx context.Context, hb *pb.HeartbeatReq) (*p
 	}
 	ip, _, _ := net.SplitHostPort(p.Addr.String())
 	hb.Ip = ip
-	log.Info("recv hearbeat", zap.String("addr", fmt.Sprintf("%s:%d", ip, hb.Port)))
+	log.Debug("recv hearbeat", zap.String("addr", fmt.Sprintf("%s:%d", ip, hb.Port)))
 	err := model.UpdateHostHearbeat(ctx, hb)
 	return &pb.Empty{}, err
 }

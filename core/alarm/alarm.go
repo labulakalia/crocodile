@@ -7,6 +7,3 @@ import "github.com/labulaka521/crocodile/core/utils/define"
 func CheckAlarm(id string, runbyid string, tasktype define.TaskRespType, code int, output []byte, err error) error {
 	return nil
 }
-
-
-func 

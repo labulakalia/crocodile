@@ -2,50 +2,48 @@ syntax = "proto3";
 
 package crocodile.task;
 
-// Run Task 
+// Run Task
 service Task {
-    // run task return stream bytes
-    rpc RunTask(TaskReq) returns(stream TaskResp);
+  // run task return stream bytes
+  rpc RunTask(TaskReq) returns (stream TaskResp);
 }
 
 // task req
 message TaskReq {
-    string task_id = 1;
-    int32 task_type = 2;
-    bytes task_data = 3;
+  string task_id = 1;
+  int32 task_type = 2;
+  bytes task_data = 3;
 }
 
 // task reso stream
-message TaskResp {
-    bytes resp = 3;
-}
+message TaskResp { bytes resp = 3; }
 message TaskRespOld {
-    int32 code = 1;
-    bytes err_msg = 2;
-    bytes resp_data = 3;
+  int32 code = 1;
+  bytes err_msg = 2;
+  bytes resp_data = 3;
 }
 
 // worker send Heartbeat to master server
 service Heartbeat {
-    // registry host
-    rpc RegistryHost(RegistryReq) returns(Empty){};
-    rpc SendHb(HeartbeatReq) returns (Empty){};
+  // registry host
+  rpc RegistryHost(RegistryReq) returns (Empty) {};
+  // SendHb send to server req to itself alive
+  rpc SendHb(HeartbeatReq) returns (Empty) {};
 }
 
-
 message RegistryReq {
-    string ip = 1;
-    int32 port = 2;
-    string hostname = 5;
-    string version = 4;
-    string hostgroup = 6;
+  string ip = 1;
+  int32 port = 2;
+  int32 weight = 3;
+  string hostname = 4;
+  string version = 5;
+  string hostgroup = 6;
 }
 
 message HeartbeatReq {
-    string ip = 1;
-    int32 port = 2;
-    repeated string running_task = 3;
+  string ip = 1;
+  int32 port = 2;
+  repeated string running_task = 3;
 }
 
-message Empty {
-}
+message Empty {}

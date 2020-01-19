@@ -31,13 +31,15 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 					cronExpr,
 					timeout,
 					alarmUserIds,
-					autoSwitch,
+					routePolicy,
+					expectCode,
+					expectContent,
 					createByID,
 					hostGroupID,
 					remark,
 					createTime,
 					updateTime)
-				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
@@ -63,7 +65,9 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 		t.Cronexpr,
 		t.Timeout,
 		strings.Join(t.AlarmUserIds, ","),
-		t.AutoSwitch,
+		t.RoutePolicy,
+		t.ExpectCode,
+		t.ExpectContent,
 		t.CreateByUID,
 		t.HostGroupID,
 		t.Remark,
@@ -91,7 +95,9 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 						cronExpr=?,
 						timeout=?,
 						alarmUserIds=?,
-						autoSwitch=?,
+						routePolicy=?,
+						expectCode=?,
+						expectContent=?,
 						remark=?,
 						updateTime=?
 					WHERE id=?`
@@ -119,7 +125,9 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 		t.Cronexpr,
 		t.Timeout,
 		strings.Join(t.AlarmUserIds, ","),
-		t.AutoSwitch,
+		t.RoutePolicy,
+		t.ExpectCode,
+		t.ExpectContent,
 		t.Remark,
 		updateTime,
 		t.ID,
@@ -162,6 +170,7 @@ func GetTaskByID(ctx context.Context, id string) (*define.Task, error) {
 		return nil, err
 	}
 	if len(tasks) != 1 {
+		err := fmt.Errorf("can find task %s, map be it has deleted", id)
 		return nil, errors.Errorf("getTasks id failed: %v", err)
 	}
 	return &tasks[0], nil
@@ -181,7 +190,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 					t.cronExpr,
 					t.timeout,
 					t.alarmUserIds,
-					t.autoSwitch,
+					t.routePolicy,
 					u.name,
 					t.createByID,
 					hg.name,
@@ -233,7 +242,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 			&t.Cronexpr,
 			&t.Timeout,
 			&alarmUserids,
-			&t.AutoSwitch,
+			&t.RoutePolicy,
 			&t.CreateBy,
 			&t.CreateByUID,
 			&t.HostGroup,
@@ -266,7 +275,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 		}
 		t.TaskData, err = tasktype.GetDataRun(&req)
 		if err != nil {
-			log.Error("GetDataRun failed", zap.Any("type", t.TaskType))
+			log.Error("GetDataRun failed", zap.Any("type", t.TaskType),zap.Error(err))
 			continue
 		}
 		res = append(res, t)

@@ -62,15 +62,23 @@ type LogCacher interface {
 	Save(interface{})
 	// GetRunHost task run host addr
 	Get() interface{}
+	// SetTaskStatus set task status
+	// waiting starting running complete
+	SetTaskStatus(taskstatus)
 }
 
 var _ LogCacher = &LogCache{}
 
 // LogCache otehr could read latest data from buf and do not clean it
 type LogCache struct {
-	buf     *bytes.Buffer
-	close   bool
-	runhost interface{}
+	buf *bytes.Buffer
+	// save task
+	close bool
+	// save task returncode,tasktype,if task could find run host,run host will be save hear
+	// actual pb.TaskResp
+	resdata interface{}
+	// task is running
+	status taskstatus
 }
 
 // NewLogCache return impl LogCache struct
@@ -79,6 +87,7 @@ func NewLogCache() LogCacher {
 	var logcache = LogCache{
 		buf:   bytes.NewBuffer(buf),
 		close: false,
+		status: waiting,
 	}
 	return &logcache
 }
@@ -112,15 +121,16 @@ func (l *LogCache) Write(p []byte) (n int, err error) {
 
 // WriteString Write String to buf
 func (l *LogCache) WriteString(p string) (n int, err error) {
-	now := time.Now().Local().Format("2006-01-02 15:04:05")
-	w := fmt.Sprintf("%s: %s\n", now, p)
+	now := time.Now().Local().Format("2006-01-02 15:04:05: ")
+	w := now + p + "\n"
 	n, err = l.buf.WriteString(w)
 	return
 }
 
 // WriteStringf Write Tmpl string format to buf
 func (l *LogCache) WriteStringf(tmpl string, args ...interface{}) (n int, err error) {
-	n, err = l.buf.WriteString(fmt.Sprintf(tmpl, args...))
+	now := time.Now().Local().Format("2006-01-02 15:04:05: ")
+	n, err = l.buf.WriteString(now + fmt.Sprintf(tmpl, args...))
 	return
 }
 
@@ -128,7 +138,7 @@ func (l *LogCache) WriteStringf(tmpl string, args ...interface{}) (n int, err er
 func (l *LogCache) Close() (err error) {
 	l.close = true
 	l.buf.Reset()
-	// logcache.P
+
 	return
 }
 
@@ -157,12 +167,30 @@ func (l *LogCache) GetCode() int {
 
 }
 
-// Save save task run data 
+// Save save task run data
 func (l *LogCache) Save(data interface{}) {
-	l.runhost = data
+	l.resdata = data
 }
 
 // Get task run host data
 func (l *LogCache) Get() interface{} {
-	return l.runhost
+	return l.resdata
+}
+
+type taskstatus uint
+
+const (
+	// waiting task is waiting pre task is running complete
+	waiting taskstatus = iota + 1
+	// starting task is prepare task
+	starting
+	// running tassk is running
+	running
+	// complete task is run complete
+	complete
+)
+
+// SetTaskStatus will be set task status is running or stop
+func (l *LogCache) SetTaskStatus(status taskstatus) {
+	l.status = status
 }

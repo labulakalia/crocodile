@@ -24,7 +24,7 @@ func Init(conf string) {
 type coreConf struct {
 	SecretToken string
 	Log         Log
-	Cert         Cert
+	Cert        Cert
 	Server      Server
 	Client      Client
 }
@@ -66,6 +66,7 @@ type Client struct {
 	Port       int
 	ServerAddr string
 	HostGroup  string
+	Weight     int
 }
 
 type duration struct {

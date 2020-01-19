@@ -15,14 +15,17 @@ import (
 )
 
 func main() {
-	var a map[string]string
+	a := []string{"id1","id2","id3"}
+	WHERE id=
+	fmt.Println(strings.Join(a, " OR "))
+	// var a map[string]string
 
 
-	if a == nil {
-		goto Check
-	}
+	// if a == nil {
+	// 	goto Check
+	// }
 	
-	return 
+	// return 
 	// ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	// defer cancel()
 	// // reader := runcmd(ctx, "ping www.baidu.com -n 5")
@@ -53,8 +56,8 @@ func main() {
 	// buf.Truncate(len(buf.Bytes()) - 4) // remove return code in run write
 	// fmt.Println(buf.String())
 	// fmt.Printf("exitcode:%s", code)
-Check:
-		fmt.Println("goto")
+// Check:
+// 		fmt.Println("goto")
 }
 
 func runcmd(ctx context.Context, cmd string) io.ReadCloser {

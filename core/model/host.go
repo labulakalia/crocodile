@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/labulaka521/crocodile/common/db"
@@ -15,7 +16,7 @@ import (
 )
 
 const (
-	maxWorkerTTL int64 = 60
+	maxWorkerTTL int64 = 20 // defaultHearbeatInterval = 15
 )
 
 // RegistryNewHost refistry new host
@@ -23,12 +24,13 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 	hostsql := `INSERT INTO crocodile_host 
 					(id,hostname,
 					addr,
+					weight,
 					version,
 					lastUpdateTimeUnix)
  			  	VALUES
-					(?,?,?,?,?)`
+					(?,?,?,?,?,?)`
 	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
-	hosts, err := getHosts(ctx, addr, "")
+	hosts, err := getHosts(ctx, addr, nil)
 	if err != nil {
 		return "", err
 	}
@@ -51,6 +53,7 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 		id,
 		req.Hostname,
 		addr,
+		req.Weight,
 		req.Version,
 		time.Now().Unix())
 	if err != nil {
@@ -62,7 +65,7 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 
 // UpdateHostHearbeat update host last recv hearbeat time
 func UpdateHostHearbeat(ctx context.Context, hbreq *pb.HeartbeatReq) error {
-	updatesql := `UPDATE crocodile_host set lastUpdateTimeUnix=? WHERE addr=?`
+	updatesql := `UPDATE crocodile_host set lastUpdateTimeUnix=?,runningTasks=? WHERE addr=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
@@ -75,6 +78,7 @@ func UpdateHostHearbeat(ctx context.Context, hbreq *pb.HeartbeatReq) error {
 	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx,
 		time.Now().Unix(),
+		strings.Join(hbreq.RunningTask, ","),
 		fmt.Sprintf("%s:%d", hbreq.Ip, hbreq.Port))
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
@@ -83,16 +87,27 @@ func UpdateHostHearbeat(ctx context.Context, hbreq *pb.HeartbeatReq) error {
 }
 
 // get host by addr or id
-func getHosts(ctx context.Context, addr, id string) ([]*define.Host, error) {
-	getsql := "SELECT id,addr,hostname,runingTasks,stop,version,lastUpdateTimeUnix FROM crocodile_host"
+func getHosts(ctx context.Context, addr string, ids []string) ([]*define.Host, error) {
+	getsql := "SELECT id,addr,hostname,runningTasks,weight,stop,version,lastUpdateTimeUnix FROM crocodile_host"
 	args := []interface{}{}
 	if addr != "" {
 		getsql += " WHERE addr=?"
 		args = append(args, addr)
 	}
-	if id != "" {
-		getsql += " WHERE id=?"
-		args = append(args, id)
+	// if id != "" {
+	// 	getsql += " WHERE id=?"
+	// 	args = append(args, id)
+	// }
+	if len(ids) > 0 {
+		var querys = []string{}
+		var quweyv = []interface{}{}
+		for i := 0; i < len(ids); i++ {
+			querys = append(querys, "id=?")
+			quweyv = append(quweyv, ids[i])
+		}
+
+		getsql += " WHERE " + strings.Join(querys, " OR ")
+		args = append(args, quweyv...)
 	}
 
 	conn, err := db.GetConn(ctx)
@@ -117,10 +132,12 @@ func getHosts(ctx context.Context, addr, id string) ([]*define.Host, error) {
 			rtask string
 		)
 
-		err := rows.Scan(&h.ID, &h.Addr, &h.HostName, &rtask, &h.Stop, &h.Version, &h.LastUpdateTimeUnix)
+		err := rows.Scan(&h.ID, &h.Addr, &h.HostName, &rtask, &h.Weight, &h.Stop, &h.Version, &h.LastUpdateTimeUnix)
 		if err != nil {
 			log.Error("Scan failed", zap.Error(err))
+			continue
 		}
+		h.RunningTasks = strings.Split(rtask, ",")
 		if h.LastUpdateTimeUnix+maxWorkerTTL > time.Now().Unix() {
 			h.Online = 1
 		}
@@ -132,12 +149,12 @@ func getHosts(ctx context.Context, addr, id string) ([]*define.Host, error) {
 
 // GetHost get all hosts
 func GetHost(ctx context.Context) ([]*define.Host, error) {
-	return getHosts(ctx, "", "")
+	return getHosts(ctx, "", nil)
 }
 
 // GetHostByAddr get host by addr
 func GetHostByAddr(ctx context.Context, addr string) (*define.Host, error) {
-	hosts, err := getHosts(ctx, addr, "")
+	hosts, err := getHosts(ctx, addr, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +166,7 @@ func GetHostByAddr(ctx context.Context, addr string) (*define.Host, error) {
 
 // ExistAddr check already exist
 func ExistAddr(ctx context.Context, addr string) (*define.Host, bool, error) {
-	hosts, err := getHosts(ctx, addr, "")
+	hosts, err := getHosts(ctx, addr, nil)
 	if err != nil {
 		return nil, false, err
 	}
@@ -161,7 +178,7 @@ func ExistAddr(ctx context.Context, addr string) (*define.Host, bool, error) {
 
 // GetHostByID get host by hostid
 func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
-	hosts, err := getHosts(ctx, "", id)
+	hosts, err := getHosts(ctx, "", []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +186,18 @@ func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 		return nil, errors.New("can not find hostid")
 	}
 	return hosts[0], nil
+}
+
+// GetHostByIDS get hosts by hostids
+func GetHostByIDS(ctx context.Context, ids []string) ([]*define.Host, error) {
+	hosts, err := getHosts(ctx, "", ids)
+	if err != nil {
+		return nil, err
+	}
+	if len(hosts) != 1 {
+		return nil, errors.New("can not find hostid")
+	}
+	return hosts, nil
 }
 
 // StopHost will stop run worker in hostid
@@ -219,8 +248,8 @@ func deleteHostFromHostGroup(hostid string) error {
 	if err != nil {
 		return errors.Wrap(err, "GetHostGroups")
 	}
-	for _,hostgroup := range hostgroups {
-		newhostid,ok := deletefromslice(hostid,hostgroup.HostsID)
+	for _, hostgroup := range hostgroups {
+		newhostid, ok := deletefromslice(hostid, hostgroup.HostsID)
 		if !ok {
 			continue
 		}
@@ -244,8 +273,8 @@ func deletefromslice(deleteid string, ids []string) ([]string, bool) {
 	}
 	if existid == -1 {
 		// no found delete id
-		return ids,false
+		return ids, false
 	}
-	ids = append(ids[:existid],ids[existid+1:]...)
+	ids = append(ids[:existid], ids[existid+1:]...)
 	return ids, true
 }

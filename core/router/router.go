@@ -1,10 +1,19 @@
 package router
 
 import (
+	"context"
+	"time"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
+	// "github.com/labulaka521/crocodile/common/errgroup"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/middleware"
 	"github.com/labulaka521/crocodile/core/router/api/v1/host"
@@ -16,8 +25,6 @@ import (
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"net"
-	"net/http"
 )
 
 // NewHTTPRouter create http.Server
@@ -95,6 +102,7 @@ func GetListen(mode define.RunMode) (net.Listener, error) {
 func Run(mode define.RunMode, lis net.Listener) error {
 	var (
 		gRPCServer *grpc.Server
+		httpServer *http.Server
 		err        error
 		m          cmux.CMux
 	)
@@ -106,14 +114,52 @@ func Run(mode define.RunMode, lis net.Listener) error {
 
 	m = cmux.New(lis)
 	if mode == define.Server {
-		httpServer := NewHTTPRouter()
+		httpServer = NewHTTPRouter()
 		httpL := m.Match(cmux.HTTP1Fast())
 		go httpServer.Serve(httpL)
 		log.Info("start run http server", zap.String("addr", lis.Addr().String()))
 	}
+
 	grpcL := m.Match(cmux.Any())
 	go gRPCServer.Serve(grpcL)
 	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
 
+	go tryDisConn(gRPCServer,httpServer,mode)
 	return m.Serve()
+}
+
+// tryDisConn will close grpc and http conn
+// if time rather than 10s, will immediately close
+func tryDisConn(gRPCServer *grpc.Server, httpServer *http.Server, mode define.RunMode) {
+
+	signals := make(chan os.Signal, 1)
+
+	signal.Notify(signals, os.Interrupt, os.Kill, syscall.SIGKILL, syscall.SIGSTOP,
+		syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGILL, syscall.SIGTRAP,
+		syscall.SIGABRT, syscall.SIGSYS,
+	)
+
+	select {
+	case sig := <-signals:
+		go func() {
+			select{
+			case <- time.After(time.Second * 10):
+				log.Warn("Shutdown gracefully timeout, application will shutdown immediately.")
+				os.Exit(0)
+			}
+		}()
+		log.Info(fmt.Sprintf("get signal %s, application will shutdown.", sig))
+		schedule.DoStopConn(mode)
+		time.Sleep(time.Second)
+		// g := errgroup.Group{}
+		gRPCServer.Stop()
+		if mode == define.Server {
+			httpServer.Shutdown(context.Background())
+		}
+		// g.Wait()
+		time.Sleep(time.Second * 11)
+		fmt.Println("sleep")
+		os.Exit(0)
+	}
+
 }

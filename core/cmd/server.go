@@ -41,7 +41,11 @@ func Server() *cobra.Command {
 			if err != nil {
 				log.Fatal("init schedule failed", zap.String("error", err.Error()))
 			}
-			return router.Run(define.Server, lis)
+			err = router.Run(define.Server, lis)
+			if err != nil {
+				log.Error("router.Run error", zap.Error(err))
+			}
+			return nil
 		},
 	}
 	cmdServer.Flags().StringVarP(&cfg, "conf", "c", "", "server config [toml]")

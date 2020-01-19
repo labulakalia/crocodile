@@ -8,7 +8,6 @@ import (
 	"github.com/labulaka521/crocodile/core/cert"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/middleware"
-	"github.com/labulaka521/crocodile/core/model"
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/labulaka521/crocodile/core/utils/resp"
@@ -24,24 +23,27 @@ import (
 	"time"
 )
 
-
 const (
 	// RPC connect timeout
-	defaultRPCTimeout       = time.Second * 3
+	defaultRPCTimeout = time.Second * 3
 	// worker send hearbeat ttl
-	defaultHearbeatInterval = time.Second * 5
+	defaultHearbeatInterval = time.Second * 15 // maxWorkerTTL int64 = 20
+	// max retry get host time for func Next
+	defaultMaxRetryGetWorkerHost = 3
 )
 
-
 var (
-	// rpc conn control
+	// grpc conn pool
 	cachegRPCConnM *cachegRPCConn
+	// stop sent hearbeat to server
+	clentstophb chan struct{}
 )
 
 func init() {
 	cachegRPCConnM = &cachegRPCConn{
 		conn: make(map[string]*grpc.ClientConn),
 	}
+	clentstophb = make(chan struct{}, 1)
 }
 
 type cachegRPCConn struct {
@@ -57,7 +59,10 @@ func (cg *cachegRPCConn) getgRPCClientConn(addr string) *grpc.ClientConn {
 	if exist && conn.GetState() == connectivity.Ready {
 		return conn
 	}
-	conn.Close()
+	if conn != nil {
+		conn.Close()
+	}
+
 	return nil
 }
 
@@ -67,8 +72,8 @@ func (cg *cachegRPCConn) addgRPCClientConn(addr string, conn *grpc.ClientConn) {
 	cg.Unlock()
 }
 
-// NewgRPCConn Get Grpc Client Conn
-func NewgRPCConn(ctx context.Context,addr string) (*grpc.ClientConn, error) {
+// getgRPCConn Get Grpc Client Conn
+func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 	conn := cachegRPCConnM.getgRPCClientConn(addr)
 	if conn != nil {
 		return conn, nil
@@ -87,7 +92,8 @@ func NewgRPCConn(ctx context.Context,addr string) (*grpc.ClientConn, error) {
 		),
 		grpc.WithBlock())
 	if err != nil {
-		return nil, errors.Wrap(err, "grpc.DialContext")
+		fmt.Println(err)
+		return nil, err
 	}
 	cachegRPCConnM.addgRPCClientConn(addr, conn)
 	return conn, nil
@@ -104,7 +110,7 @@ func NewgRPCServer(mode define.RunMode) (*grpc.Server, error) {
 	grpcserver := grpc.NewServer(grpc.Creds(c),
 		grpc_middleware.WithUnaryServerChain(
 			middleware.RecoveryInterceptor,
-			middleware.LoggerInterceptor,
+			// middleware.LoggerInterceptor,
 			middleware.CheckSecretInterceptor,
 		),
 	)
@@ -137,40 +143,22 @@ func (a *Auth) RequireTransportSecurity() bool {
 
 // try Get grpc client conn
 // TODO
-// 调度算法
-// - 随机
-// - 最少任务数
-// - 权重
-// - 轮询执行
+// Scheduling Algorithm
+// - random
+// - LeastTask
+// - Weight
+// - roundRobin
 // get rpc conn
-func tryGetRCCConn(ctx context.Context, hg *define.HostGroup) (*grpc.ClientConn, error) {
-	queryctx, querycancel := context.WithTimeout(ctx,
-		config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	defer querycancel()
-	i := 0
-	for i < len(hg.HostsID) {
-		i++
-		hostid, err := model.RandHostID(hg)
-		if err != nil {
-			log.Error("model.RandHostID failed", zap.String("error", err.Error()))
+func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
+	// queryctx, querycancel := context.WithTimeout(ctx,
+	// 	config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	// defer querycancel()
+	for i:=0;i< defaultMaxRetryGetWorkerHost;i++ {
+		host := next()
+		if host == nil {
 			continue
 		}
-
-		host, err := model.GetHostByID(queryctx, hostid)
-		if err != nil {
-			log.Error("model.GetHostByID failed", zap.String("error", err.Error()))
-			continue
-		}
-
-		if host.Online == 0 {
-			log.Warn("host is offline", zap.String("addr", host.Addr))
-			continue
-		}
-		if host.Stop == 1 {
-			log.Warn("host is stop worker", zap.String("addr", host.Addr))
-			continue
-		}
-		conn, err := NewgRPCConn(ctx,host.Addr)
+		conn, err := getgRPCConn(ctx, host.Addr)
 		if err != nil {
 			log.Error("GetRpcConn failed", zap.String("error", err.Error()))
 			continue
@@ -181,12 +169,12 @@ func tryGetRCCConn(ctx context.Context, hg *define.HostGroup) (*grpc.ClientConn,
 		}
 		conn.Close()
 	}
-	return nil, fmt.Errorf("can not get valid grpc conn from hostgroup: %s",hg.Name)
+	return nil, fmt.Errorf("can not get valid grpc conn from hostgroup")
 }
 
 // RegistryClient registry client to server
 func RegistryClient(version string, port int) error {
-	conn, err := NewgRPCConn(context.Background(),config.CoreConf.Client.ServerAddr)
+	conn, err := getgRPCConn(context.Background(), config.CoreConf.Client.ServerAddr)
 	if err != nil {
 		return err
 	}
@@ -199,9 +187,11 @@ func RegistryClient(version string, port int) error {
 		Hostname:  hostname,
 		Version:   version,
 		Hostgroup: config.CoreConf.Client.HostGroup,
+		Weight:    int32(config.CoreConf.Client.Weight),
 	}
 	_, err = hbClient.RegistryHost(ctx, &regHost)
 	if err != nil {
+		log.Error("registry client failed", zap.Error(err))
 		return errors.Errorf("can not connect server %s", conn.Target())
 
 	}
@@ -210,7 +200,7 @@ func RegistryClient(version string, port int) error {
 	return nil
 }
 
-// send hearbt
+// send client will send hearbt to server, let scheduler center know it is alive
 func sendhb(client pb.HeartbeatClient, port int) {
 	log.Info("start send hearbeat to server")
 	timer := time.NewTimer(defaultHearbeatInterval)
@@ -222,14 +212,19 @@ func sendhb(client pb.HeartbeatClient, port int) {
 			hbreq := &pb.HeartbeatReq{Port: int32(port)}
 			_, err := client.SendHb(ctx, hbreq)
 			if err != nil {
-				log.Error("client.SendHb failed", zap.Error(err))
+				code := DealRPCErr(err)
+				log.Error("client.SendHb failed", zap.String("short msg", resp.GetMsg(code)), zap.Error(err))
 			}
 			timer.Reset(defaultHearbeatInterval)
+		case <-clentstophb:
+			log.Info("Stop Send HearBeat")
+			return
 		}
 	}
 }
 
-func dealRPCErr(err error) int {
+// DealRPCErr change rpc error to err code
+func DealRPCErr(err error) int {
 	statusErr, ok := status.FromError(err)
 	if ok {
 		switch statusErr.Code() {
@@ -244,4 +239,27 @@ func dealRPCErr(err error) int {
 		}
 	}
 	return resp.ErrRPCUnknow
+}
+
+// DoStopConn will cancel all running task and close grpc conn
+func DoStopConn(mode define.RunMode) {
+	if mode == define.Server {
+		for id, sch := range Cron.sch {
+			sch.running = false
+			Cron.Del(id)
+			if sch.ctxcancel != nil {
+				sch.ctxcancel()
+			}
+		}
+	}
+
+	if mode == define.Client {
+		close(clentstophb)
+		for _, taskcancel := range runningtask.running {
+			taskcancel()
+		}
+	}
+	for _, conn := range cachegRPCConnM.conn {
+		conn.Close()
+	}
 }

@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
@@ -16,15 +17,6 @@ import (
 
 // CreateTask create a new worker
 // POST /api/v1/task
-// @params
-// name
-// taskType
-// taskData
-// parentTaskIds
-// parentRunParallel
-// childTaskIds
-// childRunParallel
-// remark
 func CreateTask(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -71,12 +63,13 @@ func CreateTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Add(task.ID, task.Name, task.Cronexpr)
+	schedule.Cron.Add(task.ID, task.Name, task.Cronexpr,
+		schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
 	resp.JSON(c, resp.Success, nil)
 }
 
 // ChangeTask change exist task
-// Put /api/v1/task 
+// Put /api/v1/task
 func ChangeTask(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -134,13 +127,16 @@ func ChangeTask(c *gin.Context) {
 	if task.Run == 0 {
 		schedule.Cron.Del(task.ID)
 	} else {
-		schedule.Cron.Add(task.ID, task.Name, task.Cronexpr)
+		schedule.Cron.Add(task.ID, task.Name, task.Cronexpr,
+			schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
 	}
 
 	resp.JSON(c, resp.Success, nil)
 }
 
 // DeleteTask delete task
+// if delete a task this task must be remove from other task's parent or child task id
+// TODO how to check it fast
 // DELETE /api/v1/task
 func DeleteTask(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
@@ -226,7 +222,7 @@ func GetTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
@@ -300,8 +296,7 @@ func LogTask(c *gin.Context) {
 	resp.JSON(c, resp.Success, logs)
 }
 
-
-// RealTimeLogTask return real time log 
+// RealTimeLogTask return real time log
 // GET /api/v1/task/log/ws?id=ididididid
 func RealTimeLogTask(c *gin.Context) {
 	resp.JSON(c, resp.Success, nil)

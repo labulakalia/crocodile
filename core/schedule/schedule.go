@@ -50,6 +50,7 @@ type task struct {
 	errCode     int                 // failed task return code
 	errMsg      string              // task run failed errmsg
 	errTasktype define.TaskRespType // failed task type
+	next        Next                // it save a func Next by route poloy
 }
 
 type cacheSchedule struct {
@@ -72,19 +73,20 @@ func Init() error {
 	}
 
 	for _, t := range eps {
-		Cron.Add(t.ID, t.Name, t.Cronexpr)
+		Cron.Add(t.ID, t.Name, t.Cronexpr, GetRoutePolicy(t.HostGroupID, t.RoutePolicy))
 	}
 	log.Info("init task success", zap.Int("Total", len(eps)))
 	return nil
 }
 
 // Add task to schedule
-func (s *cacheSchedule) Add(taskID, taskName string, cronExpr string) {
+func (s *cacheSchedule) Add(taskID, taskName string, cronExpr string, next Next) {
 	s.Del(taskID)
 	t := task{
 		name:     taskName,
 		cronexpr: cronExpr,
 		close:    make(chan struct{}),
+		next:     next,
 	}
 	s.Lock()
 	s.sch[taskID] = &t
@@ -98,7 +100,8 @@ func (s *cacheSchedule) Add(taskID, taskName string, cronExpr string) {
 func (s *cacheSchedule) Del(id string) {
 	t, ok := s.gettask(id)
 	if ok {
-		if t.running && t.ctxcancel != nil {
+		t.running = false
+		if t.ctxcancel != nil {
 			t.ctxcancel()
 		}
 		s.Lock()
@@ -138,26 +141,43 @@ func (s *cacheSchedule) saveLog(runbyid string, t *task) error {
 	// read all log
 	// put logcache to locachepool
 	tasklog := &define.Log{
-		RunByTaskID:    runbyid,
-		StartTime:      t.starttime,
-		StartTimeStr:   utils.UnixToStr(t.starttime / 1e3),
-		EndTime:    t.endtime,
-		EndTimeStr:        utils.UnixToStr(t.endtime / 1e3),
-		TotalRunTime:   int(t.endtime - t.starttime),
-		Status:         t.status,
-		ErrCode:        t.errCode,
-		ErrMsg:         t.errMsg,
-		ErrTasktype:    t.errTasktype,
-		ErrTaskTypeStr: t.errTasktype.String(),
-		ErrTaskID:      t.errTaskID,
-		TaskResps: make([]*define.TaskResp,0,len(t.logcaches)),
+		RunByTaskID:  runbyid,
+		StartTime:    t.starttime,
+		StartTimeStr: utils.UnixToStr(t.starttime / 1e3),
+		EndTime:      t.endtime,
+		EndTimeStr:   utils.UnixToStr(t.endtime / 1e3),
+		TotalRunTime: int(t.endtime - t.starttime),
+		Status:       t.status,
+		ErrCode:      t.errCode,
+		ErrMsg:       t.errMsg,
+		ErrTasktype:  t.errTasktype,
+		ErrTaskID:    t.errTaskID,
+		TaskResps:    make([]*define.TaskResp, 0, len(t.logcaches)),
+	}
+	if t.errTasktype != 0 {
+		tasklog.ErrTaskTypeStr = t.errTasktype.String()
 	}
 	for id, logcache := range t.logcaches {
-		taskresp := logcache.Get().(define.TaskResp)
-		taskresp.TaskID = id
-		taskresp.TaskType = taskresp.TaskType
-		taskresp.LogData = logcache.ReadAll()
-		tasklog.TaskResps = append(tasklog.TaskResps,&taskresp)
+		var (
+			taskresp define.TaskResp
+			ok       bool
+		)
+		// if ok,code runnhost tasktype valid
+		taskresp, ok = logcache.Get().(define.TaskResp)
+		if ok {
+			taskresp.TaskID = id
+			taskresp.TaskTypeStr = taskresp.TaskType.String()
+			taskresp.LogData = logcache.ReadAll()
+		} else {
+			taskresp = define.TaskResp{
+				TaskID:  id,
+				LogData: logcache.ReadAll(),
+			}
+		}
+		logcache.Close()
+		// Put coolpool after logcache close
+		cachepool.Put(logcache)
+		tasklog.TaskResps = append(tasklog.TaskResps, &taskresp)
 	}
 	// save log
 	err := model.SaveLog(context.Background(), tasklog)
@@ -193,7 +213,14 @@ func (s *cacheSchedule) runSchedule(taskid string) {
 
 // RunTask start run a task
 func (s *cacheSchedule) RunTask(taskid string) {
-	var masterlogcache LogCacher
+	var (
+		masterlogcache LogCacher
+		ctx            context.Context
+		cancel         context.CancelFunc
+		err            error
+		task           *define.Task
+		g              *errgroup.Group
+	)
 	log.Info("start run task", zap.String("taskid", taskid))
 	masterlogcache = cachepool.Get().(LogCacher) // this log cache is main
 	t, exist := s.gettask(taskid)
@@ -211,19 +238,15 @@ func (s *cacheSchedule) RunTask(taskid string) {
 	if t.running {
 		log.Info("task is running,so not run now", zap.String("taskid", taskid))
 		masterlogcache.WriteStringf("taskid %s is running, so not run now", taskid)
-		return
+		goto Over
 	}
 	t.running = true
 	t.starttime = time.Now().UnixNano() / 1e6
-	defer func() {
-		t.running = false
-		t.endtime = time.Now().UnixNano() / 1e6
-	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel = context.WithCancel(context.Background())
 	// save control ctx
 	t.ctxcancel = cancel
-	task, err := model.GetTaskByID(context.Background(), taskid)
+	task, err = model.GetTaskByID(context.Background(), taskid)
 	if err != nil {
 		log.Error("model.GettaskById failed", zap.String("id", taskid), zap.Error(err))
 		masterlogcache.WriteStringf("can not get task %s from db", taskid)
@@ -238,7 +261,7 @@ func (s *cacheSchedule) RunTask(taskid string) {
 	}
 
 	// if exist a err task,will stop all task
-	g := errgroup.WithCancel(ctx)
+	g = errgroup.WithCancel(ctx)
 	g.GOMAXPROCS(1)
 	// parent tasks
 	g.Go(func(ctx context.Context) error {
@@ -256,6 +279,9 @@ func (s *cacheSchedule) RunTask(taskid string) {
 	if err != nil {
 		log.Error("run failed", zap.Error(err))
 	}
+Over:
+	t.running = false
+	t.endtime = time.Now().UnixNano() / 1e6
 	// TODO save log
 	err = s.saveLog(taskid, t)
 	if err != nil {
@@ -306,8 +332,6 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		err error
 		// task data
 		taskdata *define.Task
-		// task's hostgroup
-		hg *define.HostGroup
 		// worker conn
 		conn *grpc.ClientConn
 		// task run data
@@ -319,6 +343,7 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		taskreq    *pb.TaskReq
 		cancel     context.CancelFunc
 		taskctx    context.Context
+		realtask   *task
 	)
 	var output []byte
 	// whenn func exit,check res and judge whatever alarm
@@ -331,6 +356,7 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		return err
 	}
 	if taskresptype == define.MasterTask {
+		realtask = runbytask
 		runbytask.RLock()
 		logcache, exist = runbytask.logcaches[id]
 		runbytask.RUnlock()
@@ -345,11 +371,19 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 			runbytask.Unlock()
 		}
 	} else {
+		realtask, exist = s.gettask(id)
+		if !exist {
+			log.Error("this is a bug,task should exist,but can not get task,", zap.String("taskid", runbyid), zap.Any("allschedule", s.sch))
+			err = fmt.Errorf("[bug] can not get taskid %s from schuedle: %v", id, s.sch)
+			return err
+		}
 		logcache = cachepool.Get().(LogCacher)
 		runbytask.Lock()
 		runbytask.logcaches[id] = logcache
 		runbytask.Unlock()
 	}
+
+	logcache.SetTaskStatus(starting)
 
 	queryctx, querycancel := context.WithTimeout(ctx,
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -363,39 +397,25 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		// return err
 		goto Check
 	}
-	logcache.WriteStringf("Start Prepare Task %s[%s]", taskdata.Name, id)
-	logcache.WriteStringf("Start Conn Worker Host For Task %s[%s]", taskdata.Name, id)
-	// Get hsotgroup
-	hg, err = model.GetHostGroupID(queryctx, taskdata.HostGroupID)
-	if err != nil {
-		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
-		logcache.WriteStringf("Get Task %s[%s]'s HostGroup failed: %v", taskdata.Name, id, err)
-		goto Check
-	}
-	// check hostgroup
-	if len(hg.HostsID) == 0 {
-		err = fmt.Errorf("HostGroup %s[%s] not valid worker", hg.Name, taskdata.HostGroupID)
-		log.Error("Get failed", zap.Error(err))
-		logcache.WriteString(err.Error())
-		goto Check
-	}
-	// try conn hg's host
-	conn, err = tryGetRCCConn(ctx, hg)
+	logcache.WriteStringf("Start Prepare Task %s[%s]\n", taskdata.Name, id)
+	logcache.WriteStringf("Start Conn Worker Host For Task %s[%s]\n", taskdata.Name, id)
+
+	conn, err = tryGetRCCConn(ctx, realtask.next)
 	if err != nil {
 		log.Error("tryGetRpcConn failed", zap.String("error", err.Error()))
-		logcache.WriteStringf("Get Conn from hostgroup %s[%s] failed: %v", taskdata.HostGroupID, hg.Name, err)
+		logcache.WriteStringf("Can not get conn from task's hostgroup %s[%s]", taskdata.HostGroup, taskdata.HostGroupID)
 		goto Check
 	}
 	// runbytask.runninghost = conn.Target()
 
-	logcache.WriteStringf("Success Conn Worker Host[%s]", conn.Target())
+	logcache.WriteStringf("Success Conn Worker Host[%s]\n", conn.Target())
 
-	logcache.WriteStringf("Start Get Task %s[%s] Run Data", taskdata.Name, id)
+	logcache.WriteStringf("Start Get Task %s[%s] Run Data\n", taskdata.Name, id)
 	// Marshal task data
 	tdata, err = json.Marshal(taskdata.TaskData)
 	if err != nil {
 		log.Error("json.Marshal", zap.Error(err))
-		logcache.WriteStringf("Marshal task %s[%s]'s RunData [%v] failed: %v", taskdata.Name, id, taskdata.TaskData, err)
+		logcache.WriteStringf("Marshal task %s[%s]'s RunData [%v] failed: %v\n", taskdata.Name, id, taskdata.TaskData, err)
 		goto Check
 	}
 
@@ -406,10 +426,10 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		TaskData: tdata,
 	}
 
-	logcache.WriteStringf("Success Get Task %s[%s] Run Data ", taskdata.Name, id)
+	logcache.WriteStringf("Success Get Task %s[%s] Run Data\n", taskdata.Name, id)
 
-	logcache.WriteStringf("Start Run Task %s[%s] On Host[%s]", taskdata.Name, id, conn.Target())
-
+	logcache.WriteStringf("Start Run Task %s[%s] On Host[%s]\n", taskdata.Name, id, conn.Target())
+	logcache.SetTaskStatus(running)
 	// taskctx only use RunTask
 	if taskdata.Timeout > 0 {
 		taskctx, cancel = context.WithTimeout(ctx, time.Second*time.Duration(taskdata.Timeout))
@@ -423,13 +443,13 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 	taskrespstream, err = taskclient.RunTask(taskctx, taskreq)
 	if err != nil {
 		log.Error("Run task failed", zap.Error(err))
-		logcache.WriteStringf("Run Task %s[%s] TaskData [%v] failed:%v", taskdata.Name, id, taskreq, err)
+		logcache.WriteStringf("Run Task %s[%s] TaskData [%v] failed:%v\n", taskdata.Name, id, taskreq, err)
 		goto Check
 	}
 
 	// RunTask default resp code
 
-	logcache.WriteStringf("---------------- Task %s[%s] Start Output----------------", taskdata.Name, id)
+	logcache.WriteStringf("---------------- Task %s[%s] Start Output----------------\n", taskdata.Name, id)
 	// defer logcache.WriteStringf("---------------- Task %s[%s] Start Output----------------", realtask.name, id)
 	for {
 		// Recv return err is nil or io.EOF
@@ -441,7 +461,7 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 				taskrespcode = logcache.GetCode()
 				break
 			}
-			taskrespcode = dealRPCErr(err)
+			taskrespcode = DealRPCErr(err)
 
 			logcache.WriteStringf("Task %s[%s] Run Fail: %v", taskdata.Name, id, resp.GetMsg(taskrespcode))
 			// Alarm
@@ -452,23 +472,27 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		logcache.Write(taskresp.GetResp())
 		output = append(output, taskresp.GetResp()...)
 	}
-	logcache.WriteStringf("---------------- Task %s[%s] End Output-------------------", taskdata.Name, id)
+	logcache.WriteStringf("---------------- Task %s[%s] End Output-------------------\n", taskdata.Name, id)
 	// return err
 	goto Check
 Check:
 	var errmsg string
 	if err != nil {
-		errmsg = " Error" + err.Error()
+		errmsg = " Error:" + err.Error()
 	}
-	logcache.WriteStringf("\nTask %s[%s] Run Over Return Code: %d"+errmsg, taskdata.Name, id, taskrespcode)
-	// save taskrespcode,TaskType,RunHost
-	// 5byte 1 byte 
-	tmptaskrep := define.TaskResp{
-		Code: taskrespcode,
+	logcache.WriteStringf("\nTask %s[%s] Run Over Return Code: %d"+errmsg+"\n", taskdata.Name, id, taskrespcode)
+	logcache.SetTaskStatus(complete)
+	// save task returncode,tasktype,if task could find run host,run host will be save hear
+	tmptaskresp := define.TaskResp{
+		Code:     taskrespcode,
 		TaskType: taskresptype,
-		RunHost: conn.Target(),
 	}
-	logcache.Save(tmptaskrep)
+	if conn != nil {
+		// if conn worker failed,can not get worker host
+		tmptaskresp.RunHost = conn.Target()
+	}
+	logcache.Save(tmptaskresp)
+	runbytask.status = 1 // default success
 	var alarmerr error
 	// if a task fail other task will return context.Canceled,but it can not alarm
 	// because the first err task always alarm,so other task do not alarm

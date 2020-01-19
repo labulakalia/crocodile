@@ -42,3 +42,5 @@ port = 8081        # default rand port
 serveraddr = "127.0.0.1:8080"
 # client's hostgroup is exist hostgroup must be exist
 hostgroup = "crocodile_hostgroup"
+# client's weight default 100
+weight = 100
