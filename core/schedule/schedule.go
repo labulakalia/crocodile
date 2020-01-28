@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,26 +32,22 @@ var (
 // task running status
 type task struct {
 	sync.RWMutex
-	once      sync.Once
-	name      string
-	cronexpr  string
-	close     chan struct{}        // stop schedule
-	running   bool                 // task is running
-	ctxcancel context.CancelFunc   // store cancelfunc could cancel all task by this cancel
-	starttime int64                // run task time(ms)
-	endtime   int64                // end run task time(ms)
-	logcaches map[string]LogCacher // task runing logcaches
-
-	// // unexpectlogcache LogCacher            // unexecpt log,if has log, will exist bug
-	// runninghost     string              // current run task on host
-	// runningtask     string              // running task id parent,master,child task
-	// runningtasktype define.TaskRespType // running task id parent,master,child task type
-	status      int                 // task run res fail: 0 success:1
-	errTaskID   string              // run fail task's id
-	errCode     int                 // failed task return code
-	errMsg      string              // task run failed errmsg
-	errTasktype define.TaskRespType // failed task type
-	next        Next                // it save a func Next by route poloy
+	once        *sync.Once
+	name        string
+	cronexpr    string
+	close       chan struct{}        // stop schedule
+	running     bool                 // task is running
+	ctxcancel   context.CancelFunc   // store cancelfunc could cancel all task by this cancel
+	starttime   int64                // run task time(ms)
+	endtime     int64                // end run task time(ms)
+	logcaches   map[string]LogCacher // task runing logcaches
+	status      int                  // task run res fail: -1 success:1
+	next        Next                 // it save a func Next by route policy
+	errTaskID   string               // run fail task's id
+	errTask     string               // run fail task's id
+	errCode     int                  // failed task return code
+	errMsg      string               // task run failed errmsg
+	errTasktype define.TaskRespType  // failed task type
 }
 
 type cacheSchedule struct {
@@ -104,8 +101,8 @@ func (s *cacheSchedule) Del(id string) {
 		if t.ctxcancel != nil {
 			t.ctxcancel()
 		}
-		s.Lock()
 		close(t.close)
+		s.Lock()
 		delete(s.sch, id)
 		s.Unlock()
 		log.Info("Del task success", zap.String("taskid", id))
@@ -137,7 +134,7 @@ func (s *cacheSchedule) gettask(id string) (*task, bool) {
 }
 
 // saveLog save task resp log
-func (s *cacheSchedule) saveLog(runbyid string, t *task) error {
+func (s *cacheSchedule) storelog(runbyid string, t *task) error {
 	// read all log
 	// put logcache to locachepool
 	tasklog := &define.Log{
@@ -152,8 +149,10 @@ func (s *cacheSchedule) saveLog(runbyid string, t *task) error {
 		ErrMsg:       t.errMsg,
 		ErrTasktype:  t.errTasktype,
 		ErrTaskID:    t.errTaskID,
+		ErrTask:      t.errTask,
 		TaskResps:    make([]*define.TaskResp, 0, len(t.logcaches)),
 	}
+
 	if t.errTasktype != 0 {
 		tasklog.ErrTaskTypeStr = t.errTasktype.String()
 	}
@@ -179,6 +178,7 @@ func (s *cacheSchedule) saveLog(runbyid string, t *task) error {
 		cachepool.Put(logcache)
 		tasklog.TaskResps = append(tasklog.TaskResps, &taskresp)
 	}
+	go alarm.JudgeNotify(tasklog)
 	// save log
 	err := model.SaveLog(context.Background(), tasklog)
 
@@ -233,6 +233,7 @@ func (s *cacheSchedule) RunTask(taskid string) {
 	t.Lock()
 	t.logcaches[taskid] = masterlogcache
 	t.Unlock()
+	t.once = new(sync.Once)
 
 	// if master task is running,will do not run this time
 	if t.running {
@@ -250,14 +251,14 @@ func (s *cacheSchedule) RunTask(taskid string) {
 	if err != nil {
 		log.Error("model.GettaskById failed", zap.String("id", taskid), zap.Error(err))
 		masterlogcache.WriteStringf("can not get task %s from db", taskid)
-		return
+		goto Over
 	}
 
 	// TODO delete judge run, onlu use it in cron
 	if task.Run == 0 {
 		log.Error("model.GettaskById failed", zap.Error(err))
 		masterlogcache.WriteStringf("task %s[%s] is forbid run", task.Name, taskid)
-		return
+		goto Over
 	}
 
 	// if exist a err task,will stop all task
@@ -277,13 +278,15 @@ func (s *cacheSchedule) RunTask(taskid string) {
 	})
 	err = g.Wait()
 	if err != nil {
-		log.Error("run failed", zap.Error(err))
+		log.Error("task run failed", zap.String("taskid", taskid), zap.Error(err))
 	}
+	goto Over
 Over:
 	t.running = false
 	t.endtime = time.Now().UnixNano() / 1e6
-	// TODO save log
-	err = s.saveLog(taskid, t)
+
+	// check whether need alarm
+	err = s.storelog(taskid, t)
 	if err != nil {
 		log.Error("save task log failed", zap.Error(err))
 	}
@@ -346,7 +349,7 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		realtask   *task
 	)
 	var output []byte
-	// whenn func exit,check res and judge whatever alarm
+	// when func exit,check res and judge whatever alarm
 
 	runbytask, exist := s.gettask(runbyid)
 	if !exist {
@@ -394,7 +397,6 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 	if err != nil {
 		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
 		logcache.WriteStringf("Get Task id %s failed: %v", id, err)
-		// return err
 		goto Check
 	}
 	logcache.WriteStringf("Start Prepare Task %s[%s]\n", taskdata.Name, id)
@@ -403,13 +405,12 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 	conn, err = tryGetRCCConn(ctx, realtask.next)
 	if err != nil {
 		log.Error("tryGetRpcConn failed", zap.String("error", err.Error()))
-		logcache.WriteStringf("Can not get conn from task's hostgroup %s[%s]", taskdata.HostGroup, taskdata.HostGroupID)
+		err = fmt.Errorf("can not get valid host from hostgroup %s[%s]", taskdata.HostGroup, taskdata.HostGroupID)
+		logcache.WriteStringf(err.Error())
 		goto Check
 	}
-	// runbytask.runninghost = conn.Target()
 
 	logcache.WriteStringf("Success Conn Worker Host[%s]\n", conn.Target())
-
 	logcache.WriteStringf("Start Get Task %s[%s] Run Data\n", taskdata.Name, id)
 	// Marshal task data
 	tdata, err = json.Marshal(taskdata.TaskData)
@@ -450,7 +451,6 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 	// RunTask default resp code
 
 	logcache.WriteStringf("---------------- Task %s[%s] Start Output----------------\n", taskdata.Name, id)
-	// defer logcache.WriteStringf("---------------- Task %s[%s] Start Output----------------", realtask.name, id)
 	for {
 		// Recv return err is nil or io.EOF
 		// the last lastrecv must be return code 3 byte
@@ -498,18 +498,32 @@ Check:
 	// because the first err task always alarm,so other task do not alarm
 	// and the first err task's errmsg will save tasking
 	runbytask.once.Do(func() {
-		// check task resp
-		alarmerr := alarm.CheckAlarm(id, runbyid, taskresptype, taskrespcode, output, err)
+		// check task resp code and resp content
+		judgeres := func() error {
+			if err != nil {
+				return err
+			}
+			if taskdata.ExpectCode != taskrespcode {
+				return fmt.Errorf("%s task %s[%s] resp code is %d,want resp code %d", taskresptype.String(), id, taskdata.Name, taskrespcode, taskdata.ExpectCode)
+			}
+			if taskdata.ExpectContent != "" {
+				if strings.Contains(string(output), taskdata.ExpectContent) {
+					return fmt.Errorf("%s task %s[%s] resp context not contains expect content: %s", taskresptype.String(), id, taskdata.Name, taskdata.ExpectContent)
+				}
+			}
+			return nil
+		}
+		alarmerr = judgeres()
 		if alarmerr != nil {
 			//  task run err
-			runbytask.status = 0 // task fail
+			runbytask.status = -1 // task fail
 			runbytask.errTaskID = id
+			runbytask.errTask = realtask.name
 			runbytask.errCode = taskrespcode
 			runbytask.errMsg = alarmerr.Error()
 			runbytask.errTasktype = taskresptype
 		}
 	})
-
 	return alarmerr
 }
 

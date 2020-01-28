@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
+	"github.com/labulaka521/crocodile/core/alarm"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/router"
 	"github.com/labulaka521/crocodile/core/schedule"
@@ -28,6 +29,7 @@ func Server() *cobra.Command {
 			}
 			config.Init(cfg)
 			mylog.Init()
+			alarm.InitAlarm()
 			model.InitDb()
 			model.InitRabc()
 		},
@@ -36,7 +38,7 @@ func Server() *cobra.Command {
 			if err != nil {
 				log.Fatal("listen failed", zap.String("error", err.Error()))
 			}
-
+			// init alarm
 			err = schedule.Init()
 			if err != nil {
 				log.Fatal("init schedule failed", zap.String("error", err.Error()))

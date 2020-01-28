@@ -61,13 +61,13 @@ const (
 func (tasktype TaskRespType) String() string {
 	switch tasktype {
 	case MasterTask:
-		return "Master"
+		return "master"
 	case ChildTask:
-		return "Child"
+		return "child"
 	case ParentTask:
-		return "Parent"
+		return "parent"
 	default:
-		return "Unknow"
+		return "unknow"
 	}
 }
 
@@ -89,10 +89,14 @@ type common struct {
 
 // User user msg
 type User struct {
-	Role     Role   `json:"role" binding:"gte=1,lte=2"`     // 用户类型: 2 管理员 1 普通用户
-	Forbid   int    `json:"forbid" binding:"gte=0,lte=1"`   // 禁止用户: 0 未禁止 1 已禁止
-	Email    string `json:"email" binding:"required,email"` // 用户邮箱 日后任务的通知信息会发送给此邮件
-	Password string `json:"password,omitempty"`
+	Role      Role   `json:"role" binding:"gte=1,lte=2"`     // 用户类型: 2 管理员 1 普通用户
+	Forbid    int    `json:"forbid" binding:"gte=0,lte=1"`   // 禁止用户: 0 未禁止 1 已禁止
+	Password  string `json:"password,omitempty"`             // 用户密码
+	Email     string `json:"email" binding:"required,email"` // 用户邮箱 日后任务的通知信息会发送给此邮件
+	DingPhone string `json:"dingphone"`                      // dingding phone
+	Slack     string `json:"slack"`                          // slack user name
+	Telegram  string `json:"telegram"`                       // telegram bot chat id
+	WeChat    string `json:"wechat"`                         // wechat id
 	common
 }
 
@@ -123,21 +127,22 @@ type Task struct {
 	TaskType TaskType    `json:"task_type"` // 任务类型
 	TaskData interface{} `json:"task_data"` // 任务数据
 	// TODO 改为 0 后只是在调度循环中不再检测下次运行时间
-	Run               int         `json:"run"`                             // 0 为不能运行 1 为可以运行 如果这个任务作为别的任务父任务或者子任务会忽略这个字段
-	ParentTaskIds     []string    `json:"parent_taskids"`                  // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
-	ParentRunParallel int         `json:"parent_runparallel"`              // 是否以并行运行父任务 0否 1是
-	ChildTaskIds      []string    `json:"child_taskids"`                   // 子任务 运行结束后运行子任务
-	ChildRunParallel  int         `json:"child_runparallel"`               // 是否以并行运行子任务 0否 1是
-	CreateBy          string      `json:"create_by"`                       // 创建人
-	CreateByUID       string      `json:"create_byuid"`                    // 创建人ID
-	HostGroup         string      `json:"host_group"`                      // 执行计划
-	HostGroupID       string      `json:"host_groupid" binding:"required"` // 主机组ID
-	Cronexpr          string      `json:"cronexpr" binding:"required"`     // 执行任务表达式
-	Timeout           int         `json:"timeout"`                         // 任务超时时间 (s)
-	AlarmUserIds      []string    `json:"alarm_userids"`                   // 报警用户 多个用户
-	RoutePolicy       RoutePolicy `json:"route_policy"`					   // how to select a run worker from hostgroup
-	ExpectCode        int         `json:"expect_code"`                     // expect task return code. if not set 0 or 200
-	ExpectContent     string      `json:"expect_content"`                  // expect task return content. if not set do not check
+	Run               int         `json:"run"`                              // 0 为不能运行 1 为可以运行 如果这个任务作为别的任务父任务或者子任务会忽略这个字段
+	ParentTaskIds     []string    `json:"parent_taskids"`                   // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
+	ParentRunParallel int         `json:"parent_runparallel"`               // 是否以并行运行父任务 0否 1是
+	ChildTaskIds      []string    `json:"child_taskids"`                    // 子任务 运行结束后运行子任务
+	ChildRunParallel  int         `json:"child_runparallel"`                // 是否以并行运行子任务 0否 1是
+	CreateBy          string      `json:"create_by"`                        // 创建人
+	CreateByUID       string      `json:"create_byuid"`                     // 创建人ID
+	HostGroup         string      `json:"host_group"`                       // 执行计划
+	HostGroupID       string      `json:"host_groupid" binding:"required"`  // 主机组ID
+	Cronexpr          string      `json:"cronexpr" binding:"required"`      // 执行任务表达式
+	Timeout           int         `json:"timeout"`                          // 任务超时时间 (s)
+	AlarmUserIds      []string    `json:"alarm_userids" binding:"required"` // 报警用户 多个用户
+	RoutePolicy       RoutePolicy `json:"route_policy" binding:"required"`  // how to select a run worker from hostgroup
+	ExpectCode        int         `json:"expect_code"`                      // expect task return code. if not set 0 or 200
+	ExpectContent     string      `json:"expect_content"`                   // expect task return content. if not set do not check
+	AlarmStatus       int         `json:"alatm_status" binding:"required"`  // alarm when task run success or fail or all all:-2 failed: -1 success: 1
 	common
 }
 
@@ -154,27 +159,6 @@ const (
 	// LeastTask get host by host LeastTask
 	LeastTask
 )
-
-// // CheckExpect contains or equal
-// type CheckExpect int
-
-// const (
-// 	// CheckContains Contains content
-// 	CheckContains CheckExpect = iota + 1
-// 	// CheckEqual Check Content equal
-// 	CheckEqual
-// )
-
-// // TODO
-
-// type resstatus int
-
-// const (
-// 	// Success task run success
-// 	Success resstatus = iota + 1
-// 	// Fail task run fail
-// 	Fail
-// )
 
 // RunTask running task message
 type RunTask struct {
@@ -202,15 +186,16 @@ type TaskResp struct {
 type Log struct {
 	RunByTaskID    string       `json:"run_bytaskId"`
 	StartTime      int64        `json:"start_time"`      // ms
-	StartTimeStr   string       `json:"start_timestr"`   // ms
+	StartTimeStr   string       `json:"start_timestr"`   //
 	EndTime        int64        `json:"end_timeunix"`    // ms
-	EndTimeStr     string       `json:"end_timestr"`     // ms
+	EndTimeStr     string       `json:"end_timestr"`     //
 	TotalRunTime   int          `json:"total_runtime"`   // ms
-	Status         int          `json:"status"`          // 任务运行结果 0 失败 1 成功
+	Status         int          `json:"status"`          // 任务运行结果 -1 失败 1 成功
 	TaskResps      []*TaskResp  `json:"task_resps"`      // 任务执行过程日志
 	ErrCode        int          `json:"err_code"`        // err code
 	ErrMsg         string       `json:"err_msg"`         // 错误原因
 	ErrTasktype    TaskRespType `json:"err_tasktype"`    // err task type
 	ErrTaskTypeStr string       `json:"err_tasktypestr"` // 1 主任务 2 父任务 3 子任务
 	ErrTaskID      string       `json:"err_taskid"`      // task failed id
+	ErrTask        string       `json:"err_task"`        // task failed id
 }

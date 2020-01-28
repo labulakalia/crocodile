@@ -3,7 +3,7 @@ secrettoken = "weinjuwiwiuwu"
 
 # log
 [log]
-# if "" Stdout
+# if "" will Stdout
 logpath = ""
 # log size (M)
 maxsize = 10
@@ -14,7 +14,7 @@ maxage =  7
 # save total log file total
 maxbackups = 10
 # log level
-loglevel  = "info"
+loglevel  = "debug"
 # text or json output
 format = "text"
 
@@ -27,12 +27,12 @@ keyfile="core/cert/key.pem"
 [server]
 port = 8080
 maxhttptime = "10s" # 秒
-  [server.db]
-  drivename = "sqlite3"
-  dsn = "db/core.db"
-  maxidle = 10
-  maxconn = 20
-  maxquerytime = "10s"
+[server.db]
+drivename = "sqlite3"
+dsn = "db/core.db"
+maxidle = 10
+maxconn = 20
+maxquerytime = "10s"
 
 # crocodile client
 [client]
@@ -44,3 +44,41 @@ serveraddr = "127.0.0.1:8080"
 hostgroup = "crocodile_hostgroup"
 # client's weight default 100
 weight = 100
+
+# 消息通知配置
+[notify]
+# 邮箱
+[notify.email]
+smtphost = ""
+port = 25
+username = "user@163.com"
+password = "password"
+from = "from@163.com"
+tls = false
+# 匿名发送
+anonymous = false
+# 如使用自建邮件系统请设置 skipVerify 为 true 以避免证书校验错误
+skipverify = false
+# 钉钉
+[notify.dingding]
+webhook = ""
+# 安全设置
+# 1 自定义关键字
+# 2 加签
+# 3 IP地址
+securelevel = 1
+# 如果securelevel 为2 需要填写加签密钥
+secret = ""
+# slack
+[notify.slack]
+webhook = ""
+# telegram
+[notify.telegram]
+bottoken = ""
+# 企业微信
+[notify.wechat]
+cropid = ""
+agentid = 1000002
+agentsecret = ""
+[notify.webhook]
+webhookurl = ""

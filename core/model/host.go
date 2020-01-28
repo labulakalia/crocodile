@@ -88,26 +88,31 @@ func UpdateHostHearbeat(ctx context.Context, hbreq *pb.HeartbeatReq) error {
 
 // get host by addr or id
 func getHosts(ctx context.Context, addr string, ids []string) ([]*define.Host, error) {
-	getsql := "SELECT id,addr,hostname,runningTasks,weight,stop,version,lastUpdateTimeUnix FROM crocodile_host"
+	getsql := `SELECT 
+					id,
+					addr,
+					hostname,
+					runningTasks,
+					weight,
+					stop,
+					version,
+					lastUpdateTimeUnix 
+			   FROM 
+			    	crocodile_host`
 	args := []interface{}{}
 	if addr != "" {
 		getsql += " WHERE addr=?"
 		args = append(args, addr)
 	}
-	// if id != "" {
-	// 	getsql += " WHERE id=?"
-	// 	args = append(args, id)
-	// }
+
 	if len(ids) > 0 {
 		var querys = []string{}
-		var quweyv = []interface{}{}
-		for i := 0; i < len(ids); i++ {
+		for _, id := range ids {
 			querys = append(querys, "id=?")
-			quweyv = append(quweyv, ids[i])
+			args = append(args, id)
 		}
-
 		getsql += " WHERE " + strings.Join(querys, " OR ")
-		args = append(args, quweyv...)
+
 	}
 
 	conn, err := db.GetConn(ctx)

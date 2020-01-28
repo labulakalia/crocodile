@@ -9,7 +9,7 @@ import (
 
 var (
 	// CoreConf crocodile conf
-	CoreConf = &coreConf{}
+	CoreConf *coreConf
 )
 
 // Init Config
@@ -27,6 +27,7 @@ type coreConf struct {
 	Cert        Cert
 	Server      Server
 	Client      Client
+	Notify      Notify
 }
 
 // Log Config
@@ -78,4 +79,49 @@ func (d *duration) UnmarshalText(text []byte) error {
 	var err error
 	d.Duration, err = time.ParseDuration(string(text))
 	return err
+}
+
+// Notify send msg to user
+type Notify struct {
+	Email    email
+	DingDing dingding
+	Slack    slack
+	Telegram telegram
+	WeChat   wechat
+	WebHook  webhook
+}
+
+type email struct {
+	SMTPHost   string
+	Port       int
+	UserName   string
+	Password   string
+	From       string
+	TLS        bool
+	Anonymous  bool
+	SkipVerify bool
+}
+
+type dingding struct {
+	WebHook     string
+	SecureLevel int
+	Secret      string
+}
+
+type slack struct {
+	WebHook string
+}
+
+type telegram struct {
+	BotToken string
+}
+
+type wechat struct {
+	CropID      string
+	AgentID     int
+	AgentSecret string
+}
+
+type webhook struct {
+	WebHookURL string
 }

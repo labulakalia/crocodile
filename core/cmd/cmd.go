@@ -12,9 +12,9 @@ func Version(version, commit, builddate string) *cobra.Command {
 		Use:   "version",
 		Short: "crocodile version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("version:    %s\n", version)
-			fmt.Printf("commit:     %s\n", commit)
-			fmt.Printf("build date: %s\n", builddate)
+			fmt.Printf("version    :%s\n", version)
+			fmt.Printf("commit     :%s\n", commit)
+			fmt.Printf("build date :%s\n", builddate)
 		},
 	}
 	return cmdClient
@@ -36,6 +36,8 @@ func GeneratePemKey() *cobra.Command {
 			}
 		},
 	}
+	// ioutil.TempDir(dir string, prefix string)
 	cmdClient.Flags().StringVarP(&outdir, "dir", "d", "", "output pem dir[default current dir]")
 	return cmdClient
+
 }

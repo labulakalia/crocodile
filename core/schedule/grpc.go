@@ -92,7 +92,6 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 		),
 		grpc.WithBlock())
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	cachegRPCConnM.addgRPCClientConn(addr, conn)
@@ -153,7 +152,7 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 	// queryctx, querycancel := context.WithTimeout(ctx,
 	// 	config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	// defer querycancel()
-	for i:=0;i< defaultMaxRetryGetWorkerHost;i++ {
+	for i := 0; i < defaultMaxRetryGetWorkerHost; i++ {
 		host := next()
 		if host == nil {
 			continue
@@ -169,7 +168,7 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 		}
 		conn.Close()
 	}
-	return nil, fmt.Errorf("can not get valid grpc conn from hostgroup")
+	return nil, fmt.Errorf("can not get valid host from hostgroup")
 }
 
 // RegistryClient registry client to server
@@ -203,19 +202,21 @@ func RegistryClient(version string, port int) error {
 // send client will send hearbt to server, let scheduler center know it is alive
 func sendhb(client pb.HeartbeatClient, port int) {
 	log.Info("start send hearbeat to server")
-	timer := time.NewTimer(defaultHearbeatInterval)
+	ticker := time.NewTicker(defaultHearbeatInterval)
 	for {
 		select {
-		case <-timer.C:
+		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
-			defer cancel()
-			hbreq := &pb.HeartbeatReq{Port: int32(port)}
+			hbreq := &pb.HeartbeatReq{
+				Port:        int32(port),
+				RunningTask: runningtask.GetRunningTasks(),
+			}
 			_, err := client.SendHb(ctx, hbreq)
 			if err != nil {
 				code := DealRPCErr(err)
 				log.Error("client.SendHb failed", zap.String("short msg", resp.GetMsg(code)), zap.Error(err))
 			}
-			timer.Reset(defaultHearbeatInterval)
+			cancel()
 		case <-clentstophb:
 			log.Info("Stop Send HearBeat")
 			return

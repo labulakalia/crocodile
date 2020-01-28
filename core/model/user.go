@@ -3,6 +3,9 @@ package model
 import (
 	"context"
 	"database/sql"
+	"strings"
+	"time"
+
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/jwt"
 	"github.com/labulaka521/crocodile/common/log"
@@ -10,7 +13,6 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"time"
 )
 
 // LoginUser login user
@@ -20,7 +22,7 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 		uid          string
 		forbid       int
 	)
-	loguser := `SELECT id, hashpassword, forbid FROM crocodile_user WHERE name=?`
+	loguser := `SELECT id,hashpassword,forbid FROM crocodile_user WHERE name=?`
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -39,12 +41,12 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 		return "", errors.Wrap(err, "stmt.QueryRowContext Scan")
 	}
 	if forbid == 1 {
-		return "", errors.Wrap(define.ErrForbid{Name:name}, "")
+		return "", errors.Wrap(define.ErrForbid{Name: name}, "")
 	}
 
 	err = utils.CheckHashPass(hashpassword, password)
 	if err != nil {
-		return "", errors.Wrap(define.ErrUserPass{Err:err}, "utils.CheckHashPass")
+		return "", errors.Wrap(define.ErrUserPass{Err: err}, "utils.CheckHashPass")
 	}
 	token, err := jwt.GenerateToken(uid)
 	if err != nil {
@@ -56,7 +58,19 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 
 // AddUser add new user
 func AddUser(ctx context.Context, u *define.User) error {
-	adduser := `INSERT INTO crocodile_user (id,name,email,hashpassword,role,forbid,remark,createTime,updateTime)VALUES(?,?,?,?,?,?,?,?,?)`
+	adduser := `INSERT INTO crocodile_user (
+					id,
+					name,
+					email,
+					hashpassword,
+					role,
+					forbid,
+					remark,
+					createTime,
+					updateTime
+				)
+				VALUES
+				(?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.Db.GetConn")
@@ -88,14 +102,20 @@ func AddUser(ctx context.Context, u *define.User) error {
 	return nil
 }
 
-// GetUser get user by id
-func GetUser(ctx context.Context, uid string) ([]define.User, error) {
-	getuser := `select id,name,role,forbid,email,createTime,updateTime,remark FROM crocodile_user `
+func getusers(ctx context.Context, uids []string) ([]define.User, error) {
+	getuser := `select id,name,role,
+				forbid,email,createTime,
+				updateTime,dingphone,slack,
+				telegram,wechat,remark FROM crocodile_user `
 	args := []interface{}{}
 	users := []define.User{}
-	if uid != "" {
-		getuser += "WHERE id=?"
-		args = append(args, uid)
+	if len(uids) > 0 {
+		var querys = []string{}
+		for _, uid := range uids {
+			querys = append(querys, "id=?")
+			args = append(args, uid)
+		}
+		getuser += " WHERE " + strings.Join(querys, " OR ")
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -118,9 +138,8 @@ func GetUser(ctx context.Context, uid string) ([]define.User, error) {
 			updateTime int64
 		)
 		user := define.User{}
-		err := rows.Scan(&user.ID, &user.Name, &user.Role,
-			&user.Forbid, &user.Email, &createTime,
-			&updateTime, &user.Remark,
+		err := rows.Scan(&user.ID, &user.Name, &user.Role, &user.Forbid, &user.Email, &createTime,
+			&updateTime, &user.DingPhone, &user.Slack, &user.Telegram, &user.WeChat, &user.Remark,
 		)
 		if err != nil {
 			log.Error("Scan Err", zap.Error(err))
@@ -131,6 +150,16 @@ func GetUser(ctx context.Context, uid string) ([]define.User, error) {
 		users = append(users, user)
 	}
 	return users, nil
+}
+
+// GetUser get user by id
+func GetUser(ctx context.Context, uid string) ([]define.User, error) {
+	return getusers(ctx, []string{uid})
+}
+
+// GetUsers get users info by ids
+func GetUsers(ctx context.Context, uids []string) ([]define.User, error) {
+	return getusers(ctx, uids)
 }
 
 // ChangeUser change user message

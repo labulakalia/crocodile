@@ -7,6 +7,10 @@ CREATE TABLE crocodile_user (
                                 role INT(1) NOT NULL DEFAULT 1,
                                 forbid INT(1) NOT NULL DEFAULT 1,
                                 remark VARCHAR(100),
+                                dingphone VARCHAR(20),
+                                slack VARCHAR(20),
+                                telegram VARCHAR(20)
+                                wechat VARCHAR(20),
                                 createTime INT NOT NULL,
                                 updateTime INT NOT NULL
 );

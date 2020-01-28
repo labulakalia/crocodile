@@ -34,12 +34,13 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 					routePolicy,
 					expectCode,
 					expectContent,
+					alarmStatus,
 					createByID,
 					hostGroupID,
 					remark,
 					createTime,
 					updateTime)
-				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
@@ -68,6 +69,7 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 		t.RoutePolicy,
 		t.ExpectCode,
 		t.ExpectContent,
+		t.AlarmStatus,
 		t.CreateByUID,
 		t.HostGroupID,
 		t.Remark,
@@ -98,6 +100,7 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 						routePolicy=?,
 						expectCode=?,
 						expectContent=?,
+						alarmStatus=?,
 						remark=?,
 						updateTime=?
 					WHERE id=?`
@@ -128,6 +131,7 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 		t.RoutePolicy,
 		t.ExpectCode,
 		t.ExpectContent,
+		t.AlarmStatus,
 		t.Remark,
 		updateTime,
 		t.ID,
@@ -178,7 +182,8 @@ func GetTaskByID(ctx context.Context, id string) (*define.Task, error) {
 
 // getTasks get takls by id
 func getTasks(ctx context.Context, id string) ([]define.Task, error) {
-	getsql := `SELECT t.id,
+	getsql := `SELECT 
+					t.id,
 					t.name,
 					t.tasktype,
 					t.taskdata,
@@ -191,6 +196,9 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 					t.timeout,
 					t.alarmUserIds,
 					t.routePolicy,
+					t.expectCode,
+					t.expectContent,
+					t.alarmStatus,
 					u.name,
 					t.createByID,
 					hg.name,
@@ -198,7 +206,8 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 					t.remark,
 					t.createTime,
 					t.updateTime 
-				FROM crocodile_task as t,crocodile_user as u,crocodile_hostgroup as hg
+				FROM 
+				  crocodile_task as t,crocodile_user as u,crocodile_hostgroup as hg
 				WHERE t.createByID == u.id AND t.hostGroupID = hg.id`
 	args := []interface{}{}
 	if id != "" {
@@ -243,6 +252,9 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 			&t.Timeout,
 			&alarmUserids,
 			&t.RoutePolicy,
+			&t.ExpectCode,
+			&t.ExpectContent,
+			&t.AlarmStatus,
 			&t.CreateBy,
 			&t.CreateByUID,
 			&t.HostGroup,
@@ -276,7 +288,7 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 		t.TaskData, err = tasktype.GetDataRun(&req)
 		if err != nil {
 			log.Error("GetDataRun failed", zap.Any("type", t.TaskType),zap.Error(err))
-			continue
+			continue 
 		}
 		res = append(res, t)
 	}

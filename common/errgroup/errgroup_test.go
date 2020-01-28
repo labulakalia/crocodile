@@ -43,3 +43,7 @@ func TestErrGroup(t *testing.T) {
 		t.Error("err should not nil")
 	}
 }
+
+func BenchmarkGroup_Go(b *testing.B) {
+
+}

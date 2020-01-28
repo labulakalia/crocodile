@@ -41,7 +41,7 @@ message RegistryReq {
 }
 
 message HeartbeatReq {
-  string ip = 1;
+  // string ip = 1;
   int32 port = 2;
   repeated string running_task = 3;
 }

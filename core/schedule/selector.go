@@ -2,7 +2,7 @@ package schedule
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
@@ -66,7 +66,7 @@ func getOnlineHosts(hgid string) ([]*define.Host, error) {
 		onlinehosts = append(onlinehosts, host)
 	}
 	if len(onlinehosts) == 0 {
-		err := errors.New("can not get online host from hostgrop " + hgid)
+		err := fmt.Errorf("can not get valid host from hostgrop %s" ,hgid)
 		return nil, err
 	}
 	return onlinehosts, nil
@@ -82,6 +82,7 @@ func random(hgid string) Next {
 	return func() *define.Host {
 		hosts, err := getOnlineHosts(hgid)
 		if err != nil {
+			// log.Error("get host failed", zap.Error(err))
 			return nil
 		}
 		return hosts[rand.Int()%len(hosts)]

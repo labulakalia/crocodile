@@ -52,7 +52,14 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 // GetLog get task resp log by taskid
 func GetLog(ctx context.Context, taskid string) ([]*define.Log, error) {
 	logs := []*define.Log{}
-	getsql := `SELECT starttime,endtime,taskresps FROM crocodile_log WHERE taskid=?`
+	getsql := 	`SELECT 
+					starttime,
+					endtime,
+					taskresps 
+				FROM 
+					crocodile_log
+			   	WHERE 
+			    	taskid=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "db.GetConn")

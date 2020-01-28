@@ -20,6 +20,7 @@ CREATE TABLE crocodile_task (
         routePolicy INT,
         expectCode INT,
         expectContent TEXT,
+        alarmStatus INT,
         remark VARCHAR(50),
         createTime INT NOT NULL,
         updateTime INT NOT NULL

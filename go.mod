@@ -1,6 +1,6 @@
 module github.com/labulaka521/crocodile
 
-go 1.12
+go 1.13
 
 require (
 	github.com/BurntSushi/toml v0.3.1
@@ -46,13 +46,14 @@ require (
 	golang.org/x/net v0.0.0-20191116160921-f9c825593386 // indirect
 	golang.org/x/sys v0.0.0-20191115151921-52ab43148777 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/tools v0.0.0-20200102200121-6de373a2766c
+	golang.org/x/tools v0.0.0-20200102200121-6de373a2766c // indirect
 	golang.org/x/tools/gopls v0.2.2 // indirect
-	google.golang.org/appengine v1.6.0
-	google.golang.org/genproto v0.0.0-20191115221424-83cc0476cb11
+	google.golang.org/appengine v1.6.0 // indirect
+	google.golang.org/genproto v0.0.0-20191115221424-83cc0476cb11 // indirect
 	google.golang.org/grpc v1.25.1
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	gopkg.in/tucnak/telebot.v2 v2.0.0-20200120165535-b6c3367fed99
 	gopkg.in/yaml.v2 v2.2.4 // indirect
 )
 

@@ -25,15 +25,14 @@ type TaskRuner interface {
 // GetDataRun get task type
 // get api or shell
 func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
-
 	switch define.TaskType(t.TaskType) {
 	case define.Shell:
-		var shell DataShell
-		err := json.Unmarshal(t.TaskData, &shell)
+		var code DataCode
+		err := json.Unmarshal(t.TaskData, &code)
 		if err != nil {
 			return nil, err
 		}
-		return &shell, err
+		return &code, err
 
 	case define.API:
 		var api DataAPI

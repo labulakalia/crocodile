@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"time"
 	"errors"
 	"fmt"
 	"net"
@@ -10,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
@@ -53,11 +53,11 @@ func NewHTTPRouter() *http.Server {
 	}
 	rt := v1.Group("/task")
 	{
-		rt.GET("/", task.GetTasks)
+		rt.GET("", task.GetTasks)
 		rt.GET("/info", task.GetTask) // 获取指定task信息
-		rt.POST("/", task.CreateTask)
-		rt.PUT("/", task.ChangeTask)
-		rt.DELETE("/", task.DeleteTask)
+		rt.POST("", task.CreateTask)
+		rt.PUT("", task.ChangeTask)
+		rt.DELETE("", task.DeleteTask)
 		rt.PUT("/run", task.RunTask)
 		rt.PUT("/kill", task.KillTask)
 		rt.GET("/running", task.RunningTask)
@@ -124,7 +124,7 @@ func Run(mode define.RunMode, lis net.Listener) error {
 	go gRPCServer.Serve(grpcL)
 	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
 
-	go tryDisConn(gRPCServer,httpServer,mode)
+	go tryDisConn(gRPCServer, httpServer, mode)
 	return m.Serve()
 }
 
@@ -142,8 +142,8 @@ func tryDisConn(gRPCServer *grpc.Server, httpServer *http.Server, mode define.Ru
 	select {
 	case sig := <-signals:
 		go func() {
-			select{
-			case <- time.After(time.Second * 10):
+			select {
+			case <-time.After(time.Second * 10):
 				log.Warn("Shutdown gracefully timeout, application will shutdown immediately.")
 				os.Exit(0)
 			}

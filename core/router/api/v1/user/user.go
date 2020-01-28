@@ -105,8 +105,8 @@ func GetUser(c *gin.Context) {
 		return
 	}
 	if len(users) != 1 {
-		log.Error("Get many users", zap.String("uid", uid))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		log.Error("Get user failed", zap.String("uid", uid))
+		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	resp.JSON(c, resp.Success, users[0])

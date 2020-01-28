@@ -55,6 +55,17 @@ func (t *runningcache) Del(id string) {
 	t.Unlock()
 }
 
+// GetRunningTasks return worker running task
+func (t *runningcache) GetRunningTasks() []string {
+	runningtasks := []string{}
+	t.RLock()
+	for taskname := range t.running {
+		runningtasks = append(runningtasks, taskname)
+	}
+	t.RUnlock()
+	return runningtasks
+}
+
 func (t *runningcache) Cancel(id string) {
 	t.RLock()
 	taskcancel, ok := t.running[id]
@@ -77,7 +88,6 @@ func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) er
 	log.Debug("recv new task ,start run", zap.Any("task", req))
 
 	// save running task
-
 	r, err := tasktype.GetDataRun(req)
 	if err != nil {
 		err = stream.Send(&pb.TaskResp{Resp: []byte(err.Error())})
@@ -88,8 +98,10 @@ func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) er
 	}
 
 	taskctx, taskcancel := context.WithCancel(stream.Context())
+	
 	runningtask.Add(req.GetTaskId(), taskcancel)
 	defer runningtask.Del(req.GetTaskId())
+
 	out := r.Run(taskctx)
 	defer out.Close()
 	var buf = make([]byte, 1024)
@@ -150,15 +162,7 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	} else {
 		id = host.ID
 	}
-	// hb := pb.HeartbeatReq{
-	// 	Ip:   ip,
-	// 	Port: req.Port,
-	// }
-	// _, err = hs.SendHb(ctx, &hb)
-	// if err != nil {
-	// 	log.Error("Send hearbeat failed", zap.String("error", err.Error()))
-	// 	return &pb.Empty{}, err
-	// }
+
 	if req.Hostgroup != "" {
 		hgs, err := model.GetHostGroupName(ctx, req.Hostgroup)
 		if err != nil {

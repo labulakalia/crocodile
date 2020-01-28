@@ -1,4 +1,4 @@
-VERSION=1.1.0
+VERSION=v1.1.0
 COMMIT=`git rev-parse --short HEAD`
 CFGPATH='core/config/core.toml'
 BUILDDATE=`date "+%Y-%m-%d"`
@@ -14,4 +14,4 @@ runs:
 runc:
 	go run -ldflags "-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.builddate=${BUILDDATE}" core/main.go client -c ${CFGPATH}
 version:
-	go run -ldflags "-X main.version=${VERSION} -X main.commit=${COMMIT}" core/main.go
+	go run -ldflags "-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.builddate=${BUILDDATE}" core/main.go version
