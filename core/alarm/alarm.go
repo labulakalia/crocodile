@@ -124,7 +124,7 @@ func JudgeNotify(tasklog *define.Log) {
 		totalruntime = strconv.Itoa(tasklog.TotalRunTime/1000) + "s"
 	}
 
-	if taskdata.AlarmStatus == -2 || taskdata.AlarmStatus == tasklog.Status {
+	if int(taskdata.AlarmStatus) == -2 || int(taskdata.AlarmStatus) == tasklog.Status {
 		err := sendalarm(taskdata.AlarmUserIds,
 			taskdata.Name,
 			tasklog.RunByTaskID,
@@ -165,7 +165,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 		err := fmt.Errorf("task %s[%s] not exist alarm users", taskname, taskid)
 		return err
 	}
-	alarmusers, err := model.GetUsers(context.Background(), notifyuids)
+	alarmusers, err := model.GetUsers(context.Background(), notifyuids, 0, 0)
 	if err != nil {
 		log.Error("get alarm user info failed", zap.Error(err))
 		return err

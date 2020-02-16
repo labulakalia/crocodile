@@ -3,14 +3,15 @@ package schedule
 import (
 	"context"
 	"fmt"
+	"math"
+	"math/rand"
+	"time"
+
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"go.uber.org/zap"
-	"math"
-	"math/rand"
-	"time"
 )
 
 // Select a next run host
@@ -66,13 +67,12 @@ func getOnlineHosts(hgid string) ([]*define.Host, error) {
 		onlinehosts = append(onlinehosts, host)
 	}
 	if len(onlinehosts) == 0 {
-		err := fmt.Errorf("can not get valid host from hostgrop %s" ,hgid)
+		err := fmt.Errorf("can not get valid host from hostgrop %s[%s]", hg.Name, hgid)
 		return nil, err
 	}
 	return onlinehosts, nil
 
 }
-
 
 var defaultRoutePolicy = random
 
@@ -82,6 +82,7 @@ func random(hgid string) Next {
 	return func() *define.Host {
 		hosts, err := getOnlineHosts(hgid)
 		if err != nil {
+			log.Error("get online host failed", zap.Error(err))
 			// log.Error("get host failed", zap.Error(err))
 			return nil
 		}
@@ -91,10 +92,12 @@ func random(hgid string) Next {
 
 // roundRobin return a Next func,it will RoundRobin return host
 func roundRobin(hgid string) Next {
+	log.Debug("add Next func RoundRobin")
 	var i = rand.Int()
 	return func() *define.Host {
 		hosts, err := getOnlineHosts(hgid)
 		if err != nil {
+			log.Error("get online host failed", zap.Error(err))
 			return nil
 		}
 		host := hosts[i%len(hosts)]
@@ -105,9 +108,11 @@ func roundRobin(hgid string) Next {
 
 // weight return a Next Func,it will return host by host weight
 func weight(hgid string) Next {
+	log.Debug("add Next func Weight")
 	return func() *define.Host {
 		hosts, err := getOnlineHosts(hgid)
 		if err != nil {
+			log.Error("get online host failed", zap.Error(err))
 			return nil
 		}
 		allweight := 0
@@ -130,9 +135,11 @@ func weight(hgid string) Next {
 
 // leastTask return a Next Func, it will return host by leaset host running task
 func leastTask(hgid string) Next {
+	log.Debug("add Next func LeastTask")
 	return func() *define.Host {
 		hosts, err := getOnlineHosts(hgid)
 		if err != nil {
+			log.Error("get online host failed", zap.Error(err))
 			return nil
 		}
 		// a worker max running tasks 32767

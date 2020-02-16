@@ -164,14 +164,15 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	}
 
 	if req.Hostgroup != "" {
-		hgs, err := model.GetHostGroupName(ctx, req.Hostgroup)
+		hg, err := model.GetHostGroupName(ctx, req.Hostgroup)
 		if err != nil {
-			return &pb.Empty{}, err
+			log.Error("hostgroup not exist,ignore add host to hostrgoup",zap.String("hostgroup",req.Hostgroup))
+			return &pb.Empty{}, nil
 		}
-
-		if !strings.Contains(strings.Join(hgs.HostsID, ""), id) {
-			hgs.HostsID = append(hgs.HostsID, id)
-			err = model.ChangeHostGroup(ctx, hgs)
+		
+		if !strings.Contains(strings.Join(hg.HostsID, ""), id) {
+			hg.HostsID = append(hg.HostsID, id)
+			err = model.ChangeHostGroup(ctx, hg.HostsID,hg.ID,hg.Remark)
 			if err != nil {
 				return &pb.Empty{}, err
 			}
@@ -189,8 +190,7 @@ func (hs *HeartbeatService) SendHb(ctx context.Context, hb *pb.HeartbeatReq) (*p
 		return &pb.Empty{}, errors.New("get peer failed")
 	}
 	ip, _, _ := net.SplitHostPort(p.Addr.String())
-	hb.Ip = ip
 	log.Debug("recv hearbeat", zap.String("addr", fmt.Sprintf("%s:%d", ip, hb.Port)))
-	err := model.UpdateHostHearbeat(ctx, hb)
+	err := model.UpdateHostHearbeat(ctx, ip,hb.GetPort(),hb.GetRunningTask())
 	return &pb.Empty{}, err
 }

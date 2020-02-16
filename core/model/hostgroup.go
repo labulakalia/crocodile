@@ -2,19 +2,20 @@ package model
 
 import (
 	"context"
+	"math/rand"
+	"strings"
+	"time"
+
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"math/rand"
-	"strings"
-	"time"
 )
 
 // CreateHostgroup create hostgroup
-func CreateHostgroup(ctx context.Context, hg *define.HostGroup) error {
+func CreateHostgroup(ctx context.Context, name, remark, createByID string, hostids []string) error {
 	createsql := `INSERT INTO crocodile_hostgroup (id,name,remark,createByID,hostIDs,createTime,updateTime) VALUES(?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -28,11 +29,11 @@ func CreateHostgroup(ctx context.Context, hg *define.HostGroup) error {
 	defer stmt.Close()
 	createTime := time.Now().Unix()
 	_, err = stmt.ExecContext(ctx,
-		hg.ID,
-		hg.Name,
-		hg.Remark,
-		hg.CreateByUID,
-		strings.Join(hg.HostsID, ","),
+		utils.GetID(),
+		name,
+		remark,
+		createByID,
+		strings.Join(hostids, ","),
 		createTime,
 		createTime)
 	if err != nil {
@@ -42,7 +43,7 @@ func CreateHostgroup(ctx context.Context, hg *define.HostGroup) error {
 }
 
 // ChangeHostGroup change hostgroup
-func ChangeHostGroup(ctx context.Context, hg *define.HostGroup) error {
+func ChangeHostGroup(ctx context.Context, hostids []string, id, remark string) error {
 	changesql := `UPDATE crocodile_hostgroup SET hostIDs=?,remark=?,updateTime=? WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -54,13 +55,17 @@ func ChangeHostGroup(ctx context.Context, hg *define.HostGroup) error {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, strings.Join(hg.HostsID, ","), hg.Remark, time.Now().Unix(), hg.ID)
+	_, err = stmt.ExecContext(ctx,
+		strings.Join(hostids, ","),
+		remark,
+		time.Now().Unix(),
+		id,
+	)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
 	return nil
 }
-
 
 // DeleteHostGroup delete hostgroup
 func DeleteHostGroup(ctx context.Context, id string) error {
@@ -83,10 +88,9 @@ func DeleteHostGroup(ctx context.Context, id string) error {
 }
 
 // getHostGroups return hostgroup by id or hostgroupname
-func getHostGroups(ctx context.Context, id, hgname string) ([]define.HostGroup, error) {
+func getHostGroups(ctx context.Context, id, hgname string, limit, offset int) ([]define.HostGroup, error) {
 	hgs := []define.HostGroup{}
-
-	sqlget := `SELECT 
+	getsql := `SELECT 
 					hg.id,
 					hg.name,
 					hg.remark,
@@ -101,19 +105,24 @@ func getHostGroups(ctx context.Context, id, hgname string) ([]define.HostGroup, 
 					hg.createByID == u.id`
 	args := []interface{}{}
 	if id != "" {
-		sqlget += " AND hg.id=?"
+		getsql += " AND hg.id=?"
 		args = append(args, id)
 	}
 	if hgname != "" {
-		sqlget += " AND hg.name=?"
+		getsql += " AND hg.name=?"
 		args = append(args, hgname)
 	}
+	if limit > 0 {
+		getsql += " LIMIT ? OFFSET ?"
+		args = append(args, limit, offset)
+	}
+
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return hgs, errors.Wrap(err, "db.Db.GetConn")
 	}
 	defer conn.Close()
-	stmt, err := conn.PrepareContext(ctx, sqlget)
+	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
 		return hgs, errors.Wrap(err, "conn.PrepareContext")
 	}
@@ -148,13 +157,13 @@ func getHostGroups(ctx context.Context, id, hgname string) ([]define.HostGroup, 
 }
 
 // GetHostGroups return all hostgroup
-func GetHostGroups(ctx context.Context) ([]define.HostGroup, error) {
-	return getHostGroups(ctx, "", "")
+func GetHostGroups(ctx context.Context, limit, offset int) ([]define.HostGroup, error) {
+	return getHostGroups(ctx, "", "", limit, offset)
 }
 
 // GetHostGroupID return hostgroup by id
 func GetHostGroupID(ctx context.Context, id string) (*define.HostGroup, error) {
-	hostgroups, err := getHostGroups(ctx, id, "")
+	hostgroups, err := getHostGroups(ctx, id, "", 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -165,14 +174,14 @@ func GetHostGroupID(ctx context.Context, id string) (*define.HostGroup, error) {
 }
 
 // GetHostGroupName return hostgroup by name
-func GetHostGroupName(ctx context.Context, hg string) (*define.HostGroup, error) {
-	hostgroups, err := getHostGroups(ctx, "", hg)
+func GetHostGroupName(ctx context.Context, hgname string) (*define.HostGroup, error) {
+	hostgroups, err := getHostGroups(ctx, "", hgname, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(hostgroups) != 1 {
-		return nil, errors.New("can not find hostgroup name: " + hg)
+		return nil, errors.New("can not find hostgroup name: " + hgname)
 	}
 	return &hostgroups[0], nil
 }

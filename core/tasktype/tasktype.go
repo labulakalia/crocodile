@@ -23,15 +23,16 @@ type TaskRuner interface {
 }
 
 // GetDataRun get task type
-// get api or shell
+// get api or code
 func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 	switch define.TaskType(t.TaskType) {
-	case define.Shell:
+	case define.Code:
 		var code DataCode
 		err := json.Unmarshal(t.TaskData, &code)
 		if err != nil {
 			return nil, err
 		}
+		code.LangDesc = code.Lang.String()
 		return &code, err
 
 	case define.API:
@@ -39,6 +40,9 @@ func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 		err := json.Unmarshal(t.TaskData, &api)
 		if err != nil {
 			return nil, err
+		}
+		if api.Header == nil {
+			api.Header = make(map[string]string)
 		}
 		return &api, err
 

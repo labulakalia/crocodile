@@ -1,49 +1,57 @@
 package errgroup
 
 import (
-	"context"
-	"errors"
-	// "errors"
-	"time"
 
-	"fmt"
+	// "errors"
+
 	"testing"
 )
 
 func TestErrGroup(t *testing.T) {
-	g := WithCancel(context.Background())
-	g.GOMAXPROCS(2)
-	// task1
-	g.Go(func(ctx context.Context) error {
-		select {
-		case <- ctx.Done():
-			return ctx.Err()
-		case <- time.After(time.Second * 2):
-			return errors.New("timeout")
-		}
-	})
-	// task2
-	g.Go(func(ctx context.Context) error {
-		var err error
-		select {
-		case <- ctx.Done():
-			err =  ctx.Err()
-			goto Check
-		case <- time.After(time.Second * 3):
-			err = errors.New("timeout")
-			goto Check
-		}
-		Check:
-			fmt.Println("error: ",err)
-			return err
-	})
+	// g := WithCancel(context.Background())
+	// g.GOMAXPROCS(1)
+	// // task1
+	// g.Go(func(ctx context.Context) error {
+	// 	time.Sleep(time.Second)
+	// 	return errors.New("err")
+	// })
+	// // task2
+	// g.Go(func(ctx context.Context) error {
+	// 	time.Sleep(time.Second)
+	// 	fmt.Println("test0")
+	// 	time.Sleep(time.Millisecond * 300)
+	// 	fmt.Println("test1")
 
-	err := g.Wait()
-	if err == nil {
-		t.Error("err should not nil")
-	}
-}
+	// 	time.Sleep(time.Millisecond * 300)
+	// 	fmt.Println("test2")
+	// 	time.Sleep(time.Millisecond * 300)
+	// 	fmt.Println("test3")
+	// 	time.Sleep(time.Millisecond * 300)
+	// 	fmt.Println("test4")
 
-func BenchmarkGroup_Go(b *testing.B) {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		fmt.Println("task is cancel")
+	// 	default:
+	// 		fmt.Println("task success")
+	// 	}
+	// 	return nil
+	// })
+
+	// err := g.Wait()
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// ctx1, _ := context.WithCancel(context.Background())
+
+	// ctx2, _ := context.WithCancel(ctx1)
+
+	// ctx3, cancel4 := context.WithCancel(ctx2)
+
+	// cancel4()
+
+	// fmt.Println(ctx3.Err())
+	// fmt.Println(ctx2.Err())
+	// fmt.Println(ctx1.Err())
 
 }

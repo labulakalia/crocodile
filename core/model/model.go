@@ -54,6 +54,8 @@ const (
 	TBHostgroup Tb = "crocodile_hostgroup"
     // TBTask select crocodile_task
 	TBTask Tb = "crocodile_task"
+	// TBHost select crocodile_host
+	TBHost Tb = "crocodile_host"
 )
 
 // Check check some msg is valid
@@ -72,7 +74,7 @@ func Check(ctx context.Context, table Tb, checkType checkType, args ...interface
 		check += "id=? AND createByID=?"
 	case UID:
 		// 检查UID状态是否正常
-		check += "id=? AND forbid=0"
+		check += "id=? AND forbid=1"
 	default:
 		return false, errors.New("reqType Only Support email username")
 	}
@@ -120,4 +122,46 @@ func QueryUserRule(ctx context.Context, uid string) (define.Role, error) {
 		return 0, errors.Wrap(err, "stmt.QueryRowContext")
 	}
 	return role, nil
+}
+
+
+// GetNameID get return name,id 
+func GetNameID(ctx context.Context,t Tb) ([]define.KlOption, error) {
+
+	getsql := `SELECT id,name FROM ` + string(t)
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "sqlDb.GetConn")
+	}
+	defer conn.Close()
+	
+	stmt, err := conn.PrepareContext(ctx, getsql)
+	if err != nil {
+		return nil, errors.Wrap(err, "conn.PrepareContext")
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryContext(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "stmt.QueryContext")
+	}
+	kloptions := []define.KlOption{}
+	for rows.Next() {
+		var (
+			id,name string
+			
+		)
+		err = rows.Scan(&id,&name)
+		if err != nil {
+			log.Error("rows.Scan failed", zap.Error(err))
+			continue
+		}
+		kloption := define.KlOption{
+			Label: name,
+			Value: id,
+		}
+		kloptions = append(kloptions, kloption)
+	}
+	return kloptions, nil
+
 }

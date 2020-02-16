@@ -3,8 +3,10 @@ package model
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
+	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -14,7 +16,8 @@ import (
 func SaveLog(ctx context.Context, l *define.Log) error {
 	log.Info("start savelog", zap.Any("tasklog", l))
 	savesql := `INSERT INTO crocodile_log
-				(taskid,
+				(name,
+				taskid,
 				starttime,
 				endtime,
 				totalruntime,
@@ -23,9 +26,11 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 				errcode,
 				errmsg,
 				errtasktype,
-				errtaskid)
+				errtaskid,
+				errtask
+			)
 			VALUES
-			(?,?,?,?,?,?,?,?,?,?)`
+			(?,?,?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
@@ -39,10 +44,10 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 	if err != nil {
 		return errors.Wrap(err, "json.Marshal")
 	}
-	_, err = stmt.ExecContext(ctx, l.RunByTaskID,
+	_, err = stmt.ExecContext(ctx, l.Name, l.RunByTaskID,
 		l.StartTime, l.EndTime, l.TotalRunTime,
 		l.Status, taskresps, l.ErrCode, l.ErrMsg,
-		l.ErrTasktype, l.ErrTaskID)
+		l.ErrTasktype, l.ErrTaskID, l.ErrTask)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
@@ -50,27 +55,42 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 }
 
 // GetLog get task resp log by taskid
-func GetLog(ctx context.Context, taskid string) ([]*define.Log, error) {
+func GetLog(ctx context.Context, taskid string, offset, limit int) ([]*define.Log, error) {
 	logs := []*define.Log{}
-	getsql := 	`SELECT 
+	getsql := `SELECT 
+					name,
+					taskid,
 					starttime,
 					endtime,
-					taskresps 
+					totalruntime,
+					status,
+					taskresps,
+					errcode,
+					errmsg,
+					errtasktype,
+					errtaskid,
+					errtask
 				FROM 
 					crocodile_log
 			   	WHERE 
-			    	taskid=?`
+					taskid=?
+				ORDER BY id DESC
+				LIMIT ? OFFSET ?`
+
+	args := []interface{}{taskid, limit, offset}
+
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "db.GetConn")
 	}
 	defer conn.Close()
+	// fmt.Println(getsql, args)
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
 		return nil, errors.Wrap(err, "conn.PrepareContext")
 	}
 
-	rows, err := stmt.QueryContext(ctx, taskid)
+	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "stmt.QueryContext")
 	}
@@ -78,7 +98,20 @@ func GetLog(ctx context.Context, taskid string) ([]*define.Log, error) {
 		getlog := define.Log{}
 		taskrepos := []*define.TaskResp{}
 		var taskreposbyte []byte
-		err = rows.Scan(&getlog.StartTime, &getlog.EndTime, &taskreposbyte)
+		err = rows.Scan(
+			&getlog.Name,
+			&getlog.RunByTaskID,
+			&getlog.StartTime,
+			&getlog.EndTime,
+			&getlog.TotalRunTime,
+			&getlog.Status,
+			&taskreposbyte,
+			&getlog.ErrCode,
+			&getlog.ErrMsg,
+			&getlog.ErrTasktype,
+			&getlog.ErrTaskID,
+			&getlog.ErrTask,
+		)
 		if err != nil {
 			log.Error("rows.Scan failed", zap.Error(err))
 			continue
@@ -88,9 +121,10 @@ func GetLog(ctx context.Context, taskid string) ([]*define.Log, error) {
 			log.Error("json.Unmarshal failed", zap.Error(err))
 			continue
 		}
+		getlog.ErrTaskTypeStr = getlog.ErrTasktype.String()
 		getlog.TaskResps = taskrepos
-		getlog.TotalRunTime = int(getlog.EndTime - getlog.StartTime)
-		getlog.RunByTaskID = taskid
+		getlog.StartTimeStr = utils.UnixToStr(getlog.StartTime / 1e3)
+		getlog.EndTimeStr = utils.UnixToStr(getlog.EndTime / 1e3)
 		logs = append(logs, &getlog)
 	}
 	return logs, nil

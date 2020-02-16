@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
+
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/utils/resp"
 	"go.uber.org/zap"
 )
 
 var _ TaskRuner = &DataAPI{}
-
 
 // DataAPI http req task
 // TODO 获取期望的值，不在于返回码为准备
@@ -34,18 +35,20 @@ func (da *DataAPI) Run(ctx context.Context) io.ReadCloser {
 		var exitCode = DefaultExitCode
 		defer pw.Close()
 		defer func() {
-			pw.Write([]byte(fmt.Sprintf("%3d", exitCode))) // write exitCode,total 3 byte
+			now := time.Now().Local().Format("2006-01-02 15:04:05: ")
+			pw.Write([]byte(fmt.Sprintf("\n%sRun Finished,Return Code:%3d", now, exitCode))) // write exitCode,total 3 byte
+			// pw.Write([]byte(fmt.Sprintf("%3d", exitCode))) // write exitCode,total 3 byte
 		}()
 		// go1.13 use NewRequestWithContext
 
-		req, err := http.NewRequestWithContext(ctx,da.Method, da.URL, bytes.NewReader([]byte(da.PayLoad)))
+		req, err := http.NewRequestWithContext(ctx, da.Method, da.URL, bytes.NewReader([]byte(da.PayLoad)))
 		if err != nil {
 			pw.Write([]byte(err.Error()))
 			log.Error("NewRequest failed", zap.Error(err))
 			return
 		}
 
-		for k,v := range da.Header {
+		for k, v := range da.Header {
 			req.Header.Add(k, v)
 		}
 

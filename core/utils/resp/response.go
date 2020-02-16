@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// HTTP接口resp
-type response struct {
+// Response api response
+type Response struct {
 	Code int         `json:"code"`
 	Msg  string      `json:"msg"`
 	Data interface{} `json:"data,omitempty"`
@@ -13,7 +13,7 @@ type response struct {
 
 // JSON gin resp to json
 func JSON(c *gin.Context, code int, data interface{}) {
-	c.JSON(200, response{
+	c.JSON(200, Response{
 		Code: code,
 		Msg:  GetMsg(code),
 		Data: data,

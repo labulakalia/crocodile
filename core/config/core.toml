@@ -34,17 +34,6 @@ maxidle = 10
 maxconn = 20
 maxquerytime = "10s"
 
-# crocodile client
-[client]
-# client port
-port = 8081        # default rand port
-# crocodile server addr
-serveraddr = "127.0.0.1:8080"
-# client's hostgroup is exist hostgroup must be exist
-hostgroup = "crocodile_hostgroup"
-# client's weight default 100
-weight = 100
-
 # 消息通知配置
 [notify]
 # 邮箱
@@ -82,3 +71,18 @@ agentid = 1000002
 agentsecret = ""
 [notify.webhook]
 webhookurl = ""
+
+
+
+# crocodile client
+[client]
+# client port
+port = 8081        # default rand port
+# crocodile server addr
+serveraddr = "127.0.0.1:8080"
+# client's hostgroup is exist hostgroup must be exist
+hostgroup = "crocodile_hostgroup"
+# client's weight default 100
+weight = 100
+# remark
+remark = "test remark"

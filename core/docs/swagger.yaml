@@ -1,0 +1,668 @@
+definitions:
+  define.AdminChangeUser:
+    properties:
+      forbid:
+        description: '禁止用户: 1 未禁止 2 禁止登陆'
+        type: integer
+      id:
+        description: user id
+        type: string
+      password:
+        description: 用户密码 Common
+        type: string
+      remark:
+        description: 备注 Common
+        type: string
+      role:
+        description: '用户类型: 1 普通用户 2 管理员'
+        type: integer
+    required:
+    - forbid
+    - id
+    - role
+    type: object
+  define.ChangeHostGroup:
+    properties:
+      addrs:
+        description: 主机host
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      remark:
+        type: string
+    required:
+    - id
+    type: object
+  define.ChangeUserSelf:
+    properties:
+      dingphone:
+        description: dingding phone
+        type: string
+      email:
+        description: 用户邮箱
+        type: string
+      password:
+        type: string
+      remark:
+        type: string
+      slack:
+        description: slack user name
+        type: string
+      telegram:
+        description: telegram bot chat id
+        type: string
+      wechat:
+        description: wechat id
+        type: string
+    type: object
+  define.CreateHostGroup:
+    properties:
+      addrs:
+        description: 主机host
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      remark:
+        type: string
+    required:
+    - name
+    type: object
+  define.GetID:
+    properties:
+      id:
+        type: string
+    type: object
+  define.RegistryUser:
+    properties:
+      name:
+        description: 用户名
+        type: string
+      password:
+        description: 用户密码
+        type: string
+      remark:
+        description: 备注
+        type: string
+      role:
+        description: '用户类型: 1 普通用户 2 管理员'
+        type: integer
+    required:
+    - name
+    - password
+    - role
+    type: object
+  define.Task:
+    properties:
+      alarm_userids:
+        description: 报警用户 多个用户
+        items:
+          type: string
+        type: array
+      alatm_status:
+        description: 'alarm when task run success or fail or all all:-2 failed: -1
+          success: 1'
+        type: integer
+      child_runparallel:
+        description: 是否以并行运行子任务 0否 1是
+        type: integer
+      child_taskids:
+        description: 子任务 运行结束后运行子任务
+        items:
+          type: string
+        type: array
+      create_by:
+        description: 创建人
+        type: string
+      create_byuid:
+        description: 创建人ID
+        type: string
+      create_time:
+        description: 创建时间
+        type: string
+      cronexpr:
+        description: 执行任务表达式
+        type: string
+      expect_code:
+        description: expect task return code. if not set 0 or 200
+        type: integer
+      expect_content:
+        description: expect task return content. if not set do not check
+        type: string
+      host_group:
+        description: 执行计划
+        type: string
+      host_groupid:
+        description: 主机组ID
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      parent_runparallel:
+        description: 是否以并行运行父任务 0否 1是
+        type: integer
+      parent_taskids:
+        description: 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
+        items:
+          type: string
+        type: array
+      remark:
+        description: 备注
+        type: string
+      route_policy:
+        description: how to select a run worker from hostgroup
+        type: integer
+      run:
+        description: TODO 改为 0 后只是在调度循环中不再检测下次运行时间
+        type: integer
+      task_data:
+        description: 任务数据
+        type: object
+      task_type:
+        description: 任务类型
+        type: integer
+      timeout:
+        description: 任务超时时间 (s)
+        type: integer
+      update_time:
+        description: 最后一次更新时间
+        type: string
+    required:
+    - alarm_userids
+    - alatm_status
+    - cronexpr
+    - host_groupid
+    - route_policy
+    type: object
+  resp.Response:
+    properties:
+      code:
+        type: integer
+      data:
+        type: object
+      msg:
+        type: string
+    type: object
+info:
+  contact:
+    email: labulakalia@gmail.com
+    name: labulaka521
+    url: http://www.swagger.io/support
+  description: Crocodile Swaager JSON API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://github.com/labulaka521/crocodile
+  title: Crocidle API
+  version: "1.0"
+paths:
+  /api/v1/host:
+    delete:
+      description: delete host
+      parameters:
+      - description: ID
+        in: body
+        name: StopHost
+        required: true
+        schema:
+          $ref: '#/definitions/define.GetID'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: delete host
+      tags:
+      - Host
+    get:
+      description: get all registry host
+      parameters:
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get all hosts
+      tags:
+      - Host
+  /api/v1/host/stop:
+    put:
+      description: stop host worker
+      parameters:
+      - description: ID
+        in: body
+        name: StopHost
+        required: true
+        schema:
+          $ref: '#/definitions/define.GetID'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: stop host worker
+      tags:
+      - Host
+  /api/v1/hostgroup:
+    delete:
+      description: delete hostgroup
+      parameters:
+      - description: HostGroup
+        in: body
+        name: User
+        required: true
+        schema:
+          $ref: '#/definitions/define.GetID'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: delete hostgroup
+      tags:
+      - HostGroup
+    get:
+      description: get all hostgroup
+      parameters:
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get all hostgroup
+      tags:
+      - HostGroup
+    post:
+      description: create new hostgroup
+      parameters:
+      - description: HostGroup
+        in: body
+        name: User
+        required: true
+        schema:
+          $ref: '#/definitions/define.CreateHostGroup'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: create hostgroup
+      tags:
+      - HostGroup
+    put:
+      description: change hostgroup
+      parameters:
+      - description: HostGroup
+        in: body
+        name: User
+        required: true
+        schema:
+          $ref: '#/definitions/define.ChangeHostGroup'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: change hostgroup
+      tags:
+      - HostGroup
+  /api/v1/task:
+    delete:
+      parameters:
+      - description: delete task
+        in: body
+        name: Task
+        required: true
+        schema:
+          $ref: '#/definitions/define.GetID'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: delete task
+      tags:
+      - Task
+    get:
+      parameters:
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get tasks
+      tags:
+      - Task
+    post:
+      parameters:
+      - description: create task
+        in: body
+        name: Task
+        required: true
+        schema:
+          $ref: '#/definitions/define.Task'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: create new task
+      tags:
+      - Task
+    put:
+      parameters:
+      - description: change task
+        in: body
+        name: Task
+        required: true
+        schema:
+          $ref: '#/definitions/define.Task'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: change task
+      tags:
+      - Task
+  /api/v1/task/info:
+    get:
+      parameters:
+      - description: id
+        in: query
+        name: ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get tasks
+      tags:
+      - Task
+  /api/v1/task/kill:
+    put:
+      parameters:
+      - in: query
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: kill running task
+      tags:
+      - Task
+  /api/v1/task/log:
+    get:
+      parameters:
+      - description: ID
+        in: query
+        name: id
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get tasks
+      tags:
+      - Task
+  /api/v1/task/run:
+    put:
+      parameters:
+      - in: query
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get tasks
+      tags:
+      - Task
+  /api/v1/task/running:
+    get:
+      parameters:
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get tasks
+      tags:
+      - Task
+  /api/v1/user/admin:
+    put:
+      description: admin change user's role,forbid,password,remark
+      parameters:
+      - description: Admin Change User
+        in: body
+        name: User
+        required: true
+        schema:
+          $ref: '#/definitions/define.AdminChangeUser'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: admin change user info
+      tags:
+      - User
+  /api/v1/user/all:
+    get:
+      parameters:
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get all users info
+      tags:
+      - User
+  /api/v1/user/info:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get user info by token
+      tags:
+      - User
+    put:
+      description: change self config,like email,wechat,dingphone,slack,telegram,password,remark
+      parameters:
+      - description: Change Self User Info
+        in: body
+        name: User
+        required: true
+        schema:
+          $ref: '#/definitions/define.ChangeUserSelf'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: user change self's config info
+      tags:
+      - User
+  /api/v1/user/login:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - BasicAuth: []
+      summary: login user
+      tags:
+      - User
+  /api/v1/user/registry:
+    post:
+      parameters:
+      - description: registry user
+        in: body
+        name: Registry
+        required: true
+        schema:
+          $ref: '#/definitions/define.RegistryUser'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: registry new user
+      tags:
+      - User
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+  BasicAuth:
+    type: basic
+swagger: "2.0"

@@ -11,9 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/pprof"
+
 	"github.com/gin-gonic/gin"
+	_ "github.com/labulaka521/crocodile/core/docs" // init swagger docs
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"github.com/labulaka521/crocodile/common/log"
-	// "github.com/labulaka521/crocodile/common/errgroup"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/middleware"
 	"github.com/labulaka521/crocodile/core/router/api/v1/host"
@@ -31,17 +36,22 @@ import (
 func NewHTTPRouter() *http.Server {
 	//gin.SetMode("release")
 	router := gin.New()
+	pprof.Register(router)
 	//gin.SetMode(gin.ReleaseMode)
 	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl())
 
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	
 	v1 := router.Group("/api/v1")
 	ru := v1.Group("/user")
 	{
-		ru.POST("", user.RegistryUser)
-		ru.GET("", user.GetUser)
-		ru.PUT("", user.ChangeUser)
-		ru.GET("/infos", user.GetUsers)
+		ru.POST("/registry", user.RegistryUser)
+		ru.GET("/info", user.GetUser)
+		ru.GET("/all", user.GetUsers)
+		ru.PUT("/admin", user.AdminChangeUser)
+		ru.PUT("/info", user.ChangeUserInfo)
 		ru.POST("/login", user.LoginUser)
+		ru.GET("/select", user.GetSelect)
 	}
 	rhg := v1.Group("/hostgroup")
 	{
@@ -49,7 +59,7 @@ func NewHTTPRouter() *http.Server {
 		rhg.POST("", hostgroup.CreateHostGroup)
 		rhg.PUT("", hostgroup.ChangeHostGroup)
 		rhg.DELETE("", hostgroup.DeleteHostGroup)
-
+		rhg.GET("/select", hostgroup.GetSelect)
 	}
 	rt := v1.Group("/task")
 	{
@@ -60,21 +70,24 @@ func NewHTTPRouter() *http.Server {
 		rt.DELETE("", task.DeleteTask)
 		rt.PUT("/run", task.RunTask)
 		rt.PUT("/kill", task.KillTask)
-		rt.GET("/running", task.RunningTask)
+		rt.GET("/running", task.GetRunningTask)
 		rt.GET("/log", task.LogTask)
-		rt.GET("/log/ws", task.RealTimeLogTask)
+		rt.GET("/cron", task.ParseCron)
+		rt.GET("/select", task.GetSelect)
+		rt.GET("/status/websocket", task.RealRunTaskStatus)
+		rt.GET("/log/websocket", task.RealRunTaskLog)
 	}
 	rh := v1.Group("/host")
 	{
 		rh.GET("", host.GetHost)
-		rh.PUT("", host.ChangeHostState)
+		rh.PUT("/stop", host.ChangeHostState)
 		rh.DELETE("", host.DeleteHost)
 	}
 
 	httpSrv := &http.Server{
 		Handler:      router,
-		ReadTimeout:  config.CoreConf.Server.MaxHTTPTime.Duration,
-		WriteTimeout: config.CoreConf.Server.MaxHTTPTime.Duration,
+		// ReadTimeout:  config.CoreConf.Server.MaxHTTPTime.Duration,
+		// WriteTimeout: config.CoreConf.Server.MaxHTTPTime.Duration,
 	}
 	return httpSrv
 
@@ -158,7 +171,6 @@ func tryDisConn(gRPCServer *grpc.Server, httpServer *http.Server, mode define.Ru
 		}
 		// g.Wait()
 		time.Sleep(time.Second * 11)
-		fmt.Println("sleep")
 		os.Exit(0)
 	}
 

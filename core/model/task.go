@@ -17,7 +17,10 @@ import (
 )
 
 // CreateTask create task
-func CreateTask(ctx context.Context, t *define.Task) error {
+func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, taskData interface{},
+	parentTaskIds []string, parentRunParallel bool, childTaskIds []string, childRunParallel bool,
+	cronExpr string, timeout int, alarmUserIds []string, routePolicy define.RoutePolicy, expectCode int,
+	expectContent string, alarmStatus define.AlarmStatus, createByID, hostGroupID, remark string) error {
 	createsql := `INSERT INTO crocodile_task 
 					(id,
 					name,
@@ -52,27 +55,27 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 	}
 	defer stmt.Close()
 	createTime := time.Now().Unix()
-	taskdata, _ := json.Marshal(t.TaskData)
+	taskdata, _ := json.Marshal(taskData)
 	_, err = stmt.ExecContext(ctx,
-		t.ID,
-		t.Name,
-		t.TaskType,
+		id,
+		name,
+		tasktype,
 		fmt.Sprintf("%s", taskdata),
-		t.Run,
-		strings.Join(t.ParentTaskIds, ","),
-		t.ParentRunParallel,
-		strings.Join(t.ChildTaskIds, ","),
-		t.ChildRunParallel,
-		t.Cronexpr,
-		t.Timeout,
-		strings.Join(t.AlarmUserIds, ","),
-		t.RoutePolicy,
-		t.ExpectCode,
-		t.ExpectContent,
-		t.AlarmStatus,
-		t.CreateByUID,
-		t.HostGroupID,
-		t.Remark,
+		true,
+		strings.Join(parentTaskIds, ","),
+		parentRunParallel,
+		strings.Join(childTaskIds, ","),
+		childRunParallel,
+		cronExpr,
+		timeout,
+		strings.Join(alarmUserIds, ","),
+		routePolicy,
+		expectCode,
+		expectContent,
+		alarmStatus,
+		createByID,
+		hostGroupID,
+		remark,
 		createTime,
 		createTime,
 	)
@@ -84,7 +87,10 @@ func CreateTask(ctx context.Context, t *define.Task) error {
 }
 
 // ChangeTask change task
-func ChangeTask(ctx context.Context, t *define.Task) error {
+func ChangeTask(ctx context.Context, id string, run bool, tasktype define.TaskType, taskData interface{},
+	parentTaskIds []string, parentRunParallel bool, childTaskIds []string, childRunParallel bool,
+	cronExpr string, timeout int, alarmUserIds []string, routePolicy define.RoutePolicy, expectCode int,
+	expectContent string, alarmStatus define.AlarmStatus, hostGroupID, remark string) error {
 	changesql := `UPDATE crocodile_task 
 					SET hostGroupID=?,
 						run=?,
@@ -115,26 +121,26 @@ func ChangeTask(ctx context.Context, t *define.Task) error {
 	}
 	defer stmt.Close()
 	updateTime := time.Now().Unix()
-	taskdata, _ := json.Marshal(t.TaskData)
+	taskdata, _ := json.Marshal(taskData)
 	_, err = stmt.ExecContext(ctx,
-		t.HostGroupID,
-		t.Run,
-		t.TaskType,
+		hostGroupID,
+		run,
+		tasktype,
 		fmt.Sprintf("%s", taskdata),
-		strings.Join(t.ParentTaskIds, ","),
-		t.ParentRunParallel,
-		strings.Join(t.ChildTaskIds, ","),
-		t.ChildRunParallel,
-		t.Cronexpr,
-		t.Timeout,
-		strings.Join(t.AlarmUserIds, ","),
-		t.RoutePolicy,
-		t.ExpectCode,
-		t.ExpectContent,
-		t.AlarmStatus,
-		t.Remark,
+		strings.Join(parentTaskIds, ","),
+		parentRunParallel,
+		strings.Join(childTaskIds, ","),
+		childRunParallel,
+		cronExpr,
+		timeout,
+		strings.Join(alarmUserIds, ","),
+		routePolicy,
+		expectCode,
+		expectContent,
+		alarmStatus,
+		remark,
 		updateTime,
-		t.ID,
+		id,
 	)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
@@ -163,13 +169,13 @@ func DeleteTask(ctx context.Context, id string) error {
 }
 
 // GetTasks get all tasks
-func GetTasks(ctx context.Context) ([]define.Task, error) {
-	return getTasks(ctx, "")
+func GetTasks(ctx context.Context, offset, limit int) ([]define.GetTask, error) {
+	return getTasks(ctx, "", offset, limit)
 }
 
 // GetTaskByID get task by id
-func GetTaskByID(ctx context.Context, id string) (*define.Task, error) {
-	tasks, err := getTasks(ctx, id)
+func GetTaskByID(ctx context.Context, id string) (*define.GetTask, error) {
+	tasks, err := getTasks(ctx, id, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +187,7 @@ func GetTaskByID(ctx context.Context, id string) (*define.Task, error) {
 }
 
 // getTasks get takls by id
-func getTasks(ctx context.Context, id string) ([]define.Task, error) {
+func getTasks(ctx context.Context, id string, offset, limit int) ([]define.GetTask, error) {
 	getsql := `SELECT 
 					t.id,
 					t.name,
@@ -214,6 +220,10 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 		getsql += " AND t.id = ?"
 		args = append(args, id)
 	}
+	if limit > 0 {
+		getsql += " LIMIT ? OFFSET ?"
+		args = append(args, limit, offset)
+	}
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -225,13 +235,13 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 		return nil, errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
-	res := []define.Task{}
+	res := []define.GetTask{}
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "stmt.QueryContext")
 	}
 	for rows.Next() {
-		t := define.Task{}
+		t := define.GetTask{}
 		var (
 			parentTaskIds, childTaskIds string
 			createTime, updateTime      int64
@@ -287,9 +297,14 @@ func getTasks(ctx context.Context, id string) ([]define.Task, error) {
 		}
 		t.TaskData, err = tasktype.GetDataRun(&req)
 		if err != nil {
-			log.Error("GetDataRun failed", zap.Any("type", t.TaskType),zap.Error(err))
-			continue 
+			log.Error("GetDataRun failed", zap.Any("type", t.TaskType), zap.Error(err))
+			continue
 		}
+		t.RoutePolicyDesc = t.RoutePolicy.String()
+		t.TaskTypeDesc = t.TaskType.String()
+		t.AlarmStatusDesc = t.AlarmStatus.String()
+		t.TaskTypeDesc = t.TaskType.String()
+		
 		res = append(res, t)
 	}
 	return res, nil

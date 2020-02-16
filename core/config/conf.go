@@ -68,6 +68,7 @@ type Client struct {
 	ServerAddr string
 	HostGroup  string
 	Weight     int
+	Remark     string
 }
 
 type duration struct {

@@ -7,11 +7,11 @@ CREATE TABLE crocodile_task (
             -- 任务的类型
             -- program 程序 必须在主机上已经存在 return code  repp content
             -- reqapi 请求一个http接口 return status code  resp context
-        run INT DEFAULT 1,
+        run BOOL,
         parentTaskIds TEXT,
-        parentRunParallel INT DEFAULT 0,
+        parentRunParallel BOOL,
         childTaskIds TEXT,
-        childRunParallel INT DEFAULT 0,
+        childRunParallel BOOL,
         createByID VARCHAR(50) NOT NULL,
         hostGroupID VARCHAR(50) NOT NULL,
         cronExpr VARCHAR(20) NOT NULL,

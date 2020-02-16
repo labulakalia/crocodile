@@ -6,8 +6,8 @@ import (
 )
 
 func TestUnixToTime(t *testing.T) {
-	now := time.Now().Unix()
-
+	now := time.Now().Local().Unix()
+	
 	nowstr := UnixToStr(now)
 
 	t.Logf("%d change to %s", now, nowstr)
@@ -24,5 +24,5 @@ func TestTimeToUnix(t *testing.T) {
 	if nowunix == 0 {
 		t.Errorf("Change Failed: %s", nowstr)
 	}
-	t.Logf("%s change to %d", nowstr, now)
+	t.Logf("%s change to %d", nowstr, nowunix)
 }

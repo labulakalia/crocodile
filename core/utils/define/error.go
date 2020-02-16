@@ -19,3 +19,12 @@ type ErrForbid struct {
 func (u ErrForbid) Error() string {
 	return fmt.Sprintf("user %s forbid login", u.Name)
 }
+
+// ErrDelHostID delete host id err
+type ErrDelHostID struct {
+	ID string
+}
+
+func (u ErrDelHostID) Error() string {
+	return fmt.Sprintf("can delete hostid %s, it use by other hostgroup", u.ID)
+}

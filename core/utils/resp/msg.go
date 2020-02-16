@@ -8,7 +8,7 @@ var msgcode = map[int]string{
 	ErrUnauthorized: "非法请求",
 	ErrBadRequest:   "请求参数错误",
 
-	ErrUserPassword:  "请求参数错误",
+	ErrUserPassword:  "用户密码错误",
 	ErrUserForbid:    "禁止登陆",
 	ErrEmailExist:    "邮箱已经存在",
 	ErrUserNameExist: "用户名已存在",
@@ -17,10 +17,9 @@ var msgcode = map[int]string{
 	ErrTaskExist:    "任务名已存在",
 	ErrTaskNotExist: "任务不存在",
 
-	ErrHostgroupExist:    "主机组已存在",
-	ErrHostgroupNotExist: "主机组不存在",
-	ErrHostNotDeleteNeedDown: "worker不能删除，请先将worker下线",
-
+	ErrHostgroupExist:      "主机组已存在",
+	ErrHostgroupNotExist:   "主机组不存在",
+	ErrDelHostUseByOtherHG: "正在被其他的主机组使用，不能删除",
 
 	ErrInternalServer: "服务端错误",
 

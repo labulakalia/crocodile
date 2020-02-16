@@ -38,6 +38,7 @@ message RegistryReq {
   string hostname = 4;
   string version = 5;
   string hostgroup = 6;
+  string remark = 7;
 }
 
 message HeartbeatReq {

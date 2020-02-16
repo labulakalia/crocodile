@@ -1,12 +1,18 @@
 package schedule
 
 import (
-	"io"
+	"bytes"
 	"fmt"
+	"io"
 	"os/exec"
-
+	"strconv"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/labulaka521/crocodile/common/log"
+	"github.com/labulaka521/crocodile/core/utils/define"
+	"go.uber.org/zap"
 )
 
 var (
@@ -79,7 +85,7 @@ func TestLogCache_Write(t *testing.T) {
 			}
 			t.Error("read failed", err)
 		}
-		
+
 		_, err = tmplogcache.Write(out[:n])
 		if err != nil {
 			t.Fatal("logcache write failed", err)
@@ -92,19 +98,112 @@ func TestLogCache_Write(t *testing.T) {
 func TestLogCache_Close(t *testing.T) {
 	logcachetmp := NewLogCache()
 	logcachetmp.Write([]byte("testetstettttetttstet"))
-	err := logcachetmp.Close()
-	if err != nil {
-		t.Fatalf("close logcache failed %v", err)
-	}
+	logcachetmp.Close()
+
 }
 
 func TestLogCache_ReadAll(t *testing.T) {
-	readdata := []byte("etst1 test2t1tt1t11")
-	logcachetmp := NewLogCache()
-	logcachetmp.Write(readdata)
-	res := logcachetmp.ReadAll()
+	// readdata := []byte("etst1 test2t1tt1t11")
+	// logcachetmp := NewLogCache()
+	// logcachetmp.Write(readdata)
+	// res := logcachetmp.ReadAll()
 
-	if len(readdata) != len(res) {
-		t.Error("read data not equal write data")
+	// if len(readdata) != len(res) {
+	// 	t.Error("read data not equal write data")
+	// }
+	id := "233903600084979712"
+	a := define.MasterTask
+
+	fmt.Printf("%s_%d\n", id, a)
+
+}
+
+func TestLogCache_GetCode(t *testing.T) {
+	data := `2020-02-15 15:42:00: Start Prepare Task testrun[233903600084979712]
+	2020-02-15 15:42:00: Start Conn Worker Host For Task testrun[233903600084979712]
+	2020-02-15 15:42:00: Success Conn Worker Host[127.0.0.1:8081]
+	2020-02-15 15:42:00: Start Get Task testrun[233903600084979712] Run Data
+	2020-02-15 15:42:00: Success Get Task testrun[233903600084979712] Run Data
+	2020-02-15 15:42:00: Start Run Task testrun[233903600084979712] On Host[127.0.0.1:8081]
+	2020-02-15 15:42:00: Task testrun[233903600084979712] Start Output----------------
+	0
+	1
+	2
+	3
+	4
+	5
+	6
+	7
+	8
+	9
+	10
+	11
+	12
+	13
+	14
+	15
+	16
+	17
+	18
+	19
+	20
+	  2`
+	var buf bytes.Buffer
+	buf.WriteString(data)
+	if buf.Len() >= 3 {
+		codebyte := buf.Bytes()[buf.Len()-3:]
+		code, err := strconv.Atoi(strings.TrimLeft(string(codebyte), " "))
+		if err != nil {
+			// if err != nil ,it is bug
+			log.Error("Change str to int failed", zap.Error(err))
+			return
+		}
+		buf.Truncate(buf.Len() - 3)
+		t.Log(code)
+	}
+	t.Logf("%s", buf.Bytes())
+}
+
+func Benchmark_main(b *testing.B) {
+	b.Run("Benchmark_append", Benchmark_append)
+	b.Run("Benchmark_bytes", Benchmark_bytes)
+}
+
+func Benchmark_bytes(b *testing.B) {
+	a := bytes.NewBuffer(make([]byte,0, 1e2))
+	for i := 0; i < b.N; i++ {
+		a.WriteString("111111111111111111111111111")
+		// b.Log(a.Len())
+		c := a.Len()
+		c = c
+	}
+}
+
+func Benchmark_append(b *testing.B) {
+	a := make([]byte,0, 1e2)
+	for i := 0; i < b.N; i++ {
+		a = append(a, []byte("111111111111111111111111111")...)
+		c := len(a)
+		c = c
+	}
+}
+
+func TestLogCach11e(t *testing.T) {
+	// a := make([]int,0,1000)
+	// a = append(a,1,2,3)
+	// t.Log(a[1:3])
+	// for i:=0;i<100;i++{
+	// 	a = append(a,[]byte("111111")...)
+	// }
+	// t.Log(len(a),cap(a))
+	// a = a[0:0:200]
+	// t.Log(len(a),cap(a))
+	ticker := time.NewTimer(time.Second)
+	
+	for {
+		select {
+		case <- ticker.C:
+			fmt.Println("111")
+		}
 	}
 }

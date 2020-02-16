@@ -20,8 +20,9 @@ var _ TaskRuner = &DataCode{}
 
 // DataCode run code
 type DataCode struct {
-	Lang Lang   `json:"lang"`
-	Code string `json:"code"`
+	Lang     Lang   `json:"lang"`
+	LangDesc string `json:"langdesc"`
+	Code     string `json:"code"`
 }
 
 // Lang task type lang code
@@ -60,6 +61,7 @@ func getcmd(ctx context.Context, lang Lang, code string) (*exec.Cmd, error) {
 	}
 }
 
+// Shell
 // run shell code
 func runshell(ctx context.Context, code string) (*exec.Cmd, error) {
 	shell := os.Getenv("SHELL")
@@ -82,6 +84,7 @@ func runshell(ctx context.Context, code string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
+// Python
 // run python code
 func runpython(ctx context.Context, code string) (*exec.Cmd, error) {
 	tmpfile, err := ioutil.TempFile("", "*.py")
@@ -99,6 +102,7 @@ func runpython(ctx context.Context, code string) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
+// Golang
 const (
 	modcontent = `module crocodile
 
@@ -160,9 +164,9 @@ func (ds *DataCode) Run(ctx context.Context) io.ReadCloser {
 		var exitCode = DefaultExitCode
 		defer pw.Close()
 		defer func() {
-			pw.Write([]byte(fmt.Sprintf("%3d", exitCode))) // write exitCode,total 3 byte
+			now := time.Now().Local().Format("2006-01-02 15:04:05: ")
+			pw.Write([]byte(fmt.Sprintf("%sTask Run Finished,Return Code:%3d", now, exitCode))) // write exitCode,total 3 byte
 		}()
-
 		cmd, err := getcmd(ctx, ds.Lang, ds.Code)
 		if err != nil {
 			pw.Write([]byte(err.Error()))

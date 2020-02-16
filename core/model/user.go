@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 	"time"
 
@@ -40,7 +41,7 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 	if err != nil && err != sql.ErrNoRows {
 		return "", errors.Wrap(err, "stmt.QueryRowContext Scan")
 	}
-	if forbid == 1 {
+	if forbid == 2 {
 		return "", errors.Wrap(define.ErrForbid{Name: name}, "")
 	}
 
@@ -57,20 +58,18 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 }
 
 // AddUser add new user
-func AddUser(ctx context.Context, u *define.User) error {
+func AddUser(ctx context.Context, name, hashpassword string, role define.Role) error {
 	adduser := `INSERT INTO crocodile_user (
 					id,
 					name,
-					email,
 					hashpassword,
 					role,
 					forbid,
-					remark,
 					createTime,
 					updateTime
 				)
 				VALUES
-				(?,?,?,?,?,?,?,?,?)`
+				(?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.Db.GetConn")
@@ -84,14 +83,13 @@ func AddUser(ctx context.Context, u *define.User) error {
 	defer stmt.Close()
 
 	now := time.Now().Unix()
-
-	_, err = stmt.ExecContext(ctx, u.ID, u.Name, u.Email, u.Password,
-		u.Role, u.Forbid, u.Remark, now, now)
+	id := utils.GetID()
+	_, err = stmt.ExecContext(ctx, id, name, hashpassword, role, 1, now, now)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
 
-	ok, err := enforcer.AddRoleForUser(u.ID, u.Role.String())
+	ok, err := enforcer.AddRoleForUser(id, role.String())
 	if err != nil {
 		return err
 	}
@@ -102,11 +100,23 @@ func AddUser(ctx context.Context, u *define.User) error {
 	return nil
 }
 
-func getusers(ctx context.Context, uids []string) ([]define.User, error) {
-	getuser := `select id,name,role,
-				forbid,email,createTime,
-				updateTime,dingphone,slack,
-				telegram,wechat,remark FROM crocodile_user `
+func getusers(ctx context.Context, uids []string, offset, limit int) ([]define.User, error) {
+	getsql := `SELECT
+					id,
+					name,
+					role,
+					forbid,
+					hashpassword,
+					email,
+					wechat,
+					dingphone,
+					slack,
+					telegram,
+					remark,
+					createTime,
+					updateTime
+				FROM 
+					crocodile_user`
 	args := []interface{}{}
 	users := []define.User{}
 	if len(uids) > 0 {
@@ -115,15 +125,20 @@ func getusers(ctx context.Context, uids []string) ([]define.User, error) {
 			querys = append(querys, "id=?")
 			args = append(args, uid)
 		}
-		getuser += " WHERE " + strings.Join(querys, " OR ")
+		getsql += " WHERE " + strings.Join(querys, " OR ")
 	}
+	if limit > 0 {
+		getsql += " LIMIT ? OFFSET ?"
+		args = append(args, limit, offset)
+	}
+
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return users, errors.Wrap(err, "db.Db.GetConn")
 	}
 	defer conn.Close()
 
-	stmt, err := conn.PrepareContext(ctx, getuser)
+	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
 		return users, errors.Wrap(err, "conn.PrepareContext")
 	}
@@ -138,13 +153,25 @@ func getusers(ctx context.Context, uids []string) ([]define.User, error) {
 			updateTime int64
 		)
 		user := define.User{}
-		err := rows.Scan(&user.ID, &user.Name, &user.Role, &user.Forbid, &user.Email, &createTime,
-			&updateTime, &user.DingPhone, &user.Slack, &user.Telegram, &user.WeChat, &user.Remark,
+		err := rows.Scan(&user.ID,
+			&user.Name,
+			&user.Role,
+			&user.Forbid,
+			&user.Password,
+			&user.Email,
+			&user.WeChat,
+			&user.DingPhone,
+			&user.Slack,
+			&user.Telegram,
+			&user.Remark,
+			&createTime,
+			&updateTime,
 		)
 		if err != nil {
 			log.Error("Scan Err", zap.Error(err))
 			continue
 		}
+		user.RoleStr = user.Role.String()
 		user.CreateTime = utils.UnixToStr(createTime)
 		user.UpdateTime = utils.UnixToStr(updateTime)
 		users = append(users, user)
@@ -153,20 +180,29 @@ func getusers(ctx context.Context, uids []string) ([]define.User, error) {
 }
 
 // GetUser get user by id
-func GetUser(ctx context.Context, uid string) ([]define.User, error) {
-	return getusers(ctx, []string{uid})
+func GetUser(ctx context.Context, uid string) (*define.User, error) {
+	userinfos, err := getusers(ctx, []string{uid}, 0, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "GerUser")
+	}
+	if len(userinfos) != 1 {
+		return nil, fmt.Errorf("Should get one user,but get total: %d", len(userinfos))
+	}
+	return &userinfos[0], nil
 }
 
-// GetUsers get users info by ids
-func GetUsers(ctx context.Context, uids []string) ([]define.User, error) {
-	return getusers(ctx, uids)
+// GetUsers get all users info
+func GetUsers(ctx context.Context, uids []string, offset, limit int) ([]define.User, error) {
+	return getusers(ctx, uids, offset, limit)
 }
 
-// ChangeUser change user message
-func ChangeUser(ctx context.Context, u *define.User, role define.Role) error {
+// AdminChangeUser admin change user some column define.AdminChangeUser
+// func AdminChangeUser(ctx context.Context, adminuser *define.AdminChangeUser) error {
+func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid int, password, remark string) error {
 	var (
-		changeuser string
-		args       []interface{}
+		changeuser   string
+		changerole   bool
+		hashpassword string
 	)
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -174,19 +210,43 @@ func ChangeUser(ctx context.Context, u *define.User, role define.Role) error {
 	}
 	defer conn.Close()
 	updateTime := time.Now().Unix()
-	switch role {
-	case define.AdminUser:
-		changeuser = `UPDATE crocodile_user SET role=?,forbid=?,email=?,updateTime=?,remark=? WHERE id=?`
-		args = append(args, u.Role, u.Forbid, u.Email, updateTime, u.Remark, u.ID)
+
+	if password != "" {
+		hashpassword, err = utils.GenerateHashPass(password)
+		if err != nil {
+			return errors.Wrap(err, "GenerateHashPass")
+		}
+	} else {
+		// get old user rolw
+		userinfo, err := GetUser(ctx, id)
+		if err != nil {
+			return errors.Wrap(err, "GerUser")
+		}
+		hashpassword = userinfo.Password
+		if userinfo.Role != role {
+			changerole = true
+		}
+	}
+
+	// 普通管理员可以修改 password，role，forbid，
+	changeuser = `UPDATE crocodile_user 
+	SET role=?,
+		forbid=?,
+		hashpassword=?,
+		updateTime=? 
+		remark=? 
+	WHERE id=?`
+
+	if changerole {
 		// 修改权限表
-		ok, err := enforcer.DeleteUser(u.ID)
+		ok, err := enforcer.DeleteUser(id)
 		if err != nil {
 			return err
 		}
 		if !ok {
 			return errors.New("Delete user failed")
 		}
-		ok, err = enforcer.AddRoleForUser(u.ID, u.Role.String())
+		ok, err = enforcer.AddRoleForUser(id, role.String())
 		if err != nil {
 			return err
 		}
@@ -197,9 +257,6 @@ func ChangeUser(ctx context.Context, u *define.User, role define.Role) error {
 		if err != nil {
 			return errors.Wrap(err, "enforcer.LoadPolicy")
 		}
-	case define.NormalUser:
-		changeuser = `UPDATE crocodile_user SET email=?,updateTime=?,remark=? WHERE id=?`
-		args = append(args, u.Email, updateTime, u.Remark, u.ID)
 	}
 	stmt, err := conn.PrepareContext(ctx, changeuser)
 	if err != nil {
@@ -207,10 +264,74 @@ func ChangeUser(ctx context.Context, u *define.User, role define.Role) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.ExecContext(ctx, args...)
+	_, err = stmt.ExecContext(ctx, role,
+		forbid,
+		hashpassword,
+		updateTime,
+		remark,
+		id,
+	)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
+	return nil
+}
 
+// ChangeUserInfo user change self's config define.ChangeUserSelf
+// func ChangeUserInfo(ctx context.Context, id string, changeinfo *define.ChangeUserSelf) error {
+func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, slack, telegram, password, remark string) error {
+	var (
+		changeuser   string
+		hashpassword string
+	)
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return errors.Wrap(err, "db.Db.GetConn")
+	}
+	defer conn.Close()
+	updateTime := time.Now().Unix()
+	if password != "" {
+		hashpassword, err = utils.GenerateHashPass(password)
+		if err != nil {
+			return errors.Wrap(err, "GenerateHashPass")
+		}
+	} else {
+		userinfo, err := GetUser(ctx, id)
+		if err != nil {
+			return errors.Wrap(err, "GerUser")
+		}
+		hashpassword = userinfo.Password
+	}
+	changeuser = `UPDATE crocodile_user 
+					SET hashpassword=?,
+						email=?,
+						wechat=?,
+						dingphone=?,
+						slack=?,
+						telegram=?,
+						updateTime=?,
+						remark=? 
+					WHERE
+						id=?`
+
+	stmt, err := conn.PrepareContext(ctx, changeuser)
+	if err != nil {
+		return errors.Wrap(err, "conn.PrepareContext")
+	}
+	defer stmt.Close()
+
+	_, err = stmt.ExecContext(ctx, hashpassword,
+		email,
+		wechat,
+		dingding,
+		slack,
+		telegram,
+		updateTime,
+		remark,
+		id,
+	)
+	if err != nil {
+		return errors.Wrap(err, "stmt.ExecContext")
+	}
 	return nil
 }

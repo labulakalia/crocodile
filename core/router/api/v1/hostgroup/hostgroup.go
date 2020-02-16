@@ -2,9 +2,9 @@ package hostgroup
 
 import (
 	"context"
+
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
-	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
@@ -13,32 +13,29 @@ import (
 )
 
 // CreateHostGroup create hostgroup
-// POST /api/v1/hostgroup
-// @params
-// name
-// hosts [] option
-// remark option
+// @Summary create hostgroup
+// @Tags HostGroup
+// @Description create new hostgroup
+// @Produce json
+// @Param User body define.CreateHostGroup true "HostGroup"
+// @Success 200 {object} resp.Response
+// @Router /api/v1/hostgroup [post]
+// @Security ApiKeyAuth
 func CreateHostGroup(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	hostgroup := define.HostGroup{}
+	hg := define.CreateHostGroup{}
 
-	err := c.ShouldBindJSON(&hostgroup)
+	err := c.ShouldBindJSON(&hg)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
 
-	if hostgroup.Name == "" {
-		log.Error("Hostgroup.Name is empty")
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-
-	exist, err := model.Check(ctx, model.TBHostgroup, model.Name, hostgroup.Name)
+	exist, err := model.Check(ctx, model.TBHostgroup, model.Name, hg.Name)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -49,10 +46,7 @@ func CreateHostGroup(c *gin.Context) {
 		return
 	}
 
-	hostgroup.ID = utils.GetID()
-	hostgroup.CreateByUID = c.GetString("uid")
-
-	err = model.CreateHostgroup(ctx, &hostgroup)
+	err = model.CreateHostgroup(ctx, hg.Name, hg.Remark, c.GetString("uid"), hg.HostsID)
 	if err != nil {
 		log.Error("CreateHostgroup failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -62,27 +56,29 @@ func CreateHostGroup(c *gin.Context) {
 }
 
 // ChangeHostGroup change hostgroup
-// PUT /api/v1/hostgroup
-// @params
-// id
-// name
-// hosts option
-// remark option
+// @Summary change hostgroup
+// @Tags HostGroup
+// @Description change hostgroup
+// @Produce json
+// @Param User body define.ChangeHostGroup true "HostGroup"
+// @Success 200 {object} resp.Response
+// @Router /api/v1/hostgroup [put]
+// @Security ApiKeyAuth
 func ChangeHostGroup(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	hostgroup := define.HostGroup{}
+	hg := define.ChangeHostGroup{}
 
-	err := c.ShouldBindJSON(&hostgroup)
+	err := c.ShouldBindJSON(&hg)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
 	// 判断ID是否存在
-	exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hostgroup.ID)
+	exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hg.ID)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -104,7 +100,7 @@ func ChangeHostGroup(c *gin.Context) {
 	// 这里只需要确定如果rule的用户类型是否为Admin
 	if role != define.AdminUser {
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hostgroup.ID, uid)
+		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hg.ID, uid)
 		if err != nil {
 			log.Error("IsExist failed", zap.String("error", err.Error()))
 			resp.JSON(c, resp.ErrInternalServer, nil)
@@ -117,7 +113,7 @@ func ChangeHostGroup(c *gin.Context) {
 		}
 	}
 
-	err = model.ChangeHostGroup(ctx, &hostgroup)
+	err = model.ChangeHostGroup(ctx, hg.HostsID, hg.ID, hg.Remark)
 	if err != nil {
 		log.Error("ChangeHostGroup failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -127,15 +123,21 @@ func ChangeHostGroup(c *gin.Context) {
 
 }
 
-// DeleteHostGroup deletehostgroup
-// DELETE /api/v1/hostgroup
-// id
+// DeleteHostGroup delete hostgroup
+// @Summary delete hostgroup
+// @Tags HostGroup
+// @Description delete hostgroup
+// @Produce json
+// @Param User body define.GetID true "HostGroup"
+// @Success 200 {object} resp.Response
+// @Router /api/v1/hostgroup [delete]
+// @Security ApiKeyAuth
 func DeleteHostGroup(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	hostgroup := define.HostGroup{}
+	hostgroup := define.GetID{}
 
 	err := c.ShouldBindJSON(&hostgroup)
 	if err != nil {
@@ -187,14 +189,35 @@ func DeleteHostGroup(c *gin.Context) {
 	resp.JSON(c, resp.Success, nil)
 }
 
-// GetHostGroups get host groups
-// GET /api/v1/hostgroup
-//
+// GetHostGroups get all hostgroup
+// @Summary get all hostgroup
+// @Tags HostGroup
+// @Description get all hostgroup
+// @Param offset query int false "Offset"
+// @Param limit query int false "Limit"
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/hostgroup [get]
+// @Security ApiKeyAuth
 func GetHostGroups(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	hgs, err := model.GetHostGroups(ctx)
+	var (
+		q   define.Query
+		err error
+	)
+
+	err = c.BindQuery(&q)
+	if err != nil {
+		log.Error("BindQuery offset failed", zap.Error(err))
+	}
+
+	if q.Limit == 0 {
+		q.Limit = define.DefaultLimit
+	}
+
+	hgs, err := model.GetHostGroups(ctx, q.Limit, q.Offset)
 	if err != nil {
 		log.Error("GetHostGroup failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -202,4 +225,18 @@ func GetHostGroups(c *gin.Context) {
 	}
 	resp.JSON(c, resp.Success, hgs)
 
+}
+
+// GetSelect return name,id
+func GetSelect(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	data, err := model.GetNameID(ctx, model.TBHostgroup)
+	if err != nil {
+		log.Error("model.GetNameID", zap.String("error", err.Error()))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	resp.JSON(c, resp.Success, data)
 }

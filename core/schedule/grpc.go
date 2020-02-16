@@ -2,7 +2,10 @@ package schedule
 
 import (
 	"context"
-	"fmt"
+	"os"
+	"sync"
+	"time"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/cert"
@@ -18,16 +21,14 @@ import (
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
-	"os"
-	"sync"
-	"time"
 )
 
 const (
 	// RPC connect timeout
 	defaultRPCTimeout = time.Second * 3
 	// worker send hearbeat ttl
-	defaultHearbeatInterval = time.Second * 15 // maxWorkerTTL int64 = 20
+	defaultHearbeatInterval         = time.Second * 15 // maxWorkerTTL int64 = 20
+	defaultLastFailHearBeatInterval = time.Second * 3
 	// max retry get host time for func Next
 	defaultMaxRetryGetWorkerHost = 3
 )
@@ -152,12 +153,17 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 	// queryctx, querycancel := context.WithTimeout(ctx,
 	// 	config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	// defer querycancel()
+	var (
+		err  error
+		conn *grpc.ClientConn
+	)
 	for i := 0; i < defaultMaxRetryGetWorkerHost; i++ {
 		host := next()
 		if host == nil {
+			err = errors.New("Can't Get Valid Worker Host")
 			continue
 		}
-		conn, err := getgRPCConn(ctx, host.Addr)
+		conn, err = getgRPCConn(ctx, host.Addr)
 		if err != nil {
 			log.Error("GetRpcConn failed", zap.String("error", err.Error()))
 			continue
@@ -168,7 +174,7 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 		}
 		conn.Close()
 	}
-	return nil, fmt.Errorf("can not get valid host from hostgroup")
+	return nil, err
 }
 
 // RegistryClient registry client to server
@@ -187,6 +193,7 @@ func RegistryClient(version string, port int) error {
 		Version:   version,
 		Hostgroup: config.CoreConf.Client.HostGroup,
 		Weight:    int32(config.CoreConf.Client.Weight),
+		Remark:    config.CoreConf.Client.Remark,
 	}
 	_, err = hbClient.RegistryHost(ctx, &regHost)
 	if err != nil {
@@ -202,11 +209,12 @@ func RegistryClient(version string, port int) error {
 // send client will send hearbt to server, let scheduler center know it is alive
 func sendhb(client pb.HeartbeatClient, port int) {
 	log.Info("start send hearbeat to server")
-	ticker := time.NewTicker(defaultHearbeatInterval)
+	timer := time.NewTimer(time.Millisecond)
+
 	for {
 		select {
-		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
+		case <-timer.C:
+			ctx, _ := context.WithTimeout(context.Background(), defaultRPCTimeout)
 			hbreq := &pb.HeartbeatReq{
 				Port:        int32(port),
 				RunningTask: runningtask.GetRunningTasks(),
@@ -215,8 +223,12 @@ func sendhb(client pb.HeartbeatClient, port int) {
 			if err != nil {
 				code := DealRPCErr(err)
 				log.Error("client.SendHb failed", zap.String("short msg", resp.GetMsg(code)), zap.Error(err))
+				timer.Reset(defaultLastFailHearBeatInterval)
+				continue
 			}
-			cancel()
+			log.Debug("Send HearBeat Success")
+			timer.Reset(defaultHearbeatInterval)
+
 		case <-clentstophb:
 			log.Info("Stop Send HearBeat")
 			return

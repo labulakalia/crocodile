@@ -43,6 +43,7 @@ func Server() *cobra.Command {
 			if err != nil {
 				log.Fatal("init schedule failed", zap.String("error", err.Error()))
 			}
+			
 			err = router.Run(define.Server, lis)
 			if err != nil {
 				log.Error("router.Run error", zap.Error(err))
