@@ -11,6 +11,7 @@ import (
 
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/tasktype"
+	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -72,8 +73,8 @@ type LogCacher interface {
 	Get() interface{}
 	// SetTaskStatus set task status
 	// wait running finish fail cancel
-	SetTaskStatus(TaskStatus)
-	GetTaskStatus() TaskStatus
+	SetTaskStatus(define.TaskStatus)
+	GetTaskStatus() define.TaskStatus
 }
 
 var _ LogCacher = &LogCache{}
@@ -91,7 +92,7 @@ type LogCache struct {
 	// actual pb.TaskResp
 	resdata interface{}
 	// task is running
-	status TaskStatus
+	status define.TaskStatus
 }
 
 // NewLogCache return impl LogCache struct
@@ -101,7 +102,7 @@ func NewLogCache() LogCacher {
 		buf:    bytes.NewBuffer(buf),
 		buffer: bytepool.Get().([]byte),
 		close:  false,
-		status: wait,
+		status: define.TsWait,
 	}
 	return &logcache
 }
@@ -119,7 +120,7 @@ func (l *LogCache) ReadOnly(p []byte, off int) (n int, err error) {
 		// bug
 		// l.GetTaskStatus()
 		// 需要结合任务的状态来获取任务日志
-		if status == finish {
+		if status == define.TsFinish {
 			// 主要是任务完成后还可以获取日志，
 			log.Debug("task is finished and read log finished")
 			return 0, io.EOF
@@ -171,7 +172,7 @@ func (l *LogCache) WriteString(p string) (n int, err error) {
 
 // WriteStringf Write Tmpl string format to buf
 func (l *LogCache) WriteStringf(tmpl string, args ...interface{}) (n int, err error) {
-	now := time.Now().Local().Format("2006-01-02 15:04:05: ") + fmt.Sprintf(tmpl, args...)
+	now := time.Now().Local().Format("2006-01-02 15:04:05: ") + fmt.Sprintf(tmpl, args...) +"\n"
 	n, err = l.buf.WriteString(now)
 	l.Write([]byte(now))
 	return
@@ -226,49 +227,77 @@ func (l *LogCache) Get() interface{} {
 	return l.resdata
 }
 
-// TaskStatus task run status
-type TaskStatus uint
+// // TaskStatus task run status
+// type TaskStatus uint
 
-const (
-	// waiting task is waiting pre task is running
-	wait TaskStatus = iota + 1
-	// running tassk is running
-	run
-	// finish task is run finish
-	finish
-	// fail task run fail
-	fail
-	// cancel task is cancel ,because pre task is run fail
-	cancel
-	// nodata parenttasks or childtasks no task
-	nodata
-)
+// const (
+// 	// waiting task is waiting pre task is running
+// 	wait TaskStatus = iota + 1
+// 	// running tassk is running
+// 	run
+// 	// finish task is run finish
+// 	finish
+// 	// fail task run fail
+// 	fail
+// 	// cancel task is cancel ,because pre task is run fail
+// 	cancel
+// 	// nodata parenttasks or childtasks no task
+// 	nodata
+// )
 
-func (t TaskStatus) String() string {
-	switch t {
-	case wait:
-		return "wait"
-	case run:
-		return "run"
-	case finish:
-		return "finish"
-	case fail:
-		return "fail"
-	case cancel:
-		return "cancel"
-	case nodata:
-		return "nodata"
-	default:
-		return "unknown"
-	}
-}
+// func (t TaskStatus) String() string {
+// 	switch t {
+// 	case wait:
+// 		return "wait"
+// 	case run:
+// 		return "run"
+// 	case finish:
+// 		return "finish"
+// 	case fail:
+// 		return "fail"
+// 	case cancel:
+// 		return "cancel"
+// 	case nodata:
+// 		return "nodata"
+// 	default:
+// 		return "unknown"
+// 	}
+// }
+
+// // GetTasksTreeStatus return a slice
+// func GetTasksTreeStatus() []*define.TaskStatusTree {
+// 	retTasksStatus := make([]*define.TaskStatusTree, 0, 3)
+// 	parentTasksStatus := &define.TaskStatusTree{
+// 		Name:     "ParentTasks",
+// 		Status:   nodata.String(),
+// 		Children: make([]*define.TaskStatusTree, 0),
+// 	}
+
+// 	mainTaskStatus := &define.TaskStatusTree{
+// 		// Name:   task.name,
+// 		// ID:     taskid,
+// 		Status: nodata.String(),
+// 	}
+
+// 	childTasksStatus := &define.TaskStatusTree{
+// 		Name:     "ChildTasks",
+// 		Status:   nodata.String(),
+// 		Children: make([]*define.TaskStatusTree, 0),
+// 	}
+
+// 	retTasksStatus = append(retTasksStatus,
+// 		parentTasksStatus,
+// 		mainTaskStatus,
+// 		childTasksStatus)
+// 	return retTasksStatus
+// }
 
 // SetTaskStatus will be set task status is running or stop
-func (l *LogCache) SetTaskStatus(status TaskStatus) {
+func (l *LogCache) SetTaskStatus(status define.TaskStatus) {
 	l.status = status
 }
 
 // GetTaskStatus will be set task status is running or stop
-func (l *LogCache) GetTaskStatus() TaskStatus {
+func (l *LogCache) GetTaskStatus() define.TaskStatus {
 	return l.status
 }

@@ -170,7 +170,7 @@ func Benchmark_main(b *testing.B) {
 }
 
 func Benchmark_bytes(b *testing.B) {
-	a := bytes.NewBuffer(make([]byte,0, 1e2))
+	a := bytes.NewBuffer(make([]byte, 0, 1e2))
 	for i := 0; i < b.N; i++ {
 		a.WriteString("111111111111111111111111111")
 		// b.Log(a.Len())
@@ -180,7 +180,7 @@ func Benchmark_bytes(b *testing.B) {
 }
 
 func Benchmark_append(b *testing.B) {
-	a := make([]byte,0, 1e2)
+	a := make([]byte, 0, 1e2)
 	for i := 0; i < b.N; i++ {
 		a = append(a, []byte("111111111111111111111111111")...)
 		c := len(a)
@@ -198,12 +198,18 @@ func TestLogCach11e(t *testing.T) {
 	// t.Log(len(a),cap(a))
 	// a = a[0:0:200]
 	// t.Log(len(a),cap(a))
-	ticker := time.NewTimer(time.Second)
-	
-	for {
-		select {
-		case <- ticker.C:
-			fmt.Println("111")
-		}
+	// ticker := time.NewTimer(time.Second)
+
+	// for {
+	// 	select {
+	// 	case <- ticker.C:
+	// 		fmt.Println("111")
+	// 	}
+	// }
+	var timeint = "1581848820068"
+	tt, err := strconv.ParseInt(timeint, 10, 64)
+	if err != nil {
+		t.Fatal(err)
 	}
+	t.Log(tt)
 }

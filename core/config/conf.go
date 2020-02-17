@@ -2,9 +2,10 @@ package config
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"os"
 	"time"
+
+	"github.com/BurntSushi/toml"
 )
 
 var (
@@ -93,6 +94,7 @@ type Notify struct {
 }
 
 type email struct {
+	Enable     bool
 	SMTPHost   string
 	Port       int
 	UserName   string
@@ -104,25 +106,30 @@ type email struct {
 }
 
 type dingding struct {
+	Enable      bool
 	WebHook     string
 	SecureLevel int
 	Secret      string
 }
 
 type slack struct {
+	Enable  bool
 	WebHook string
 }
 
 type telegram struct {
+	Enable   bool
 	BotToken string
 }
 
 type wechat struct {
+	Enable      bool
 	CropID      string
 	AgentID     int
 	AgentSecret string
 }
 
 type webhook struct {
+	Enable     bool
 	WebHookURL string
 }

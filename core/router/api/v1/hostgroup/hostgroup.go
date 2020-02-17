@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
+	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
@@ -145,6 +146,10 @@ func DeleteHostGroup(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
+	if utils.CheckID(hostgroup.ID) != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
 	// 判断ID是否存在
 	exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hostgroup.ID)
 	if err != nil {
@@ -211,6 +216,8 @@ func GetHostGroups(c *gin.Context) {
 	err = c.BindQuery(&q)
 	if err != nil {
 		log.Error("BindQuery offset failed", zap.Error(err))
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
 	}
 
 	if q.Limit == 0 {
@@ -228,6 +235,13 @@ func GetHostGroups(c *gin.Context) {
 }
 
 // GetSelect return name,id
+// @Summary get name,id
+// @Tags HostGroup
+// @Description get select option
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/hostgroup [get]
+// @Security ApiKeyAuth
 func GetSelect(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -239,4 +253,32 @@ func GetSelect(c *gin.Context) {
 		return
 	}
 	resp.JSON(c, resp.Success, data)
+}
+
+// GetHostsByIHGID get host detail by hostgroup id
+// @Summary get host detail by hostgroup id
+// @Tags HostGroup
+// @Description get all hostgroup
+// @Param id query string false "ID"
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/hostgroup/hosts [get]
+// @Security ApiKeyAuth
+func GetHostsByIHGID(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	getid := define.GetID{}
+	err := c.BindQuery(&getid)
+	if err != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	hosts, err := model.GetHostsByHGID(ctx, getid.ID)
+	if err != nil {
+		log.Error("model.GetHostsByHGID", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	resp.JSON(c, resp.Success, hosts)
 }

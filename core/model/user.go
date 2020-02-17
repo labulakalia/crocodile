@@ -21,7 +21,7 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 	var (
 		hashpassword string
 		uid          string
-		forbid       int
+		forbid       bool
 	)
 	loguser := `SELECT id,hashpassword,forbid FROM crocodile_user WHERE name=?`
 
@@ -41,7 +41,7 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 	if err != nil && err != sql.ErrNoRows {
 		return "", errors.Wrap(err, "stmt.QueryRowContext Scan")
 	}
-	if forbid == 2 {
+	if forbid {
 		return "", errors.Wrap(define.ErrForbid{Name: name}, "")
 	}
 
@@ -49,7 +49,7 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 	if err != nil {
 		return "", errors.Wrap(define.ErrUserPass{Err: err}, "utils.CheckHashPass")
 	}
-	token, err := jwt.GenerateToken(uid)
+	token, err := jwt.GenerateToken(uid, name)
 	if err != nil {
 		return "", errors.Wrap(err, "jwt.GenerateToken")
 	}
@@ -69,7 +69,7 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 					updateTime
 				)
 				VALUES
-				(?,?,?,?,?,?)`
+				(?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.Db.GetConn")
@@ -84,7 +84,7 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 
 	now := time.Now().Unix()
 	id := utils.GetID()
-	_, err = stmt.ExecContext(ctx, id, name, hashpassword, role, 1, now, now)
+	_, err = stmt.ExecContext(ctx, id, name, hashpassword, role, false, now, now)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
@@ -100,7 +100,7 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 	return nil
 }
 
-func getusers(ctx context.Context, uids []string, offset, limit int) ([]define.User, error) {
+func getusers(ctx context.Context, uids []string, name string, offset, limit int) ([]define.User, error) {
 	getsql := `SELECT
 					id,
 					name,
@@ -126,6 +126,10 @@ func getusers(ctx context.Context, uids []string, offset, limit int) ([]define.U
 			args = append(args, uid)
 		}
 		getsql += " WHERE " + strings.Join(querys, " OR ")
+	}
+	if name != "" {
+		getsql += " WHERE name=?"
+		args = append(args, name)
 	}
 	if limit > 0 {
 		getsql += " LIMIT ? OFFSET ?"
@@ -174,14 +178,31 @@ func getusers(ctx context.Context, uids []string, offset, limit int) ([]define.U
 		user.RoleStr = user.Role.String()
 		user.CreateTime = utils.UnixToStr(createTime)
 		user.UpdateTime = utils.UnixToStr(updateTime)
+		if user.Role == define.AdminUser {
+			user.Roles = []string{"admin"}
+		} else {
+			user.Roles = []string{}
+		}
 		users = append(users, user)
 	}
 	return users, nil
 }
 
-// GetUser get user by id
-func GetUser(ctx context.Context, uid string) (*define.User, error) {
-	userinfos, err := getusers(ctx, []string{uid}, 0, 0)
+// GetUserByID get user by id
+func GetUserByID(ctx context.Context, uid string) (*define.User, error) {
+	userinfos, err := getusers(ctx, []string{uid}, "", 0, 0)
+	if err != nil {
+		return nil, errors.Wrap(err, "GerUser")
+	}
+	if len(userinfos) != 1 {
+		return nil, fmt.Errorf("Should get one user,but get total: %d", len(userinfos))
+	}
+	return &userinfos[0], nil
+}
+
+// GetUserByName get user by name
+func GetUserByName(ctx context.Context, name string) (*define.User, error) {
+	userinfos, err := getusers(ctx, nil, name, 0, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "GerUser")
 	}
@@ -193,12 +214,12 @@ func GetUser(ctx context.Context, uid string) (*define.User, error) {
 
 // GetUsers get all users info
 func GetUsers(ctx context.Context, uids []string, offset, limit int) ([]define.User, error) {
-	return getusers(ctx, uids, offset, limit)
+	return getusers(ctx, uids, "", offset, limit)
 }
 
 // AdminChangeUser admin change user some column define.AdminChangeUser
 // func AdminChangeUser(ctx context.Context, adminuser *define.AdminChangeUser) error {
-func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid int, password, remark string) error {
+func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid bool, password, remark string) error {
 	var (
 		changeuser   string
 		changerole   bool
@@ -218,7 +239,7 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid in
 		}
 	} else {
 		// get old user rolw
-		userinfo, err := GetUser(ctx, id)
+		userinfo, err := GetUserByID(ctx, id)
 		if err != nil {
 			return errors.Wrap(err, "GerUser")
 		}
@@ -233,8 +254,8 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid in
 	SET role=?,
 		forbid=?,
 		hashpassword=?,
-		updateTime=? 
-		remark=? 
+		updateTime=?,
+		remark=?
 	WHERE id=?`
 
 	if changerole {
@@ -296,7 +317,7 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, sla
 			return errors.Wrap(err, "GenerateHashPass")
 		}
 	} else {
-		userinfo, err := GetUser(ctx, id)
+		userinfo, err := GetUserByID(ctx, id)
 		if err != nil {
 			return errors.Wrap(err, "GerUser")
 		}

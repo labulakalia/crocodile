@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
@@ -12,8 +15,6 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"strings"
-	"time"
 )
 
 // CreateTask create task
@@ -170,12 +171,12 @@ func DeleteTask(ctx context.Context, id string) error {
 
 // GetTasks get all tasks
 func GetTasks(ctx context.Context, offset, limit int) ([]define.GetTask, error) {
-	return getTasks(ctx, "", offset, limit)
+	return getTasks(ctx, nil, "", offset, limit, true)
 }
 
 // GetTaskByID get task by id
 func GetTaskByID(ctx context.Context, id string) (*define.GetTask, error) {
-	tasks, err := getTasks(ctx, id, 0, 0)
+	tasks, err := getTasks(ctx, []string{id}, "", 0, 0, true)
 	if err != nil {
 		return nil, err
 	}
@@ -186,8 +187,21 @@ func GetTaskByID(ctx context.Context, id string) (*define.GetTask, error) {
 	return &tasks[0], nil
 }
 
+// GetTaskByName get task by id
+func GetTaskByName(ctx context.Context, name string) (*define.GetTask, error) {
+	tasks, err := getTasks(ctx, nil, name, 0, 0, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(tasks) != 1 {
+		err := fmt.Errorf("can find task %s, map be it has deleted", name)
+		return nil, errors.Errorf("getTasks id failed: %v", err)
+	}
+	return &tasks[0], nil
+}
+
 // getTasks get takls by id
-func getTasks(ctx context.Context, id string, offset, limit int) ([]define.GetTask, error) {
+func getTasks(ctx context.Context, ids []string, name string, offset, limit int, first bool /*Preventing endless loops*/) ([]define.GetTask, error) {
 	getsql := `SELECT 
 					t.id,
 					t.name,
@@ -216,9 +230,19 @@ func getTasks(ctx context.Context, id string, offset, limit int) ([]define.GetTa
 				  crocodile_task as t,crocodile_user as u,crocodile_hostgroup as hg
 				WHERE t.createByID == u.id AND t.hostGroupID = hg.id`
 	args := []interface{}{}
-	if id != "" {
-		getsql += " AND t.id = ?"
-		args = append(args, id)
+	if len(ids) != 0 {
+		getsql += " AND ("
+		querys := []string{}
+		for _, id := range ids {
+			querys = append(querys, "t.id=?")
+			args = append(args, id)
+		}
+		getsql += strings.Join(querys, " OR ")
+		getsql += ")"
+	}
+	if name != "" {
+		getsql += " AND t.name=?"
+		args = append(args, name)
 	}
 	if limit > 0 {
 		getsql += " LIMIT ? OFFSET ?"
@@ -282,14 +306,44 @@ func getTasks(ctx context.Context, id string, offset, limit int) ([]define.GetTa
 		t.AlarmUserIds = []string{}
 		if alarmUserids != "" {
 			t.AlarmUserIds = append(t.AlarmUserIds, strings.Split(alarmUserids, ",")...)
+			users, err := GetUsers(ctx, t.AlarmUserIds, 0, 0)
+			if err != nil {
+				log.Error("GetUsers ids failed", zap.Strings("uids", t.AlarmUserIds))
+			}
+			t.AlarmUserIdsDesc = make([]string, 0, len(t.AlarmUserIds))
+			for _, user := range users {
+				t.AlarmUserIdsDesc = append(t.AlarmUserIdsDesc, user.Name)
+			}
 		}
 		t.ParentTaskIds = []string{}
+		t.ParentTaskIdsDesc = []string{}
 		if parentTaskIds != "" {
 			t.ParentTaskIds = append(t.ParentTaskIds, strings.Split(parentTaskIds, ",")...)
+			if first {
+				ptasks, err := getTasks(ctx, t.ParentTaskIds, "", 0, 0, false)
+				if err != nil {
+					log.Error("getTasks failed", zap.Error(err))
+				}
+				for _, task := range ptasks {
+					t.ParentTaskIdsDesc = append(t.ParentTaskIdsDesc, task.Name)
+				}
+			}
+
 		}
 		t.ChildTaskIds = []string{}
+		t.ChildTaskIdsDesc = []string{}
 		if childTaskIds != "" {
 			t.ChildTaskIds = append(t.ChildTaskIds, strings.Split(childTaskIds, ",")...)
+			if first {
+				ctasks, err := getTasks(ctx, t.ChildTaskIds, "", 0, 0, false)
+				if err != nil {
+					log.Error("getTasks failed", zap.Error(err))
+				}
+				for _, task := range ctasks {
+					t.ChildTaskIdsDesc = append(t.ChildTaskIdsDesc, task.Name)
+				}
+			}
+
 		}
 		req := pb.TaskReq{
 			TaskType: int32(t.TaskType),
@@ -304,7 +358,7 @@ func getTasks(ctx context.Context, id string, offset, limit int) ([]define.GetTa
 		t.TaskTypeDesc = t.TaskType.String()
 		t.AlarmStatusDesc = t.AlarmStatus.String()
 		t.TaskTypeDesc = t.TaskType.String()
-		
+
 		res = append(res, t)
 	}
 	return res, nil

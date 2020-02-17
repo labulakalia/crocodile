@@ -6,7 +6,8 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/acroca/go-symbols v0.1.1 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
-	github.com/casbin/casbin/v2 v2.1.0
+	github.com/casbin/casbin v1.9.1 // indirect
+	github.com/casbin/casbin/v2 v2.1.2
 	github.com/casbin/gorm-adapter/v2 v2.0.3
 	github.com/cweill/gotests v1.5.3 // indirect
 	github.com/davidrjenni/reftools v0.0.0-20191222082827-65925cf01315 // indirect
@@ -42,6 +43,7 @@ require (
 	github.com/rogpeppe/godef v1.1.1 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20190402232053-79abb63cd66e // indirect
 	github.com/soheilhy/cmux v0.1.4
+	github.com/spf13/cast v1.3.1
 	github.com/spf13/cobra v0.0.5
 	github.com/sqs/goreturns v0.0.0-20181028201513-538ac6014518 // indirect
 	github.com/stamblerre/gocode v1.0.0 // indirect
@@ -54,6 +56,7 @@ require (
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
+	golang.org/x/mod v0.1.1-0.20191105210325-c90efee705ee
 	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa // indirect
 	golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9 // indirect
 	golang.org/x/tools v0.0.0-20200131000851-b4207ef49307 // indirect

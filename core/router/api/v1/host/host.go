@@ -65,24 +65,33 @@ func ChangeHostState(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	hosttask := define.GetID{}
-	err := c.ShouldBindJSON(&hosttask)
+	gethost := define.GetID{}
+	err := c.ShouldBindJSON(&gethost)
 	if err != nil {
+		log.Error("c.ShouldBindJSON", zap.Error(err))
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	if utils.CheckID(hosttask.ID) != nil {
+	if utils.CheckID(gethost.ID) != nil {
+		log.Error("CheckID failed")
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	host, err := model.GetHostByID(ctx, hosttask.ID)
+	host, err := model.GetHostByID(ctx, gethost.ID)
 	if err != nil {
+		log.Error("model.GetHostByID", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
+	if host == nil {
+		log.Error("can not get host", zap.String("taskid", gethost.ID))
+		resp.JSON(c, resp.ErrHostNotExist, nil)
+		return
+	}
 
-	err = model.StopHost(ctx, hosttask.ID, host.Stop^1)
+	err = model.StopHost(ctx, gethost.ID, !host.Stop)
 	if err != nil {
+		log.Error("model.StopHost", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -135,3 +144,22 @@ func DeleteHost(c *gin.Context) {
 	resp.JSON(c, resp.Success, nil)
 }
 
+// GetSelect name,id
+// @Summary Get Task Select
+// @Tags Host
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/host/select [get]
+// @Security ApiKeyAuth
+func GetSelect(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	data, err := model.GetNameID(ctx, model.TBHost)
+	if err != nil {
+		log.Error("model.GetNameID", zap.String("error", err.Error()))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	resp.JSON(c, resp.Success, data)
+}

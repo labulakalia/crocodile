@@ -33,7 +33,7 @@ func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 			return nil, err
 		}
 		code.LangDesc = code.Lang.String()
-		return &code, err
+		return code, err
 
 	case define.API:
 		var api DataAPI
@@ -44,7 +44,7 @@ func GetDataRun(t *pb.TaskReq) (TaskRuner, error) {
 		if api.Header == nil {
 			api.Header = make(map[string]string)
 		}
-		return &api, err
+		return api, err
 
 	default:
 		err := fmt.Errorf("Unsupport TaskType %d", t.TaskType)

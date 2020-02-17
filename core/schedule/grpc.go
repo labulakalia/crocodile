@@ -214,44 +214,47 @@ func sendhb(client pb.HeartbeatClient, port int) {
 	for {
 		select {
 		case <-timer.C:
-			ctx, _ := context.WithTimeout(context.Background(), defaultRPCTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
 			hbreq := &pb.HeartbeatReq{
 				Port:        int32(port),
 				RunningTask: runningtask.GetRunningTasks(),
 			}
 			_, err := client.SendHb(ctx, hbreq)
 			if err != nil {
-				code := DealRPCErr(err)
-				log.Error("client.SendHb failed", zap.String("short msg", resp.GetMsg(code)), zap.Error(err))
+				cancel()
+				err := DealRPCErr(err)
+				log.Error("client.SendHb failed", zap.Error(err))
 				timer.Reset(defaultLastFailHearBeatInterval)
 				continue
 			}
+			cancel()
 			log.Debug("Send HearBeat Success")
 			timer.Reset(defaultHearbeatInterval)
 
 		case <-clentstophb:
 			log.Info("Stop Send HearBeat")
+			timer.Stop()
 			return
 		}
 	}
 }
 
 // DealRPCErr change rpc error to err code
-func DealRPCErr(err error) int {
+func DealRPCErr(err error) error {
 	statusErr, ok := status.FromError(err)
 	if ok {
 		switch statusErr.Code() {
 		case codes.DeadlineExceeded:
-			return resp.ErrCtxDeadlineExceeded
+			return resp.GetMsgErr(resp.ErrCtxDeadlineExceeded) 
 		case codes.Canceled:
-			return resp.ErrCtxCanceled
+			return resp.GetMsgErr(resp.ErrCtxCanceled) 
 		case codes.Unauthenticated:
-			return resp.ErrRPCUnauthenticated
+			return resp.GetMsgErr(resp.ErrRPCUnauthenticated) 
 		case codes.Unavailable:
-			return resp.ErrRPCUnavailable
+			return resp.GetMsgErr(resp.ErrRPCUnauthenticated) 
 		}
 	}
-	return resp.ErrRPCUnknow
+	return err
 }
 
 // DoStopConn will cancel all running task and close grpc conn

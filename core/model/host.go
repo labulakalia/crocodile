@@ -156,7 +156,7 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 			h.RunningTasks = append(h.RunningTasks, strings.Split(rtask, ",")...)
 		}
 		if h.LastUpdateTimeUnix+maxWorkerTTL > time.Now().Unix() {
-			h.Online = 1
+			h.Online = true
 		}
 		h.LastUpdateTime = utils.UnixToStr(h.LastUpdateTimeUnix)
 		hosts = append(hosts, &h)
@@ -200,7 +200,8 @@ func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 		return nil, err
 	}
 	if len(hosts) != 1 {
-		return nil, errors.New("can not find hostid")
+		log.Warn("can not find hostid", zap.Error(err))
+		return nil, nil
 	}
 	return hosts[0], nil
 }
@@ -218,7 +219,7 @@ func GetHostByIDS(ctx context.Context, ids []string) ([]*define.Host, error) {
 }
 
 // StopHost will stop run worker in hostid
-func StopHost(ctx context.Context, hostid string, stop int) error {
+func StopHost(ctx context.Context, hostid string, stop bool) error {
 	stopsql := `UPDATE crocodile_host SET stop=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -238,7 +239,7 @@ func StopHost(ctx context.Context, hostid string, stop int) error {
 
 // DeleteHost will delete host
 func DeleteHost(ctx context.Context, hostid string) error {
-	err := StopHost(ctx, hostid, 0)
+	err := StopHost(ctx, hostid, true)
 	if err != nil {
 		return errors.Wrap(err, "StopHost")
 	}
@@ -275,4 +276,3 @@ func deletefromslice(deleteid string, ids []string) ([]string, bool) {
 	ids = append(ids[:existid], ids[existid+1:]...)
 	return ids, true
 }
-

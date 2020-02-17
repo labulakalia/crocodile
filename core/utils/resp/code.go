@@ -28,7 +28,10 @@ const (
 	// ErrHostgroupNotExist 主机组不存在
 	ErrHostgroupNotExist = 10419
 	// ErrDelHostUseByOtherHG 正在被其他的主机组使用，不能删除
-	ErrDelHostUseByOtherHG = 10429
+	ErrDelHostUseByOtherHG = 10420
+
+	//ErrHostNotExist 主机不存在
+	ErrHostNotExist = 10421
 
 	// ErrInternalServer 服务端错误
 	ErrInternalServer = 10500

@@ -20,6 +20,7 @@ var msgcode = map[int]string{
 	ErrHostgroupExist:      "主机组已存在",
 	ErrHostgroupNotExist:   "主机组不存在",
 	ErrDelHostUseByOtherHG: "正在被其他的主机组使用，不能删除",
+	ErrHostNotExist:        "主机不存在",
 
 	ErrInternalServer: "服务端错误",
 

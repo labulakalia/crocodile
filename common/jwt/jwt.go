@@ -1,8 +1,9 @@
 package jwt
 
 import (
-	"github.com/dgrijalva/jwt-go"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 const (
@@ -12,11 +13,12 @@ const (
 // Claims Jwt token
 type Claims struct {
 	jwt.StandardClaims
-	UID string
+	UID      string
+	UserName string
 }
 
 // GenerateToken generate get token for uid
-func GenerateToken(uid string) (token string, err error) {
+func GenerateToken(uid string, username string) (token string, err error) {
 	var (
 		now         time.Time
 		expireTime  time.Time
@@ -27,7 +29,8 @@ func GenerateToken(uid string) (token string, err error) {
 	expireTime = now.Add(7 * 24 * time.Hour)
 
 	claims = Claims{
-		UID: uid,
+		UID:      uid,
+		UserName: username,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireTime.Unix(),
 			Issuer:    "crocodile",
@@ -39,7 +42,7 @@ func GenerateToken(uid string) (token string, err error) {
 	return
 }
 
-// ParseToken parse token is valid 
+// ParseToken parse token is valid
 func ParseToken(token string) (claims *Claims, err error) {
 	var (
 		tokenClaims *jwt.Token

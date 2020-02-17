@@ -161,8 +161,8 @@ func GetHostGroups(ctx context.Context, limit, offset int) ([]define.HostGroup, 
 	return getHostGroups(ctx, "", "", limit, offset)
 }
 
-// GetHostGroupID return hostgroup by id
-func GetHostGroupID(ctx context.Context, id string) (*define.HostGroup, error) {
+// GetHostGroupByID return hostgroup by id
+func GetHostGroupByID(ctx context.Context, id string) (*define.HostGroup, error) {
 	hostgroups, err := getHostGroups(ctx, id, "", 0, 0)
 	if err != nil {
 		return nil, err
@@ -173,8 +173,24 @@ func GetHostGroupID(ctx context.Context, id string) (*define.HostGroup, error) {
 	return &hostgroups[0], nil
 }
 
-// GetHostGroupName return hostgroup by name
-func GetHostGroupName(ctx context.Context, hgname string) (*define.HostGroup, error) {
+// GetHostsByHGID return hostgroup's host details
+func GetHostsByHGID(ctx context.Context, hgid string) ([]*define.Host, error) {
+	hostgroup, err := GetHostGroupByID(ctx, hgid)
+	if err != nil {
+		return nil, err
+	}
+	if len(hostgroup.HostsID) == 0 {
+		return []*define.Host{}, nil
+	}
+	hosts, err := GetHostByIDS(ctx, hostgroup.HostsID)
+	if err != nil {
+		return nil, err
+	}
+	return hosts, nil
+}
+
+// GetHostGroupByName return hostgroup by name
+func GetHostGroupByName(ctx context.Context, hgname string) (*define.HostGroup, error) {
 	hostgroups, err := getHostGroups(ctx, "", hgname, 0, 0)
 	if err != nil {
 		return nil, err

@@ -89,8 +89,6 @@ func (s *cacheSchedule) Add(taskID, taskName string, cronExpr string, next Next)
 		close:    make(chan struct{}),
 		next:     next,
 	}
-	log.Debug("Start Set New task ", zap.Any("task", t))
-
 	s.Lock()
 	// 如果多个用户同时修改 确保不会冲突
 	oldtask, exist := s.sch[taskID]
@@ -129,7 +127,7 @@ func (s *cacheSchedule) Clean(t *task) {
 	// 	t.ctxcancel()
 	// }
 	close(t.close)
-	log.Info("Clean task success", zap.String("task", t.name))
+	log.Info("clean task success", zap.String("task", t.name))
 	return
 }
 
@@ -167,6 +165,7 @@ func (s *cacheSchedule) storelog(runbyid string, t *task) error {
 		EndTime:      t.endtime,
 		TotalRunTime: int(t.endtime - t.starttime),
 		Status:       t.status,
+		Trigger:      t.Trigger,
 		ErrCode:      t.errCode,
 		ErrMsg:       t.errMsg,
 		ErrTasktype:  t.errTasktype,
@@ -184,7 +183,7 @@ func (s *cacheSchedule) storelog(runbyid string, t *task) error {
 		taskresp, ok = logcache.Get().(define.TaskResp)
 
 		id, tasktype, _ := splitname(name)
-
+		// taskresp.Task = t.name
 		if ok {
 			taskresp.TaskID = id
 			taskresp.TaskTypeStr = taskresp.TaskType.String()
@@ -198,7 +197,11 @@ func (s *cacheSchedule) storelog(runbyid string, t *task) error {
 				LogData:     logcache.ReadAll(),
 			}
 		}
-		taskresp.Status = logcache.GetTaskStatus().String()
+		if logcache.GetTaskStatus() == define.TsWait {
+			taskresp.Status = define.TsCancel.String()
+		} else {
+			taskresp.Status = logcache.GetTaskStatus().String()
+		}
 
 		// taskresp
 		logcache.Close()
@@ -238,7 +241,7 @@ func (s *cacheSchedule) runSchedule(taskid string) {
 		next = expr.Next(last)
 		select {
 		case <-t.close:
-			log.Info("Close Schedule", zap.String("taskID", taskid), zap.Any("task", t))
+			log.Info("close Schedule", zap.String("taskID", taskid), zap.Any("task", t))
 			return
 		case <-time.After(next.Sub(last)):
 			last = next
@@ -280,7 +283,7 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 	)
 	log.Info("start run task", zap.String("taskid", taskid))
 	masterlogcache = cachepool.Get().(LogCacher) // this log cache is main
-	masterlogcache.SetTaskStatus(wait)
+	masterlogcache.SetTaskStatus(define.TsWait)
 	t, exist := s.gettask(taskid)
 	if !exist {
 		log.Error("this is bug, taskid not exist", zap.String("taskid", taskid), zap.Any("sch", s.sch))
@@ -304,11 +307,9 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 
 	// if master task is running,will do not run this time
 	if t.running {
-		log.Info("task is running,so not run now", zap.String("taskid", taskid))
-		err = fmt.Errorf("taskid %s[%s] is running, so not run now", t.name, taskid)
-		masterlogcache.WriteString(err.Error())
-		masterlogcache.SetTaskStatus(fail)
-		goto Over
+		log.Warn("task is running,so not run now", zap.String("task", t.name))
+		cachepool.Put(masterlogcache)
+		return
 	}
 	t.running = true
 	t.starttime = time.Now().UnixNano() / 1e6
@@ -316,32 +317,18 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 	ctx, cancel = context.WithCancel(context.Background())
 	// save control ctx
 	t.ctxcancel = cancel
+	defer cancel()
 	task, err = model.GetTaskByID(context.Background(), taskid)
 	if err != nil {
-		err = fmt.Errorf("can not get main taskid %s from db", taskid)
-		masterlogcache.WriteString(err.Error())
-		t.status = -1 // task fail
-		t.errTaskID = taskid
-		t.errTask = t.name
-		t.errCode = -1
-		t.errMsg = err.Error()
-		t.errTasktype = define.MasterTask
-		masterlogcache.SetTaskStatus(fail)
-		goto Over
+		log.Error("can't get main taskID from dataBase",zap.String("task", task.Name))
+		cachepool.Put(masterlogcache)
+		return
 	}
 
-	// TODO delete judge run, onlu use it in cron
 	if !task.Run {
-		err = fmt.Errorf("main task %s[%s] is forbid run", task.Name, taskid)
-		masterlogcache.WriteString(err.Error())
-		t.status = -1 // task fail
-		t.errTaskID = taskid
-		t.errTask = t.name
-		t.errCode = -1
-		t.errMsg = err.Error()
-		t.errTasktype = define.MasterTask
-		masterlogcache.SetTaskStatus(fail)
-		goto Over
+		log.Error("main task is forbid run",zap.String("task", task.Name))
+		cachepool.Put(masterlogcache)
+		return
 	}
 
 	t.taskids = make([]string, 0, 1+len(task.ParentTaskIds)+len(task.ChildTaskIds))
@@ -349,7 +336,7 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 	for _, id := range task.ParentTaskIds {
 		name := generatename(id, define.ParentTask)
 		logcache := cachepool.Get().(LogCacher)
-		logcache.SetTaskStatus(wait)
+		logcache.SetTaskStatus(define.TsWait)
 		logcache.Clean()
 		t.Lock()
 		t.logcaches[name] = logcache
@@ -362,7 +349,7 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 	for _, id := range task.ChildTaskIds {
 		name := generatename(id, define.ChildTask)
 		logcache := cachepool.Get().(LogCacher)
-		logcache.SetTaskStatus(wait)
+		logcache.SetTaskStatus(define.TsWait)
 		logcache.Clean()
 		t.Lock()
 		t.logcaches[name] = logcache
@@ -496,7 +483,7 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		runbytask.Unlock()
 	}
 
-	logcache.SetTaskStatus(run)
+	logcache.SetTaskStatus(define.TsRun)
 
 	queryctx, querycancel := context.WithTimeout(ctx,
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -509,8 +496,8 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		logcache.WriteStringf("Get Task id %s failed: %v", id, err)
 		goto Check
 	}
-	logcache.WriteStringf("Start Prepare Task %s[%s]\n", taskdata.Name, id)
-	logcache.WriteStringf("Start Conn Worker Host For Task %s[%s]\n", taskdata.Name, id)
+	logcache.WriteStringf("Start Prepare Task %s[%s]", taskdata.Name, id)
+	logcache.WriteStringf("Start Conn Worker Host For Task %s[%s]", taskdata.Name, id)
 
 	conn, err = tryGetRCCConn(ctx, realtask.next)
 	if err != nil {
@@ -521,13 +508,13 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		goto Check
 	}
 
-	logcache.WriteStringf("Success Conn Worker Host[%s]\n", conn.Target())
-	logcache.WriteStringf("Start Get Task %s[%s] Run Data\n", taskdata.Name, id)
+	logcache.WriteStringf("Success Conn Worker Host[%s]", conn.Target())
+	logcache.WriteStringf("Start Get Task %s[%s] Run Data", taskdata.Name, id)
 	// Marshal task data
 	tdata, err = json.Marshal(taskdata.TaskData)
 	if err != nil {
 		log.Error("json.Marshal", zap.Error(err))
-		logcache.WriteStringf("Marshal task %s[%s]'s RunData [%v] failed: %v\n", taskdata.Name, id, taskdata.TaskData, err)
+		logcache.WriteStringf("Marshal task %s[%s]'s RunData [%v] failed: %v", taskdata.Name, id, taskdata.TaskData, err)
 		goto Check
 	}
 
@@ -538,9 +525,9 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		TaskData: tdata,
 	}
 
-	logcache.WriteStringf("Success Get Task %s[%s] Run Data\n", taskdata.Name, id)
+	logcache.WriteStringf("Success Get Task %s[%s] Run Data", taskdata.Name, id)
 
-	logcache.WriteStringf("Start Run Task %s[%s] On Host[%s]\n", taskdata.Name, id, conn.Target())
+	logcache.WriteStringf("Start Run Task %s[%s] On Host[%s]", taskdata.Name, id, conn.Target())
 
 	// taskctx only use RunTask
 	if taskdata.Timeout > 0 {
@@ -555,13 +542,13 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 	taskrespstream, err = taskclient.RunTask(taskctx, taskreq)
 	if err != nil {
 		log.Error("Run task failed", zap.Error(err))
-		logcache.WriteStringf("Run Task %s[%s] TaskData [%v] failed:%v\n", taskdata.Name, id, taskreq, err)
+		logcache.WriteStringf("Run Task %s[%s] TaskData [%v] failed:%v", taskdata.Name, id, taskreq, err)
 		goto Check
 	}
 
 	// RunTask default resp code
 
-	logcache.WriteStringf("Task %s[%s]  Output----------------\n", taskdata.Name, id)
+	logcache.WriteStringf("Task %s[%s]  Output----------------", taskdata.Name, id)
 	for {
 		// Recv return err is nil or io.EOF
 		// the last lastrecv must be return code 3 byte
@@ -572,7 +559,7 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 				taskrespcode = logcache.GetCode()
 				goto Check
 			}
-			// taskrespcode = DealRPCErr(err)
+			err = DealRPCErr(err)
 			// taskrespcode =
 			logcache.WriteStringf("Task %s[%s] Run Fail: %v", taskdata.Name, id, err.Error())
 			// Alarm
@@ -603,20 +590,11 @@ Check:
 	// 当终止任务时，第一个任务取消的任务不经过这里处理，后续的任务才会经过这里处理
 	// 所以需要判断t.errTaskId 为空时才经过这里处理
 	if err != nil && runbytask.errTaskID != "" {
-		log.Error("----------------task is cancel-----------")
 		select {
 		case <-ctx.Done():
 			log.Error("task is cancel", zap.String("task", realtask.name))
 			logcache.WriteStringf("task %s[%s] is canceled", realtask.name, id)
-			logcache.SetTaskStatus(cancel)
-			// if task is cancel， will set task status is cancel if status equal wait
-			runbytask.RLock()
-			for _, logcache := range runbytask.logcaches {
-				if logcache.GetTaskStatus() == wait {
-					logcache.SetTaskStatus(cancel)
-				}
-			}
-			runbytask.RUnlock()
+			logcache.SetTaskStatus(define.TsCancel)
 			return nil
 		default:
 		}
@@ -646,7 +624,7 @@ Check:
 		//  task run err
 		// 只运行到这里一次
 		// runbytask.status = -1 // task fail
-		log.Error("-----------------task run fail", zap.String("task", realtask.name), zap.Error(err))
+		log.Error("task run fail", zap.String("task", realtask.name), zap.Error(err))
 		if runbytask.errTaskID == "" {
 			runbytask.status = -1
 			runbytask.errTaskID = id
@@ -654,23 +632,13 @@ Check:
 			runbytask.errCode = taskrespcode
 			runbytask.errMsg = alarmerr.Error()
 			runbytask.errTasktype = taskresptype
-			log.Error("-----------------task run fail", zap.String("task", realtask.name), zap.Error(err))
-			logcache.SetTaskStatus(fail)
+			// log.Error("-----------------task run fail", zap.String("task", realtask.name), zap.Error(err))
+			logcache.SetTaskStatus(define.TsFail)
 		}
 
 	} else {
-		// // if seted, not set after
-		// if runbytask.errTaskID == "" {
-		// 	runbytask.errTaskID = ""
-		// 	runbytask.errTask = ""
-		// 	runbytask.errCode = 0
-		// 	runbytask.errMsg = ""
-		// 	runbytask.errTasktype = 0
-		// }
-		// runbytask.status = 1 // task success
-
 		log.Error("task run success", zap.String("task", realtask.name))
-		logcache.SetTaskStatus(finish)
+		logcache.SetTaskStatus(define.TsFinish)
 		// 如有任务失败，那么还未运行的任务可以标记为取消
 		// 如果失败的任务还存在并行任务，那么
 	}
@@ -721,39 +689,25 @@ func (s *cacheSchedule) GetRunningtask() []*define.RunTask {
 
 // GetRunTaskStaus return
 func (s *cacheSchedule) GetRunTaskStaus(taskid string) []*define.TaskStatusTree {
-	retTasksStatus := []*define.TaskStatusTree{}
-	parentTasksStatus := &define.TaskStatusTree{
-		Name:     "ParentTasks",
-		Status:   nodata.String(),
-		Children: []*define.TaskStatusTree{},
-	}
+	retTasksStatus := define.GetTasksTreeStatus()
+
+	parentTasksStatus := retTasksStatus[0]
 
 	taskinfo, exist := s.gettask(taskid)
 	if !exist {
 		return nil
 	}
-	mainTaskStatus := &define.TaskStatusTree{
-		Name:   taskinfo.name,
-		ID:     taskid,
-		Status: nodata.String(),
-	}
+	mainTaskStatus := retTasksStatus[1]
+	mainTaskStatus.Name = taskinfo.name
+	mainTaskStatus.ID = taskid
 
-	childTasksStatus := &define.TaskStatusTree{
-		Name:     "ChildTasks",
-		Status:   nodata.String(),
-		Children: []*define.TaskStatusTree{},
-	}
-
-	retTasksStatus = append(retTasksStatus,
-		parentTasksStatus,
-		mainTaskStatus,
-		childTasksStatus)
+	childTasksStatus := retTasksStatus[2]
 
 	task, exist := s.gettask(taskid)
 	if !exist {
 		return nil
 	}
-	var status = nodata
+	var status = define.TsNoData
 	var isSet = false
 	var change = false
 	log.Debug("start get task run status", zap.Strings("ids", task.taskids))
@@ -772,7 +726,7 @@ func (s *cacheSchedule) GetRunTaskStaus(taskid string) []*define.TaskStatusTree 
 		if name == generatename(taskid, define.MasterTask) {
 			parentTasksStatus.Status = status.String()
 			isSet = false
-			status = nodata
+			status = define.TsNoData
 			change = true
 			// main task
 			// log.Debug("start get main status" + id + ":" + logcache.GetTaskStatus().String())
@@ -786,7 +740,7 @@ func (s *cacheSchedule) GetRunTaskStaus(taskid string) []*define.TaskStatusTree 
 			// 如果任务存在run那么就设置为run
 			// 如果任务有失败那么就设置为fail
 			if !isSet {
-				if logcache.GetTaskStatus() == run || logcache.GetTaskStatus() == fail {
+				if logcache.GetTaskStatus() == define.TsRun || logcache.GetTaskStatus() == define.TsFail {
 					isSet = true
 					status = logcache.GetTaskStatus()
 				} else {
@@ -806,7 +760,7 @@ func (s *cacheSchedule) GetRunTaskStaus(taskid string) []*define.TaskStatusTree 
 
 		} else {
 			if !isSet {
-				if logcache.GetTaskStatus() == run || logcache.GetTaskStatus() == fail {
+				if logcache.GetTaskStatus() == define.TsRun || logcache.GetTaskStatus() == define.TsFail {
 					isSet = true
 					status = logcache.GetTaskStatus()
 				} else {

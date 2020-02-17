@@ -68,8 +68,6 @@ func (w *Worker) generateID() string {
 		w.timestamp = now
 	}
 	id := (now-sub)<<timeShift | w.workerID<<workerShift | w.number
-
-	fmt.Println("id", (now-sub)<<timeShift, w.workerID<<workerShift, w.number)
 	return strconv.FormatInt(id, 10)
 }
 

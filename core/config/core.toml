@@ -38,7 +38,8 @@ maxquerytime = "10s"
 [notify]
 # 邮箱
 [notify.email]
-smtphost = ""
+enable = true
+smtphost = "smtp.163.com"
 port = 25
 username = "user@163.com"
 password = "password"
@@ -50,6 +51,7 @@ anonymous = false
 skipverify = false
 # 钉钉
 [notify.dingding]
+enable = false
 webhook = ""
 # 安全设置
 # 1 自定义关键字
@@ -60,19 +62,21 @@ securelevel = 1
 secret = ""
 # slack
 [notify.slack]
+enable = false
 webhook = ""
 # telegram
 [notify.telegram]
+enable = false
 bottoken = ""
 # 企业微信
 [notify.wechat]
-cropid = ""
+enable = false
+cropid = "" # wwb2f31bd2bad4dce9
 agentid = 1000002
 agentsecret = ""
 [notify.webhook]
+enable = false
 webhookurl = ""
-
-
 
 # crocodile client
 [client]

@@ -25,7 +25,7 @@ func NewTelegram(token string) (notify.Sender, error) {
 		token: token,
 	}
 	client := &http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 10,
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 		},
@@ -33,7 +33,7 @@ func NewTelegram(token string) (notify.Sender, error) {
 	bot, err := tb.NewBot(
 		tb.Settings{
 			Token:  token,
-			Poller: &tb.LongPoller{Timeout: time.Second * 30},
+			Poller: &tb.LongPoller{Timeout: time.Second * 10},
 			Client: client,
 		})
 	if err != nil {

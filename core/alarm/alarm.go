@@ -60,14 +60,14 @@ func InitAlarm() {
 	log.Info("start init alarm")
 	send = sendNotify{}
 	notifycfg := config.CoreConf.Notify
-	if notifycfg.DingDing.WebHook != "" {
+	if notifycfg.DingDing.Enable {
 		log.Debug("init dingding alarm")
 		send.dingding = dingding.NewDing(notifycfg.DingDing.WebHook,
 			dingding.Secrue(notifycfg.DingDing.SecureLevel),
 			notifycfg.DingDing.Secret)
 	}
 
-	if notifycfg.Email.SMTPHost != "" {
+	if notifycfg.Email.Enable {
 		log.Debug("init email alarm")
 		send.email = email.NewSMTP(notifycfg.Email.SMTPHost,
 			notifycfg.Email.Port,
@@ -80,12 +80,12 @@ func InitAlarm() {
 		)
 	}
 
-	if notifycfg.Slack.WebHook != "" {
+	if notifycfg.Slack.Enable {
 		log.Debug("init slack alarm")
 		send.slack = slack.NewSlack(notifycfg.Slack.WebHook)
 	}
 
-	if notifycfg.Telegram.BotToken != "" {
+	if notifycfg.Telegram.Enable {
 		log.Debug("init telegram alarm")
 		var err error
 		send.telegram, err = telegram.NewTelegram(notifycfg.Telegram.BotToken)
@@ -94,7 +94,7 @@ func InitAlarm() {
 		}
 	}
 
-	if notifycfg.WeChat.CropID != "" {
+	if notifycfg.WeChat.Enable {
 		log.Debug("init wechat alarm")
 		send.wechat = wechat.NewWeChat(notifycfg.WeChat.CropID, notifycfg.WeChat.AgentID, notifycfg.WeChat.AgentSecret)
 	}
@@ -211,7 +211,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 
 	// TODO problem
 	// send webhook
-	if config.CoreConf.Notify.WebHook.WebHookURL != "" {
+	if config.CoreConf.Notify.WebHook.Enable {
 		_, err := notify.JSONPost(config.CoreConf.Notify.WebHook.WebHookURL, notifymsg, http.DefaultClient)
 		if err != nil {
 			log.Error("send webhook failed",
@@ -255,7 +255,6 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 	}
 
 	if send.email != nil && len(alarmEmail) != 0 {
-		fmt.Println(titlebuf.String(), "\n", contentbuf.String())
 		err := send.email.Send(alarmEmail, titlebuf.String(), contentbuf.String())
 		if err != nil {
 			log.Error("send email notify failed", zap.Error(err))

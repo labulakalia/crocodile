@@ -74,6 +74,7 @@ func (g *Group) GOMAXPROCS(n int) {
 		// panic("errgroup: GOMAXPROCS must great than 0")
 		return
 	}
+	
 	g.workerOnce.Do(func() {
 		g.ch = make(chan func(context.Context) error, n)
 		// 启动 n 个goroutinue，每个g会监听g.ch这个chan

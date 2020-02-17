@@ -164,7 +164,7 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	}
 
 	if req.Hostgroup != "" {
-		hg, err := model.GetHostGroupName(ctx, req.Hostgroup)
+		hg, err := model.GetHostGroupByName(ctx, req.Hostgroup)
 		if err != nil {
 			log.Error("hostgroup not exist,ignore add host to hostrgoup",zap.String("hostgroup",req.Hostgroup))
 			return &pb.Empty{}, nil

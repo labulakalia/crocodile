@@ -272,8 +272,13 @@ func GetTasks(c *gin.Context) {
 // @Router /api/v1/task/info [get]
 // @Security ApiKeyAuth
 func GetTask(c *gin.Context) {
-	taskid := c.Query("id")
-	if utils.CheckID(taskid) != nil {
+	getid := define.GetID{}
+	err := c.ShouldBindQuery(&getid)
+	if err != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	if utils.CheckID(getid.ID) != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
@@ -281,7 +286,7 @@ func GetTask(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	t, err := model.GetTaskByID(ctx, taskid)
+	t, err := model.GetTaskByID(ctx, getid.ID)
 	if err != nil {
 		log.Error("GetTasks failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -369,32 +374,45 @@ func GetRunningTask(c *gin.Context) {
 	} else {
 		runningtasks = runningtasks[q.Offset : q.Offset+q.Limit]
 	}
+
 	resp.JSON(c, resp.Success, runningtasks)
 }
 
 // LogTask get task log
 // @Summary get tasks
 // @Tags Task
-// @Param id query int false "ID"
+// @Param taskname query int false "taskName"
 // @Param offset query int false "Offset"
 // @Param limit query int false "Limit"
+// @Param status query int false "Status"
 // @Produce json
 // @Success 200 {object} resp.Response
 // @Router /api/v1/task/log [get]
 // @Security ApiKeyAuth
 func LogTask(c *gin.Context) {
-	taskid := c.Query("id")
-	if utils.CheckID(taskid) != nil {
+	getname := define.GetName{}
+	err := c.BindQuery(&getname)
+	if err != nil {
+		log.Error("BindQuery", zap.Error(err))
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
+	}
+
+	statusstr := c.Query("status")
+
+	status, err := strconv.Atoi(statusstr)
+	if err != nil {
+		log.Warn("get params status is not int", zap.Error(err))
+	}
+	if status < -1 || status > 1 {
+		status = 0
 	}
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
 	var (
-		q   define.Query
-		err error
+		q define.Query
 	)
 
 	err = c.BindQuery(&q)
@@ -405,7 +423,7 @@ func LogTask(c *gin.Context) {
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	logs, err := model.GetLog(ctx, taskid, q.Offset, q.Limit)
+	logs, err := model.GetLog(ctx, getname.Name, status, q.Offset, q.Limit)
 	if err != nil {
 		log.Error("GetLog failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -414,7 +432,47 @@ func LogTask(c *gin.Context) {
 	resp.JSON(c, resp.Success, logs)
 }
 
-// 
+// LogTreeData get log tree
+// @Summary get tasks log tree data
+// @Tags Task
+// @Param id query int false "ID"
+// @Param start_time query int false "StartTime"
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/task/log/tree[get]
+// @Security ApiKeyAuth
+func LogTreeData(c *gin.Context) {
+	getid := define.GetID{}
+	err := c.BindQuery(&getid)
+	if err != nil {
+		log.Error("c.BindQuery", zap.Error(err))
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+
+	starttime := c.Query("start_time")
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	if starttime == "" {
+		log.Error("can't get start_time")
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	starttimeint, err := strconv.ParseInt(starttime, 10, 64)
+	if err != nil {
+		log.Error("strconv.ParseInt", zap.Error(err))
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	TaskTreeStatus, err := model.GetTreeLog(ctx, getid.ID, starttimeint)
+	if err != nil {
+		log.Error("model.GetTreeLog", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	resp.JSON(c, resp.Success, TaskTreeStatus)
+}
 
 var upgrade = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -438,8 +496,12 @@ func RealRunTaskLog(c *gin.Context) {
 		return
 	}
 	defer conn.Close()
-
-	id := c.Query("id")
+	getid := define.GetID{}
+	err = c.BindQuery(&getid)
+	if err != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
 	realid := c.Query("realid")
 	tasktype, err := strconv.Atoi(c.Query("type"))
 	if err != nil {
@@ -448,14 +510,14 @@ func RealRunTaskLog(c *gin.Context) {
 		return
 	}
 
-	logcache, err := schedule.Cron.GetRunTaskLogCache(id, realid, define.TaskRespType(tasktype))
+	logcache, err := schedule.Cron.GetRunTaskLogCache(getid.ID, realid, define.TaskRespType(tasktype))
 	if err != nil {
 		log.Error("GetRunTaskLogCache failed", zap.Error(err))
 		err = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
 		return
 	}
 	offset := 0
-	
+
 	var out = make([]byte, 1024)
 	for {
 		n, err := logcache.ReadOnly(out, offset)
@@ -500,27 +562,32 @@ func RealRunTaskStatus(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	// var closeconn = make(chan struct{}, 1)
-	id := c.Query("id")
-	log.Debug("start get real task status", zap.String("taskid", id))
+	getid := define.GetID{}
+	err = c.BindQuery(&getid)
+	if err != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+
+	log.Debug("start get real task status", zap.String("taskid", getid.ID))
 
 	_, token, err := conn.ReadMessage()
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("get token fail"))
 		return
 	}
-	_, pass := middleware.CheckToken(string(token))
+	_, _, pass := middleware.CheckToken(string(token))
 	if !pass {
 		conn.WriteMessage(websocket.TextMessage, []byte("check token auth fail"))
 		return
 	}
 
-	ticker := time.NewTimer(time.Millisecond)
-
+	timer := time.NewTimer(time.Millisecond)
+	defer timer.Stop()
 	for {
 		select {
-		case <-ticker.C:
-			taskrunstatus := schedule.Cron.GetRunTaskStaus(id)
+		case <-timer.C:
+			taskrunstatus := schedule.Cron.GetRunTaskStaus(getid.ID)
 			if taskrunstatus == nil {
 				// conn.WriteMessage(websocket.TextMessage, []byte("task run finish"))
 				log.Error("GetRunTaskStaus failed")
@@ -538,14 +605,9 @@ func RealRunTaskStatus(c *gin.Context) {
 				log.Error("ReadMessage failed", zap.Error(err))
 				return
 			}
-			ticker.Reset(defaultSendTTL)
+			timer.Reset(defaultSendTTL)
 		}
 	}
-}
-
-func sendmsg(conn *websocket.Conn, msgdata interface{}) error {
-
-	return nil
 }
 
 // ParseCron parse cronexpr
@@ -586,7 +648,13 @@ func ParseCron(c *gin.Context) {
 	resp.JSON(c, resp.Success, resptimes)
 }
 
-// GetSelect return name,id
+// GetSelect name,id
+// @Summary Get Task Select
+// @Tags Task
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/task/select [get]
+// @Security ApiKeyAuth
 func GetSelect(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)

@@ -36,6 +36,7 @@ func RegistryUser(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
+	// TODO only admin
 
 	hashpassword, err = utils.GenerateHashPass(ruser.Password)
 	if err != nil {
@@ -78,7 +79,7 @@ func GetUser(c *gin.Context) {
 	defer cancel()
 
 	uid := c.GetString("uid")
-
+	c.Set("operate", "获取用户")
 	// check uid exist
 	exist, err := model.Check(ctx, model.TBUser, model.ID, uid)
 	if err != nil {
@@ -90,15 +91,17 @@ func GetUser(c *gin.Context) {
 		return
 	}
 
-	user, err := model.GetUser(ctx, uid)
+	user, err := model.GetUserByID(ctx, uid)
 	if err != nil {
-		log.Error("GetUser failed", zap.String("error", err.Error()))
+		log.Error("GetUserByID failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	user.Password = ""
 	if user.Role == 2 {
 		user.Roles = []string{"admin"}
+	} else {
+		user.Roles = []string{}
 	}
 	resp.JSON(c, resp.Success, user)
 }
@@ -120,6 +123,7 @@ func GetUsers(c *gin.Context) {
 		q   define.Query
 		err error
 	)
+	// TODO only admin
 
 	err = c.BindQuery(&q)
 	if err != nil {
@@ -166,6 +170,11 @@ func ChangeUserInfo(c *gin.Context) {
 		return
 	}
 	uid := c.GetString("uid")
+	if uid != newinfo.ID {
+		log.Error("uid is error", zap.String("uid", uid), zap.String("infoid", newinfo.ID))
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
 	err = model.ChangeUserInfo(ctx,
 		uid,
 		newinfo.Email,
@@ -205,7 +214,7 @@ func AdminChangeUser(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-
+	// TODO only admin
 	exist, err := model.Check(ctx, model.TBUser, model.ID, user.ID)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
@@ -251,7 +260,9 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 	token, err := model.LoginUser(ctx, username, password)
-
+	if err != nil {
+		log.Error("model.LoginUser", zap.Error(err))
+	}
 	switch err := errors.Cause(err).(type) {
 	case nil:
 		resp.JSON(c, resp.Success, token)
@@ -265,7 +276,23 @@ func LoginUser(c *gin.Context) {
 	}
 }
 
+// LogoutUser logout user
+// @Summary logout user
+// @Tags User
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/user/logout [post]
+// @Security BasicAuth
+func LogoutUser(c *gin.Context) {
+	resp.JSON(c, resp.Success, nil)
+}
+
 // GetSelect return name,id
+// @Summary return name,id
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/user/select [post]
+// @Security BasicAuth
 func GetSelect(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
@@ -277,4 +304,59 @@ func GetSelect(c *gin.Context) {
 		return
 	}
 	resp.JSON(c, resp.Success, data)
+}
+
+// GetAlarmStatus return enable alarm notify
+func GetAlarmStatus(c *gin.Context) {
+	type NotifyStatus struct {
+		Email    bool `json:"email"`
+		DingDing bool `json:"dingphone"`
+		Slack    bool `json:"slack"`
+		Telegram bool `json:"telegram"`
+		WeChat   bool `json:"wechat"`
+		WebHook  bool `json:"wehook"`
+	}
+	notifycfg := config.CoreConf.Notify
+	notifystatus := NotifyStatus{
+		Email:    notifycfg.Email.Enable,
+		DingDing: notifycfg.DingDing.Enable,
+		Slack:    notifycfg.Slack.Enable,
+		Telegram: notifycfg.Telegram.Enable,
+		WeChat:   notifycfg.WeChat.Enable,
+		WebHook:  notifycfg.WebHook.Enable,
+	}
+	resp.JSON(c, resp.Success, notifystatus)
+}
+
+// GetOperateLog get user operate log
+func GetOperateLog(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	type queryparams struct {
+		define.Query
+		UID      string `form:"uid"`
+		UserName string `form:"username"`
+		Method   string `form:"method"`
+		Module   string `form:"module"`
+	}
+
+	q := queryparams{}
+	err := c.ShouldBindQuery(&q)
+	if err != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	if q.Limit == 0 {
+		q.Limit = define.DefaultLimit
+	}
+
+	// uid, method, module, limit, offset
+	oplogs, err := model.GetOperate(ctx, q.UID, q.UserName, q.Method, q.Module, q.Limit, q.Offset)
+	if err != nil {
+		log.Error("model.GetOperate filed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	resp.JSON(c, resp.Success, oplogs)
 }

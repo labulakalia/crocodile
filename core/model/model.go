@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
@@ -52,7 +53,7 @@ const (
 	TBUser Tb = "crocodile_user"
 	// TBHostgroup select ccrocodile_user
 	TBHostgroup Tb = "crocodile_hostgroup"
-    // TBTask select crocodile_task
+	// TBTask select crocodile_task
 	TBTask Tb = "crocodile_task"
 	// TBHost select crocodile_host
 	TBHost Tb = "crocodile_host"
@@ -74,7 +75,7 @@ func Check(ctx context.Context, table Tb, checkType checkType, args ...interface
 		check += "id=? AND createByID=?"
 	case UID:
 		// 检查UID状态是否正常
-		check += "id=? AND forbid=1"
+		check += "id=? AND forbid=false"
 	default:
 		return false, errors.New("reqType Only Support email username")
 	}
@@ -124,17 +125,18 @@ func QueryUserRule(ctx context.Context, uid string) (define.Role, error) {
 	return role, nil
 }
 
-
-// GetNameID get return name,id 
-func GetNameID(ctx context.Context,t Tb) ([]define.KlOption, error) {
-
+// GetNameID get return name,id
+func GetNameID(ctx context.Context, t Tb) ([]define.KlOption, error) {
 	getsql := `SELECT id,name FROM ` + string(t)
+	if t == TBHost {
+		getsql = `SELECT id,addr FROM ` + string(t)
+	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "sqlDb.GetConn")
 	}
 	defer conn.Close()
-	
+
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
 		return nil, errors.Wrap(err, "conn.PrepareContext")
@@ -148,10 +150,9 @@ func GetNameID(ctx context.Context,t Tb) ([]define.KlOption, error) {
 	kloptions := []define.KlOption{}
 	for rows.Next() {
 		var (
-			id,name string
-			
+			id, name string
 		)
-		err = rows.Scan(&id,&name)
+		err = rows.Scan(&id, &name)
 		if err != nil {
 			log.Error("rows.Scan failed", zap.Error(err))
 			continue

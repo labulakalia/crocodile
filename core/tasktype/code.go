@@ -16,13 +16,13 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/resp"
 )
 
-var _ TaskRuner = &DataCode{}
+var _ TaskRuner = DataCode{}
 
 // DataCode run code
 type DataCode struct {
 	Lang     Lang   `json:"lang"`
-	LangDesc string `json:"langdesc"`
-	Code     string `json:"code"`
+	LangDesc string `json:"langdesc" comment:"Lang"`
+	Code     string `json:"code" comment:"Code"`
 }
 
 // Lang task type lang code
@@ -158,7 +158,7 @@ func rungolang(ctx context.Context, code string) (*exec.Cmd, error) {
 // Run implment TaskRuner
 // run shell command
 // return io.ReadCloser
-func (ds *DataCode) Run(ctx context.Context) io.ReadCloser {
+func (ds DataCode) Run(ctx context.Context) io.ReadCloser {
 	pr, pw := io.Pipe()
 	go func() {
 		var exitCode = DefaultExitCode

@@ -13,15 +13,14 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ TaskRuner = &DataAPI{}
+var _ TaskRuner = DataAPI{}
 
 // DataAPI http req task
-// TODO 获取期望的值，不在于返回码为准备
 type DataAPI struct {
-	URL     string            `json:"url"`
-	Method  string            `json:"method"`
-	PayLoad string            `json:"payload"`
-	Header  map[string]string `json:"header"`
+	URL     string            `json:"url" comment:"URL"`
+	Method  string            `json:"method" comment:"Method"`
+	PayLoad string            `json:"payload" comment:"PayLoad"`
+	Header  map[string]string `json:"header" comment:"Header"`
 }
 
 // Header
@@ -29,7 +28,7 @@ type DataAPI struct {
 // Test
 
 // Run implment TaskRun interface
-func (da *DataAPI) Run(ctx context.Context) io.ReadCloser {
+func (da DataAPI) Run(ctx context.Context) io.ReadCloser {
 	pr, pw := io.Pipe()
 	go func() {
 		var exitCode = DefaultExitCode

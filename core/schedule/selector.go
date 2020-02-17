@@ -45,7 +45,7 @@ func getOnlineHosts(hgid string) ([]*define.Host, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	hg, err := model.GetHostGroupID(ctx, hgid)
+	hg, err := model.GetHostGroupByID(ctx, hgid)
 	if err != nil {
 		return nil, err
 	}
@@ -58,10 +58,10 @@ func getOnlineHosts(hgid string) ([]*define.Host, error) {
 	}
 
 	for _, host := range gethosts {
-		if host.Online == 0 {
+		if !host.Online {
 			continue
 		}
-		if host.Stop == 1 {
+		if host.Stop {
 			continue
 		}
 		onlinehosts = append(onlinehosts, host)

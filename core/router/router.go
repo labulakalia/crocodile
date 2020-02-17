@@ -38,20 +38,23 @@ func NewHTTPRouter() *http.Server {
 	router := gin.New()
 	pprof.Register(router)
 	//gin.SetMode(gin.ReleaseMode)
-	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl())
+	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl(), middleware.Oprtation())
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	
+
 	v1 := router.Group("/api/v1")
 	ru := v1.Group("/user")
 	{
-		ru.POST("/registry", user.RegistryUser)
+		ru.POST("/registry", user.RegistryUser) // only admin // 管理员创建了新的用户。。。
 		ru.GET("/info", user.GetUser)
-		ru.GET("/all", user.GetUsers)
-		ru.PUT("/admin", user.AdminChangeUser)
-		ru.PUT("/info", user.ChangeUserInfo)
+		ru.GET("/all", user.GetUsers)          // only admin
+		ru.PUT("/admin", user.AdminChangeUser) // only admin  // 管理员修改了某某用户
+		ru.PUT("/info", user.ChangeUserInfo)   // 某某修改了个人信息
 		ru.POST("/login", user.LoginUser)
+		ru.POST("/logout", user.LogoutUser) // 某某注销登陆
 		ru.GET("/select", user.GetSelect)
+		ru.GET("/alarmstatus", user.GetAlarmStatus)
+		ru.GET("/operate", user.GetOperateLog)
 	}
 	rhg := v1.Group("/hostgroup")
 	{
@@ -60,6 +63,7 @@ func NewHTTPRouter() *http.Server {
 		rhg.PUT("", hostgroup.ChangeHostGroup)
 		rhg.DELETE("", hostgroup.DeleteHostGroup)
 		rhg.GET("/select", hostgroup.GetSelect)
+		rhg.GET("/hosts", hostgroup.GetHostsByIHGID)
 	}
 	rt := v1.Group("/task")
 	{
@@ -72,20 +76,23 @@ func NewHTTPRouter() *http.Server {
 		rt.PUT("/kill", task.KillTask)
 		rt.GET("/running", task.GetRunningTask)
 		rt.GET("/log", task.LogTask)
+		rt.GET("/log/tree", task.LogTreeData)
+		rt.GET("/log/websocket", task.RealRunTaskLog)
+		rt.GET("/status/websocket", task.RealRunTaskStatus)
 		rt.GET("/cron", task.ParseCron)
 		rt.GET("/select", task.GetSelect)
-		rt.GET("/status/websocket", task.RealRunTaskStatus)
-		rt.GET("/log/websocket", task.RealRunTaskLog)
+
 	}
 	rh := v1.Group("/host")
 	{
 		rh.GET("", host.GetHost)
 		rh.PUT("/stop", host.ChangeHostState)
 		rh.DELETE("", host.DeleteHost)
+		rh.GET("/select", host.GetSelect)
 	}
 
 	httpSrv := &http.Server{
-		Handler:      router,
+		Handler: router,
 		// ReadTimeout:  config.CoreConf.Server.MaxHTTPTime.Duration,
 		// WriteTimeout: config.CoreConf.Server.MaxHTTPTime.Duration,
 	}
