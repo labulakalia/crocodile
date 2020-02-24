@@ -3,7 +3,7 @@ definitions:
     properties:
       forbid:
         description: '禁止用户: 1 未禁止 2 禁止登陆'
-        type: integer
+        type: boolean
       id:
         description: user id
         type: string
@@ -17,7 +17,6 @@ definitions:
         description: '用户类型: 1 普通用户 2 管理员'
         type: integer
     required:
-    - forbid
     - id
     - role
     type: object
@@ -35,80 +34,20 @@ definitions:
     required:
     - id
     type: object
-  define.ChangeUserSelf:
+  define.ChangeTask:
     properties:
-      dingphone:
-        description: dingding phone
-        type: string
-      email:
-        description: 用户邮箱
-        type: string
-      password:
-        type: string
-      remark:
-        type: string
-      slack:
-        description: slack user name
-        type: string
-      telegram:
-        description: telegram bot chat id
-        type: string
-      wechat:
-        description: wechat id
-        type: string
-    type: object
-  define.CreateHostGroup:
-    properties:
-      addrs:
-        description: 主机host
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      remark:
-        type: string
-    required:
-    - name
-    type: object
-  define.GetID:
-    properties:
-      id:
-        type: string
-    type: object
-  define.RegistryUser:
-    properties:
-      name:
-        description: 用户名
-        type: string
-      password:
-        description: 用户密码
-        type: string
-      remark:
-        description: 备注
-        type: string
-      role:
-        description: '用户类型: 1 普通用户 2 管理员'
+      alarm_status:
+        description: 'alarm when task run success or fail or all all:-2 failed: -1
+          success: 1'
         type: integer
-    required:
-    - name
-    - password
-    - role
-    type: object
-  define.Task:
-    properties:
       alarm_userids:
         description: 报警用户 多个用户
         items:
           type: string
         type: array
-      alatm_status:
-        description: 'alarm when task run success or fail or all all:-2 failed: -1
-          success: 1'
-        type: integer
       child_runparallel:
-        description: 是否以并行运行子任务 0否 1是
-        type: integer
+        description: 是否以并行运行子任务 否 1是
+        type: boolean
       child_taskids:
         description: 子任务 运行结束后运行子任务
         items:
@@ -119,9 +58,6 @@ definitions:
         type: string
       create_byuid:
         description: 创建人ID
-        type: string
-      create_time:
-        description: 创建时间
         type: string
       cronexpr:
         description: 执行任务表达式
@@ -144,21 +80,20 @@ definitions:
         type: string
       parent_runparallel:
         description: 是否以并行运行父任务 0否 1是
-        type: integer
+        type: boolean
       parent_taskids:
         description: 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
         items:
           type: string
         type: array
       remark:
-        description: 备注
         type: string
       route_policy:
         description: how to select a run worker from hostgroup
         type: integer
       run:
-        description: TODO 改为 0 后只是在调度循环中不再检测下次运行时间
-        type: integer
+        description: -1 为不能运行 1 为可以运行 如果这个任务作为别的任务父任务或者子任务会忽略这个字段
+        type: boolean
       task_data:
         description: 任务数据
         type: object
@@ -166,25 +101,198 @@ definitions:
         description: 任务类型
         type: integer
       timeout:
-        description: 任务超时时间 (s)
+        description: 任务超时时间 (s) -1 no limit
         type: integer
-      update_time:
-        description: 最后一次更新时间
-        type: string
     required:
+    - alarm_status
     - alarm_userids
-    - alatm_status
     - cronexpr
     - host_groupid
+    - id
+    - name
     - route_policy
+    - task_data
+    - task_type
+    - timeout
+    type: object
+  define.ChangeUserSelf:
+    properties:
+      dingphone:
+        description: dingding phone
+        type: string
+      email:
+        description: 用户邮箱
+        type: string
+      id:
+        description: user id
+        type: string
+      password:
+        type: string
+      remark:
+        type: string
+      slack:
+        description: slack user name
+        type: string
+      telegram:
+        description: telegram bot chat id
+        type: string
+      wechat:
+        description: wechat id
+        type: string
+    required:
+    - id
+    type: object
+  define.Cleanlog:
+    properties:
+      name:
+        type: string
+      preday:
+        description: preday几天前的日志
+        type: integer
+    required:
+    - name
+    type: object
+  define.CreateHostGroup:
+    properties:
+      addrs:
+        description: 主机host
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      remark:
+        type: string
+    required:
+    - name
+    type: object
+  define.CreateTask:
+    properties:
+      alarm_status:
+        description: 'alarm when task run success or fail or all all:-2 failed: -1
+          success: 1'
+        type: integer
+      alarm_userids:
+        description: 报警用户 多个用户
+        items:
+          type: string
+        type: array
+      child_runparallel:
+        description: 是否以并行运行子任务 否 1是
+        type: boolean
+      child_taskids:
+        description: 子任务 运行结束后运行子任务
+        items:
+          type: string
+        type: array
+      create_by:
+        description: 创建人
+        type: string
+      create_byuid:
+        description: 创建人ID
+        type: string
+      cronexpr:
+        description: 执行任务表达式
+        type: string
+      expect_code:
+        description: expect task return code. if not set 0 or 200
+        type: integer
+      expect_content:
+        description: expect task return content. if not set do not check
+        type: string
+      host_group:
+        description: 执行计划
+        type: string
+      host_groupid:
+        description: 主机组ID
+        type: string
+      name:
+        type: string
+      parent_runparallel:
+        description: 是否以并行运行父任务 0否 1是
+        type: boolean
+      parent_taskids:
+        description: 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
+        items:
+          type: string
+        type: array
+      remark:
+        type: string
+      route_policy:
+        description: how to select a run worker from hostgroup
+        type: integer
+      run:
+        description: -1 为不能运行 1 为可以运行 如果这个任务作为别的任务父任务或者子任务会忽略这个字段
+        type: boolean
+      task_data:
+        description: 任务数据
+        type: object
+      task_type:
+        description: 任务类型
+        type: integer
+      timeout:
+        description: 任务超时时间 (s) -1 no limit
+        type: integer
+    required:
+    - alarm_status
+    - alarm_userids
+    - cronexpr
+    - host_groupid
+    - name
+    - route_policy
+    - task_data
+    - task_type
+    - timeout
+    type: object
+  define.GetID:
+    properties:
+      id:
+        type: string
+    required:
+    - id
+    type: object
+  define.IDName:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - id
+    - name
+    type: object
+  define.RegistryUser:
+    properties:
+      name:
+        description: 用户名
+        type: string
+      password:
+        description: 用户密码
+        type: string
+      remark:
+        description: 备注
+        type: string
+      role:
+        description: '用户类型: 1 普通用户 2 管理员'
+        type: integer
+    required:
+    - name
+    - password
+    - role
     type: object
   resp.Response:
     properties:
       code:
+        description: msg
+        type: integer
+      count:
+        description: data count
         type: integer
       data:
+        description: data
         type: object
       msg:
+        description: code
         type: string
     type: object
 info:
@@ -245,6 +353,20 @@ paths:
       summary: get all hosts
       tags:
       - Host
+  /api/v1/host/select:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Task Select
+      tags:
+      - Host
   /api/v1/host/stop:
     put:
       description: stop host worker
@@ -290,16 +412,7 @@ paths:
       tags:
       - HostGroup
     get:
-      description: get all hostgroup
-      parameters:
-      - description: Offset
-        in: query
-        name: offset
-        type: integer
-      - description: Limit
-        in: query
-        name: limit
-        type: integer
+      description: get select option
       produces:
       - application/json
       responses:
@@ -309,7 +422,7 @@ paths:
             $ref: '#/definitions/resp.Response'
       security:
       - ApiKeyAuth: []
-      summary: get all hostgroup
+      summary: get name,id
       tags:
       - HostGroup
     post:
@@ -354,6 +467,26 @@ paths:
       summary: change hostgroup
       tags:
       - HostGroup
+  /api/v1/hostgroup/hosts:
+    get:
+      description: get all hostgroup
+      parameters:
+      - description: ID
+        in: query
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get host detail by hostgroup id
+      tags:
+      - HostGroup
   /api/v1/task:
     delete:
       parameters:
@@ -385,6 +518,14 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: PreSearchName
+        in: query
+        name: psname
+        type: string
+      - description: Self Create Task
+        in: query
+        name: self
+        type: boolean
       produces:
       - application/json
       responses:
@@ -404,7 +545,7 @@ paths:
         name: Task
         required: true
         schema:
-          $ref: '#/definitions/define.Task'
+          $ref: '#/definitions/define.CreateTask'
       produces:
       - application/json
       responses:
@@ -424,7 +565,7 @@ paths:
         name: Task
         required: true
         schema:
-          $ref: '#/definitions/define.Task'
+          $ref: '#/definitions/define.ChangeTask'
       produces:
       - application/json
       responses:
@@ -435,6 +576,67 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: change task
+      tags:
+      - Task
+  /api/v1/task/clone:
+    delete:
+      parameters:
+      - description: clean task log
+        in: body
+        name: Log
+        required: true
+        schema:
+          $ref: '#/definitions/define.Cleanlog'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: create a task by copy old task
+      tags:
+      - Task
+    post:
+      parameters:
+      - description: clone task
+        in: body
+        name: Task
+        required: true
+        schema:
+          $ref: '#/definitions/define.IDName'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: create a task by copy old task
+      tags:
+      - Task
+  /api/v1/task/cron:
+    get:
+      parameters:
+      - description: Expr
+        in: query
+        name: expr
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: parse cronexpr
       tags:
       - Task
   /api/v1/task/info:
@@ -462,6 +664,7 @@ paths:
       parameters:
       - in: query
         name: id
+        required: true
         type: string
       produces:
       - application/json
@@ -478,9 +681,9 @@ paths:
   /api/v1/task/log:
     get:
       parameters:
-      - description: ID
+      - description: taskName
         in: query
-        name: id
+        name: taskname
         type: integer
       - description: Offset
         in: query
@@ -489,6 +692,10 @@ paths:
       - description: Limit
         in: query
         name: limit
+        type: integer
+      - description: Status
+        in: query
+        name: status
         type: integer
       produces:
       - application/json
@@ -502,11 +709,35 @@ paths:
       summary: get tasks
       tags:
       - Task
+  /api/v1/task/log/tree:
+    get:
+      parameters:
+      - description: ID
+        in: query
+        name: id
+        type: integer
+      - description: StartTime
+        in: query
+        name: start_time
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: get tasks log tree data
+      tags:
+      - Task
   /api/v1/task/run:
     put:
       parameters:
       - in: query
         name: id
+        required: true
         type: string
       produces:
       - application/json
@@ -541,6 +772,20 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: get tasks
+      tags:
+      - Task
+  /api/v1/task/select:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Task Select
       tags:
       - Task
   /api/v1/user/admin:
@@ -637,6 +882,20 @@ paths:
       summary: login user
       tags:
       - User
+  /api/v1/user/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - BasicAuth: []
+      summary: logout user
+      tags:
+      - User
   /api/v1/user/registry:
     post:
       parameters:
@@ -658,6 +917,18 @@ paths:
       summary: registry new user
       tags:
       - User
+  /api/v1/user/select:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/resp.Response'
+      security:
+      - BasicAuth: []
+      summary: return name,id
 securityDefinitions:
   ApiKeyAuth:
     in: header

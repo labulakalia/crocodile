@@ -613,7 +613,7 @@ Check:
 			return fmt.Errorf("%s task %s[%s] resp code is %d,want resp code %d", taskresptype.String(), id, taskdata.Name, taskrespcode, taskdata.ExpectCode)
 		}
 		if taskdata.ExpectContent != "" {
-			if strings.Contains(string(output), taskdata.ExpectContent) {
+			if !strings.Contains(string(output), taskdata.ExpectContent) {
 				return fmt.Errorf("%s task %s[%s] resp context not contains expect content: %s", taskresptype.String(), id, taskdata.Name, taskdata.ExpectContent)
 			}
 		}

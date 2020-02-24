@@ -455,7 +455,7 @@ func LogTask(c *gin.Context) {
 // @Param start_time query int false "StartTime"
 // @Produce json
 // @Success 200 {object} resp.Response
-// @Router /api/v1/task/log/tree[get]
+// @Router /api/v1/task/log/tree [get]
 // @Security ApiKeyAuth
 func LogTreeData(c *gin.Context) {
 	getid := define.GetID{}
@@ -687,7 +687,7 @@ func GetSelect(c *gin.Context) {
 // CloneTask clone task
 // @Summary create a task by copy old task
 // @Tags Task
-// @Param Task body define.CloneTask true "clone task"
+// @Param Task body define.IDName true "clone task"
 // @Produce json
 // @Success 200 {object} resp.Response
 // @Router /api/v1/task/clone [post]

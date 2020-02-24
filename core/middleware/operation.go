@@ -489,9 +489,9 @@ func parseColumn(oldData, newData interface{}, columns *[]define.Column, precm s
 		}
 		if precm != "" {
 			var name string
-			if oldt.Kind() != reflect.Invalid {
+			if oldv.Kind() != reflect.Invalid {
 				name = oldt.Name()
-			} else if newt.Kind() != reflect.Invalid {
+			} else if newv.Kind() != reflect.Invalid {
 				name = newt.Name()
 			}
 			comment = fmt.Sprintf("%s-%s-%s", precm, name, comment)
