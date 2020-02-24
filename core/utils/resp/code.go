@@ -35,6 +35,9 @@ const (
 	// ErrCronExpr CronExpr表达式不规范
 	ErrCronExpr = 10422
 
+	// ErrTaskUseByOtherTask 别的任务依赖此任务，请先在其他的任务的父子任务中移除此任务
+	ErrTaskUseByOtherTask = 10423
+
 	// ErrInternalServer 服务端错误
 	ErrInternalServer = 10500
 	// ErrCtxDeadlineExceeded 调用超时

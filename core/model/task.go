@@ -169,6 +169,28 @@ func DeleteTask(ctx context.Context, id string) error {
 	return nil
 }
 
+// TaskIsUse check a task is other task's parent task ids or child task
+func TaskIsUse(ctx context.Context, taskid string) (int, error) {
+	querysql := `select count() from crocodile_task WHERE id!=? AND (parentTaskIds LIKE ? OR childTaskIds LIKE ?) `
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return 0, errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+	stmt, err := conn.PrepareContext(ctx, querysql)
+	if err != nil {
+		return 0, errors.Wrap(err, "conn.PrepareContext")
+	}
+	defer stmt.Close()
+	var count int
+	likequery := "%" + taskid + "%"
+	err = stmt.QueryRowContext(ctx, taskid, likequery, likequery).Scan(&count)
+	if err != nil {
+		return 0, errors.Wrap(err, "stmt.QueryRowContext")
+	}
+	return count, nil
+}
+
 // GetTasks get all tasks
 func GetTasks(ctx context.Context, offset, limit int, name, presearchname, createby string) ([]define.GetTask, int, error) {
 	return getTasks(ctx, nil, name, offset, limit, true, presearchname, createby)

@@ -45,6 +45,8 @@ const (
 	IDCreateByUID
 	// UID check uid
 	UID // uid正常
+	// NameCreateByUID check name's createByUID
+	NameCreateByUID
 )
 
 // Tb selcet table name
@@ -72,9 +74,13 @@ func Check(ctx context.Context, table Tb, checkType checkType, args ...interface
 	case ID:
 		check += "id=?"
 	case IDCreateByUID:
-		// 检查ID的createBy字段是否位当前登陆用户
+		// 检查ID的createByUID字段是否位当前登陆用户
 		// 如果当前用户为Admin 则世界返回true
 		check += "id=? AND createByID=?"
+	case NameCreateByUID:
+		// 检查ID的createByUID字段是否位当前登陆用户
+		// 如果当前用户为Admin 则世界返回true
+		check += "name=? AND createByID=?"
 	case UID:
 		// 检查UID状态是否正常
 		check += "id=? AND forbid=false"

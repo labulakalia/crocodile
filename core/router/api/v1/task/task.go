@@ -183,7 +183,7 @@ func DeleteTask(c *gin.Context) {
 	}
 	exist, err := model.Check(ctx, model.TBTask, model.ID, deletetask.ID)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("model.Check failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -206,7 +206,7 @@ func DeleteTask(c *gin.Context) {
 		// 判断ID的创建人是否为uid
 		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, deletetask.ID, uid)
 		if err != nil {
-			log.Error("IsExist failed", zap.Error(err))
+			log.Error("model.Check failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
 			return
 		}
@@ -216,16 +216,29 @@ func DeleteTask(c *gin.Context) {
 			return
 		}
 	}
+
+	usecount, err := model.TaskIsUse(ctx, deletetask.ID)
+	if err != nil {
+		log.Error("model.TaskIsUse failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	if usecount > 0 {
+		log.Warn("task can delete,use by other task", zap.String("taskid", deletetask.ID), zap.Int("use count", usecount))
+		resp.JSON(c, resp.ErrTaskUseByOtherTask, nil)
+		return
+	}
+
 	err = model.DeleteTask(ctx, deletetask.ID)
 	if err != nil {
-		log.Error(" model.DeleteTask failed", zap.Error(err))
+		log.Error("model.DeleteTask failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	schedule.Cron.Del(deletetask.ID)
 	_, err = model.CleanTaskLog(ctx, "", deletetask.ID, time.Now().UnixNano()/1e6)
 	if err != nil {
-		log.Error(" model.CleanTaskLog failed", zap.Error(err))
+		log.Error("model.CleanTaskLog failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -778,6 +791,28 @@ func CleanTaskLog(c *gin.Context) {
 	if !exist {
 		resp.JSON(c, resp.ErrTaskNotExist, nil)
 		return
+	}
+
+	// 获取用户的类型
+	var role define.Role
+	if v, ok := c.Get("role"); ok {
+		role = v.(define.Role)
+	}
+
+	// 这里只需要确定如果rule的用户类型是否为Admin
+	if role != define.AdminUser {
+		// 判断任务的创建人是否为当前用户
+		exist, err = model.Check(ctx, model.TBTask, model.NameCreateByUID, cleanlog.Name, c.GetString("uid"))
+		if err != nil {
+			log.Error("IsExist failed", zap.String("error", err.Error()))
+			resp.JSON(c, resp.ErrInternalServer, nil)
+			return
+		}
+
+		if !exist {
+			resp.JSON(c, resp.ErrUnauthorized, nil)
+			return
+		}
 	}
 
 	deletetime := (time.Now().UnixNano() - int64(time.Hour)*24*cleanlog.PreDay) / 1e6

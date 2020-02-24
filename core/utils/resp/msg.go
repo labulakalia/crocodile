@@ -24,6 +24,8 @@ var msgcode = map[int]string{
 
 	ErrCronExpr: "CronExpr表达式不规范",
 
+	ErrTaskUseByOtherTask: "存在任务依赖此任务，请先在其他的任务的父子任务中移除此任务",
+
 	ErrInternalServer: "服务端错误",
 
 	ErrCtxDeadlineExceeded: "调用超时",
