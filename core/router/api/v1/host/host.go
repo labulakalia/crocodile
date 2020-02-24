@@ -41,7 +41,7 @@ func GetHost(c *gin.Context) {
 		q.Limit = define.DefaultLimit
 	}
 
-	hosts, err := model.GetHosts(ctx, q.Offset, q.Limit)
+	hosts, count, err := model.GetHosts(ctx, q.Offset, q.Limit)
 
 	if err != nil {
 		log.Error("GetHost failed", zap.String("error", err.Error()))
@@ -49,7 +49,7 @@ func GetHost(c *gin.Context) {
 		return
 	}
 
-	resp.JSON(c, resp.Success, hosts)
+	resp.JSON(c, resp.Success, hosts, count)
 }
 
 // ChangeHostState stop host worker
@@ -122,7 +122,7 @@ func DeleteHost(c *gin.Context) {
 		return
 	}
 
-	hostgroups, err := model.GetHostGroups(ctx, 0, 0)
+	hostgroups, _, err := model.GetHostGroups(ctx, 0, 0)
 	if err != nil {
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
@@ -131,6 +131,7 @@ func DeleteHost(c *gin.Context) {
 		for _, hid := range hostgroup.HostsID {
 			if gethost.ID == hid {
 				resp.JSON(c, resp.ErrDelHostUseByOtherHG, nil)
+				return
 			}
 		}
 	}

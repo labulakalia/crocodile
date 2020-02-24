@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
@@ -28,6 +29,7 @@ func InitDb() {
 	if err != nil {
 		log.Fatal("InitDb failed", zap.Error(err))
 	}
+	
 }
 
 type checkType uint
@@ -77,7 +79,7 @@ func Check(ctx context.Context, table Tb, checkType checkType, args ...interface
 		// 检查UID状态是否正常
 		check += "id=? AND forbid=false"
 	default:
-		return false, errors.New("reqType Only Support email username")
+		return false, errors.New("reqType unSupport")
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -164,5 +166,31 @@ func GetNameID(ctx context.Context, t Tb) ([]define.KlOption, error) {
 		kloptions = append(kloptions, kloption)
 	}
 	return kloptions, nil
+}
+
+func countColums(ctx context.Context, querysql string, args ...interface{}) (int, error) {
+	querysql2 := gencountsql(querysql)
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return 0, errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+	stmt, err := conn.PrepareContext(ctx, querysql2)
+	if err != nil {
+		return 0, errors.Wrap(err, "conn.PrepareContext")
+	}
+	defer stmt.Close()
+	var count int
+	err = stmt.QueryRowContext(ctx, args...).Scan(&count)
+	if err != nil {
+		return 0, errors.Wrap(err, "stmt.QueryRowContext Scan")
+	}
+	return count, nil
+}
+
+func gencountsql(querysql string) string {
+	to := strings.Index(querysql, "FROM")
+	from := 6
+	return strings.Replace(querysql, querysql[from:to], " count() ", -1)
 
 }

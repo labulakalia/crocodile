@@ -170,13 +170,13 @@ func DeleteTask(ctx context.Context, id string) error {
 }
 
 // GetTasks get all tasks
-func GetTasks(ctx context.Context, offset, limit int) ([]define.GetTask, error) {
-	return getTasks(ctx, nil, "", offset, limit, true)
+func GetTasks(ctx context.Context, offset, limit int, name, presearchname, createby string) ([]define.GetTask, int, error) {
+	return getTasks(ctx, nil, name, offset, limit, true, presearchname, createby)
 }
 
 // GetTaskByID get task by id
 func GetTaskByID(ctx context.Context, id string) (*define.GetTask, error) {
-	tasks, err := getTasks(ctx, []string{id}, "", 0, 0, true)
+	tasks, _, err := getTasks(ctx, []string{id}, "", 0, 0, true, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func GetTaskByID(ctx context.Context, id string) (*define.GetTask, error) {
 
 // GetTaskByName get task by id
 func GetTaskByName(ctx context.Context, name string) (*define.GetTask, error) {
-	tasks, err := getTasks(ctx, nil, name, 0, 0, true)
+	tasks, _, err := getTasks(ctx, nil, name, 0, 0, true, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,14 @@ func GetTaskByName(ctx context.Context, name string) (*define.GetTask, error) {
 }
 
 // getTasks get takls by id
-func getTasks(ctx context.Context, ids []string, name string, offset, limit int, first bool /*Preventing endless loops*/) ([]define.GetTask, error) {
+func getTasks(ctx context.Context,
+	ids []string,
+	name string,
+	offset,
+	limit int,
+	first bool, /*Preventing endless loops*/
+	presearchname,
+	createbyid string) ([]define.GetTask, int, error) {
 	getsql := `SELECT 
 					t.id,
 					t.name,
@@ -230,6 +237,7 @@ func getTasks(ctx context.Context, ids []string, name string, offset, limit int,
 				  crocodile_task as t,crocodile_user as u,crocodile_hostgroup as hg
 				WHERE t.createByID == u.id AND t.hostGroupID = hg.id`
 	args := []interface{}{}
+	var count int
 	if len(ids) != 0 {
 		getsql += " AND ("
 		querys := []string{}
@@ -244,25 +252,39 @@ func getTasks(ctx context.Context, ids []string, name string, offset, limit int,
 		getsql += " AND t.name=?"
 		args = append(args, name)
 	}
+	if presearchname != "" {
+		getsql += " AND t.name LIKE ?"
+		args = append(args, presearchname+"%")
+	}
+	if createbyid != "" {
+		getsql += " AND t.createByID=?"
+		args = append(args, createbyid)
+	}
+	tasks := []define.GetTask{}
 	if limit > 0 {
+		var err error
+		count, err = countColums(ctx, getsql, args...)
+		if err != nil {
+			return tasks, 0, errors.Wrap(err, "countColums")
+		}
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
 	}
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "db.GetConn")
+		return tasks, 0, errors.Wrap(err, "db.GetConn")
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return nil, errors.Wrap(err, "conn.PrepareContext")
+		return tasks, 0, errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
-	res := []define.GetTask{}
+
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "stmt.QueryContext")
+		return tasks, 0, errors.Wrap(err, "stmt.QueryContext")
 	}
 	for rows.Next() {
 		t := define.GetTask{}
@@ -306,7 +328,7 @@ func getTasks(ctx context.Context, ids []string, name string, offset, limit int,
 		t.AlarmUserIds = []string{}
 		if alarmUserids != "" {
 			t.AlarmUserIds = append(t.AlarmUserIds, strings.Split(alarmUserids, ",")...)
-			users, err := GetUsers(ctx, t.AlarmUserIds, 0, 0)
+			users, _, err := GetUsers(ctx, t.AlarmUserIds, 0, 0)
 			if err != nil {
 				log.Error("GetUsers ids failed", zap.Strings("uids", t.AlarmUserIds))
 			}
@@ -320,7 +342,7 @@ func getTasks(ctx context.Context, ids []string, name string, offset, limit int,
 		if parentTaskIds != "" {
 			t.ParentTaskIds = append(t.ParentTaskIds, strings.Split(parentTaskIds, ",")...)
 			if first {
-				ptasks, err := getTasks(ctx, t.ParentTaskIds, "", 0, 0, false)
+				ptasks, _, err := getTasks(ctx, t.ParentTaskIds, "", 0, 0, false, "", "")
 				if err != nil {
 					log.Error("getTasks failed", zap.Error(err))
 				}
@@ -335,7 +357,7 @@ func getTasks(ctx context.Context, ids []string, name string, offset, limit int,
 		if childTaskIds != "" {
 			t.ChildTaskIds = append(t.ChildTaskIds, strings.Split(childTaskIds, ",")...)
 			if first {
-				ctasks, err := getTasks(ctx, t.ChildTaskIds, "", 0, 0, false)
+				ctasks, _, err := getTasks(ctx, t.ChildTaskIds, "", 0, 0, false, "", "")
 				if err != nil {
 					log.Error("getTasks failed", zap.Error(err))
 				}
@@ -359,7 +381,42 @@ func getTasks(ctx context.Context, ids []string, name string, offset, limit int,
 		t.AlarmStatusDesc = t.AlarmStatus.String()
 		t.TaskTypeDesc = t.TaskType.String()
 
-		res = append(res, t)
+		tasks = append(tasks, t)
 	}
-	return res, nil
+	return tasks, count, nil
+}
+
+// CloneTask copy old task
+func CloneTask(ctx context.Context, newname, cloneid, createbyid string) error {
+	task, err := GetTaskByID(ctx, cloneid)
+	if err != nil {
+		return errors.Wrap(err, "GetTaskByID")
+	}
+	id := utils.GetID()
+	if id == "" {
+		return errors.Wrap(err, "utils.GetID return empty")
+	}
+	err = CreateTask(ctx,
+		id,
+		newname,
+		task.TaskType,
+		task.TaskData,
+		task.ParentTaskIds,
+		task.ParentRunParallel,
+		task.ChildTaskIds,
+		task.ChildRunParallel,
+		task.Cronexpr,
+		task.Timeout,
+		task.AlarmUserIds,
+		task.RoutePolicy,
+		task.ExpectCode,
+		task.ExpectContent,
+		task.AlarmStatus,
+		createbyid,
+		task.HostGroupID,
+		fmt.Sprintf("从任务%s克隆", task.Name))
+	if err != nil {
+		return errors.Wrap(err, "CreateTask")
+	}
+	return nil
 }

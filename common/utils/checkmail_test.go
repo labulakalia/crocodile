@@ -17,21 +17,20 @@ func TestCheckEmail(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "email2",
-			args: args{email: "labulaka86218^>[1~@163.com"},
+			name:    "email2",
+			args:    args{email: "labulaka86218^>[1~@163.com"},
 			wantErr: true,
 		},
 		{
-			name:"email3",
-			args: args{email:"idowe*skwqun ejijiji"},
+			name:    "email3",
+			args:    args{email: "idowe*skwqun ejijiji"},
 			wantErr: true,
 		},
 		{
-			name:"email4",
-			args: args{email:"labulaka@123.com"},
+			name:    "email4",
+			args:    args{email: "labulaka@123.com"},
 			wantErr: true,
 		},
-
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

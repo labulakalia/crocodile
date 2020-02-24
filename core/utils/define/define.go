@@ -178,16 +178,16 @@ type ChangeHostGroup struct {
 
 // Host worker host
 type Host struct {
-	Common
-	Addr               string   `json:"addr" comment:"Worker地址"`            // 主机IP
-	HostName           string   `json:"hostname"`                           // 主机名
-	Online             bool     `json:"online"`                             // 主机是否在线
-	Weight             int      `json:"weight"`                             // 主机权重
-	RunningTasks       []string `json:"running_tasks"`                      // 正在运行的任务
-	Version            string   `json:"version"`                            // 版本号
-	Stop               bool     `json:"stop" comment:"暂停"`                  // 暂停在此Worker上运行
-	LastUpdateTimeUnix int64    `json:"last_updatetimeunix" comment:"更新时间"` // 更新时间
-	LastUpdateTime     string   `json:"last_updatetime"`                    // 更新时间
+	ID                 string   `json:"id" comment:"ID"`
+	Addr               string   `json:"addr" comment:"Worker地址"`
+	HostName           string   `json:"hostname"`
+	Online             bool     `json:"online"`
+	Weight             int      `json:"weight"`
+	RunningTasks       []string `json:"running_tasks"`
+	Version            string   `json:"version"`
+	Stop               bool     `json:"stop" comment:"暂停"`
+	LastUpdateTimeUnix int64    `json:"last_updatetimeunix"`
+	LastUpdateTime     string   `json:"last_updatetime" comment:"更新时间"`
 }
 
 // Task define Task
@@ -246,37 +246,43 @@ type CreateTask struct {
 
 // ChangeTask struct
 type ChangeTask struct {
+	IDName
+	Task
+}
+
+// IDName struct
+type IDName struct {
 	GetID
 	GetName
-	Task
 }
 
 // GetTask get task
 type GetTask struct {
-	TaskType          TaskType    `json:"task_type"`                            // 任务类型
-	TaskTypeDesc      string      `json:"task_typedesc" comment:"任务类型"`         // 任务类型
-	TaskData          interface{} `json:"task_data" comment:"任务数据"`             // 任务数据
-	Run               bool        `json:"run" comment:"运行"`                     // 0 为不能运行 1 为可以运行 如果这个任务作为别的任务父任务或者子任务会忽略这个字段
-	ParentTaskIds     []string    `json:"parent_taskids"`                       // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
-	ParentTaskIdsDesc []string    `json:"parent_taskidsdesc" comment:"父任务"`     // 父任务名称
-	ParentRunParallel bool        `json:"parent_runparallel" comment:"父任务运行策略"` // 是否以并行运行父任务 0否 1是
-	ChildTaskIds      []string    `json:"child_taskids"`                        // 子任务 运行结束后运行子任务
-	ChildTaskIdsDesc  []string    `json:"child_taskidsdesc"  comment:"子任务"`     //子任务
-	ChildRunParallel  bool        `json:"child_runparallel" comment:"子任务运行策略"`  // 是否以并行运行子任务 0否 1是
-	CreateBy          string      `json:"create_by"`                            // 创建人
-	CreateByUID       string      `json:"create_byuid"`                         // 创建人ID
-	HostGroup         string      `json:"host_group" comment:"主机组"`             // 主机组
-	HostGroupID       string      `json:"host_groupid"`                         // 主机组ID
-	Cronexpr          string      `json:"cronexpr" comment:"CronExpr"`          // 执行任务表达式
-	Timeout           int         `json:"timeout" comment:"超时时间"`               // 任务超时时间 (s)
-	AlarmUserIds      []string    `json:"alarm_userids"`                        // 报警用户 多个用户
-	AlarmUserIdsDesc  []string    `json:"alarm_useridsdesc" comment:"报警用户"`     // 报警用户 多个用户
-	RoutePolicy       RoutePolicy `json:"route_policy"`                         // 路由策略 随机 轮询 最少任务 权重
-	RoutePolicyDesc   string      `json:"route_policydesc" comment:"路由策略"`      // 路由策略
-	ExpectCode        int         `json:"expect_code"  comment:"期望返回码"`         // expect task return code. if not set 0 or 200
-	ExpectContent     string      `json:"expect_content" comment:"期望返回内容"`      // expect task return content. if not set do not check
-	AlarmStatus       AlarmStatus `json:"alarm_status"`                         // alarm when task run success or fail or all all:-2 failed: -1 success: 1
-	AlarmStatusDesc   string      `json:"alarm_statusdesc" comment:"报警策略"`      // Always 失败 成功
+	//
+	TaskType          TaskType    `json:"task_type"`
+	TaskTypeDesc      string      `json:"task_typedesc" comment:"任务类型"`
+	TaskData          interface{} `json:"task_data" comment:"任务数据"`
+	Run               bool        `json:"run" comment:"运行"`
+	ParentTaskIds     []string    `json:"parent_taskids"`
+	ParentTaskIdsDesc []string    `json:"parent_taskidsdesc" comment:"父任务"`
+	ParentRunParallel bool        `json:"parent_runparallel" comment:"父任务运行策略"`
+	ChildTaskIds      []string    `json:"child_taskids"`
+	ChildTaskIdsDesc  []string    `json:"child_taskidsdesc"  comment:"子任务"`
+	ChildRunParallel  bool        `json:"child_runparallel" comment:"子任务运行策略"`
+	CreateBy          string      `json:"create_by"`
+	CreateByUID       string      `json:"create_byuid"`
+	HostGroup         string      `json:"host_group" comment:"主机组"`
+	HostGroupID       string      `json:"host_groupid"`
+	Cronexpr          string      `json:"cronexpr" comment:"CronExpr"`
+	Timeout           int         `json:"timeout" comment:"超时时间"`
+	AlarmUserIds      []string    `json:"alarm_userids"`
+	AlarmUserIdsDesc  []string    `json:"alarm_useridsdesc" comment:"报警用户"`
+	RoutePolicy       RoutePolicy `json:"route_policy"`
+	RoutePolicyDesc   string      `json:"route_policydesc" comment:"路由策略"`
+	ExpectCode        int         `json:"expect_code"  comment:"期望返回码"`
+	ExpectContent     string      `json:"expect_content" comment:"期望返回内容"`
+	AlarmStatus       AlarmStatus `json:"alarm_status"`
+	AlarmStatusDesc   string      `json:"alarm_statusdesc" comment:"报警策略"`
 	Common
 }
 
@@ -372,6 +378,12 @@ type Log struct {
 	ErrTaskTypeStr string       `json:"err_tasktypestr"`      // 1 主任务 2 父任务 3 子任务
 	ErrTaskID      string       `json:"err_taskid"`           // task failed id
 	ErrTask        string       `json:"err_task"`             // task failed id
+}
+
+// Cleanlog data
+type Cleanlog struct {
+	GetName
+	PreDay int64 `json:"preday"` // preday几天前的日志
 }
 
 // Query recv url query params
@@ -471,6 +483,7 @@ type OperateLog struct {
 	Module      string   `json:"module"`       // 修改模块 任务 主机组 主机 用户
 	ModuleName  string   `json:"module_name"`  // 修改的对象名称
 	OperateTime string   `json:"operate_time"` // 修改时间
+	Desc        string   `json:"desc"`         // 描述
 	Columns     []Column `json:"columns"`      // 修改的字段及新旧值
 }
 
@@ -479,4 +492,41 @@ type Column struct {
 	Name     string      `json:"name"`      // 修改的字段
 	OldValue interface{} `json:"old_value"` // 修改前的旧值
 	NewValue interface{} `json:"new_value"` // 修改后的新值
+}
+
+// NotifyType notify type
+type NotifyType uint8
+
+const (
+	// TaskNotify 任务通知
+	TaskNotify NotifyType = iota + 1
+	// UpgradeNotify 升级提醒
+	UpgradeNotify
+	// ReviewReq 审核请求
+	ReviewReq
+)
+
+func (nt NotifyType) String() string {
+	switch nt {
+	case TaskNotify:
+		return "任务通知"
+	case UpgradeNotify:
+		return "新版本发布"
+	// case ReviewReq:
+	// 	return "审核请求" // zaicontent中点击url到任务列表
+	default:
+		return "Unknow"
+	}
+}
+
+// Notify notify msg
+type Notify struct {
+	ID             int        `json:"id"`
+	NotifyType     NotifyType `json:"notify_type"` // 通知类型
+	NotifyTypeDesc string     `json:"notify_typedesc"`
+	NotifyUID      string     `json:"notify_uid,omitempty"` // 通知用户
+	Title          string     `json:"title"`                // 标题
+	Content        string     `json:"content"`              // 通知内容
+	NotifyTime     int64      `json:"notify_time"`
+	NotifyTimeDesc string     `json:"notify_timedesc"`
 }

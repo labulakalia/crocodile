@@ -1,11 +1,12 @@
 package log
 
 import (
+	"io"
+	"os"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"io"
-	"os"
 )
 
 var (
@@ -154,7 +155,7 @@ func MaxAge(age int) Option {
 	}
 }
 
-// MaxBackups total store log 
+// MaxBackups total store log
 func MaxBackups(backup int) Option {
 	return func(logcfg *logConfig) {
 		logcfg.MaxBackups = backup

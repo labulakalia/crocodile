@@ -33,7 +33,7 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
  			  	VALUES
 					(?,?,?,?,?,?,?)`
 	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
-	hosts, err := getHosts(ctx, addr, nil, 0, 0)
+	hosts, _, err := getHosts(ctx, addr, nil, 0, 0)
 	if err != nil {
 		return "", err
 	}
@@ -92,7 +92,7 @@ func UpdateHostHearbeat(ctx context.Context, ip string, port int32, runningtasks
 }
 
 // get host by addr or id
-func getHosts(ctx context.Context, addr string, ids []string, offset, limit int) ([]*define.Host, error) {
+func getHosts(ctx context.Context, addr string, ids []string, offset, limit int) ([]*define.Host, int, error) {
 	getsql := `SELECT 
 					id,
 					addr,
@@ -104,7 +104,14 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 					lastUpdateTimeUnix 
 			   FROM 
 					crocodile_host`
+	var (
+		count int
+	)
 	args := []interface{}{}
+	// only use addr or ids query
+	if addr != "" && len(ids) != 0 {
+		return nil, 0, errors.New("only use addr or ids query")
+	}
 	if addr != "" {
 		getsql += " WHERE addr=?"
 		args = append(args, addr)
@@ -120,23 +127,28 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 
 	}
 	if limit > 0 {
+		var err error
+		count, err = countColums(ctx, getsql, args...)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "countColums")
+		}
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
 	}
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "db.GetConn")
+		return nil, 0, errors.Wrap(err, "db.GetConn")
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return nil, errors.Wrap(err, "conn.PrepareContext")
+		return nil, 0, errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "stmt.QueryContext")
+		return nil, 0, errors.Wrap(err, "stmt.QueryContext")
 	}
 
 	hosts := []*define.Host{}
@@ -161,17 +173,17 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 		h.LastUpdateTime = utils.UnixToStr(h.LastUpdateTimeUnix)
 		hosts = append(hosts, &h)
 	}
-	return hosts, nil
+	return hosts, count, nil
 }
 
 // GetHosts get all hosts
-func GetHosts(ctx context.Context, offset, limit int) ([]*define.Host, error) {
+func GetHosts(ctx context.Context, offset, limit int) ([]*define.Host, int, error) {
 	return getHosts(ctx, "", nil, offset, limit)
 }
 
 // GetHostByAddr get host by addr
 func GetHostByAddr(ctx context.Context, addr string) (*define.Host, error) {
-	hosts, err := getHosts(ctx, addr, nil, 0, 0)
+	hosts, _, err := getHosts(ctx, addr, nil, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +195,7 @@ func GetHostByAddr(ctx context.Context, addr string) (*define.Host, error) {
 
 // ExistAddr check already exist
 func ExistAddr(ctx context.Context, addr string) (*define.Host, bool, error) {
-	hosts, err := getHosts(ctx, addr, nil, 0, 0)
+	hosts, _, err := getHosts(ctx, addr, nil, 0, 0)
 	if err != nil {
 		return nil, false, err
 	}
@@ -195,7 +207,7 @@ func ExistAddr(ctx context.Context, addr string) (*define.Host, bool, error) {
 
 // GetHostByID get host by hostid
 func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
-	hosts, err := getHosts(ctx, "", []string{id}, 0, 0)
+	hosts, _, err := getHosts(ctx, "", []string{id}, 0, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +220,7 @@ func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 
 // GetHostByIDS get hosts by hostids
 func GetHostByIDS(ctx context.Context, ids []string) ([]*define.Host, error) {
-	hosts, err := getHosts(ctx, "", ids, 0, 0)
+	hosts, _, err := getHosts(ctx, "", ids, 0, 0)
 	if err != nil {
 		return nil, err
 	}

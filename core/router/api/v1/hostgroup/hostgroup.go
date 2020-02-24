@@ -224,14 +224,13 @@ func GetHostGroups(c *gin.Context) {
 		q.Limit = define.DefaultLimit
 	}
 
-	hgs, err := model.GetHostGroups(ctx, q.Limit, q.Offset)
+	hgs, count, err := model.GetHostGroups(ctx, q.Limit, q.Offset)
 	if err != nil {
 		log.Error("GetHostGroup failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.JSON(c, resp.Success, hgs)
-
+	resp.JSON(c, resp.Success, hgs, count)
 }
 
 // GetSelect return name,id

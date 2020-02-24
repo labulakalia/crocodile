@@ -2,19 +2,21 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/labulaka521/crocodile/core/cert"
+	"github.com/labulaka521/crocodile/core/version"
 	"github.com/spf13/cobra"
 )
 
 // Version return current build message
-func Version(version, commit, builddate string) *cobra.Command {
+func Version() *cobra.Command {
 	cmdClient := &cobra.Command{
 		Use:   "version",
 		Short: "crocodile version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("version    :%s\n", version)
-			fmt.Printf("commit     :%s\n", commit)
-			fmt.Printf("build date :%s\n", builddate)
+			fmt.Printf("Version   : %s\n", version.Version)
+			fmt.Printf("Commit    : %s\n", version.Commit)
+			fmt.Printf("BuildDate : %s\n", version.BuildDate)
 		},
 	}
 	return cmdClient

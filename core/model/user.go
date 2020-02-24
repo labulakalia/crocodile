@@ -100,7 +100,7 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 	return nil
 }
 
-func getusers(ctx context.Context, uids []string, name string, offset, limit int) ([]define.User, error) {
+func getusers(ctx context.Context, uids []string, name string, offset, limit int) ([]define.User, int, error) {
 	getsql := `SELECT
 					id,
 					name,
@@ -117,6 +117,10 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 					updateTime
 				FROM 
 					crocodile_user`
+	var (
+		count int
+		err   error
+	)
 	args := []interface{}{}
 	users := []define.User{}
 	if len(uids) > 0 {
@@ -131,25 +135,31 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 		getsql += " WHERE name=?"
 		args = append(args, name)
 	}
+
 	if limit > 0 {
+		count, err = countColums(ctx, getsql, args...)
+		if err != nil {
+			return users, 0, errors.Wrap(err, "countColums")
+		}
+
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
 	}
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return users, errors.Wrap(err, "db.Db.GetConn")
+		return users, 0, errors.Wrap(err, "db.Db.GetConn")
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return users, errors.Wrap(err, "conn.PrepareContext")
+		return users, 0, errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return users, errors.Wrap(err, "stmt.QueryContext")
+		return users, 0, errors.Wrap(err, "stmt.QueryContext")
 	}
 	for rows.Next() {
 		var (
@@ -185,12 +195,12 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 		}
 		users = append(users, user)
 	}
-	return users, nil
+	return users, count, nil
 }
 
 // GetUserByID get user by id
 func GetUserByID(ctx context.Context, uid string) (*define.User, error) {
-	userinfos, err := getusers(ctx, []string{uid}, "", 0, 0)
+	userinfos, _, err := getusers(ctx, []string{uid}, "", 0, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "GerUser")
 	}
@@ -202,7 +212,7 @@ func GetUserByID(ctx context.Context, uid string) (*define.User, error) {
 
 // GetUserByName get user by name
 func GetUserByName(ctx context.Context, name string) (*define.User, error) {
-	userinfos, err := getusers(ctx, nil, name, 0, 0)
+	userinfos, _, err := getusers(ctx, nil, name, 0, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "GerUser")
 	}
@@ -213,7 +223,7 @@ func GetUserByName(ctx context.Context, name string) (*define.User, error) {
 }
 
 // GetUsers get all users info
-func GetUsers(ctx context.Context, uids []string, offset, limit int) ([]define.User, error) {
+func GetUsers(ctx context.Context, uids []string, offset, limit int) ([]define.User, int, error) {
 	return getusers(ctx, uids, "", offset, limit)
 }
 

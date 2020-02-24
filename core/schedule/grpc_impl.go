@@ -98,7 +98,7 @@ func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) er
 	}
 
 	taskctx, taskcancel := context.WithCancel(stream.Context())
-	
+
 	runningtask.Add(req.GetTaskId(), taskcancel)
 	defer runningtask.Del(req.GetTaskId())
 
@@ -166,13 +166,13 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	if req.Hostgroup != "" {
 		hg, err := model.GetHostGroupByName(ctx, req.Hostgroup)
 		if err != nil {
-			log.Error("hostgroup not exist,ignore add host to hostrgoup",zap.String("hostgroup",req.Hostgroup))
+			log.Error("hostgroup not exist,ignore add host to hostrgoup", zap.String("hostgroup", req.Hostgroup))
 			return &pb.Empty{}, nil
 		}
-		
+
 		if !strings.Contains(strings.Join(hg.HostsID, ""), id) {
 			hg.HostsID = append(hg.HostsID, id)
-			err = model.ChangeHostGroup(ctx, hg.HostsID,hg.ID,hg.Remark)
+			err = model.ChangeHostGroup(ctx, hg.HostsID, hg.ID, hg.Remark)
 			if err != nil {
 				return &pb.Empty{}, err
 			}
@@ -191,6 +191,6 @@ func (hs *HeartbeatService) SendHb(ctx context.Context, hb *pb.HeartbeatReq) (*p
 	}
 	ip, _, _ := net.SplitHostPort(p.Addr.String())
 	log.Debug("recv hearbeat", zap.String("addr", fmt.Sprintf("%s:%d", ip, hb.Port)))
-	err := model.UpdateHostHearbeat(ctx, ip,hb.GetPort(),hb.GetRunningTask())
+	err := model.UpdateHostHearbeat(ctx, ip, hb.GetPort(), hb.GetRunningTask())
 	return &pb.Empty{}, err
 }

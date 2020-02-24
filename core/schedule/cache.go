@@ -172,7 +172,7 @@ func (l *LogCache) WriteString(p string) (n int, err error) {
 
 // WriteStringf Write Tmpl string format to buf
 func (l *LogCache) WriteStringf(tmpl string, args ...interface{}) (n int, err error) {
-	now := time.Now().Local().Format("2006-01-02 15:04:05: ") + fmt.Sprintf(tmpl, args...) +"\n"
+	now := time.Now().Local().Format("2006-01-02 15:04:05: ") + fmt.Sprintf(tmpl, args...) + "\n"
 	n, err = l.buf.WriteString(now)
 	l.Write([]byte(now))
 	return

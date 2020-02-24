@@ -1,17 +1,19 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/labulaka521/crocodile/common/log"
-	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/alarm"
+	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/router"
 	"github.com/labulaka521/crocodile/core/schedule"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	mylog "github.com/labulaka521/crocodile/core/utils/log"
+	"github.com/labulaka521/crocodile/core/version"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"os"
 )
 
 // Server crocodile server
@@ -32,6 +34,7 @@ func Server() *cobra.Command {
 			alarm.InitAlarm()
 			model.InitDb()
 			model.InitRabc()
+			go version.CheckLatest() // check new version
 		},
 		PostRunE: func(cmd *cobra.Command, args []string) error {
 			lis, err := router.GetListen(define.Server)
@@ -43,7 +46,7 @@ func Server() *cobra.Command {
 			if err != nil {
 				log.Fatal("init schedule failed", zap.String("error", err.Error()))
 			}
-			
+
 			err = router.Run(define.Server, lis)
 			if err != nil {
 				log.Error("router.Run error", zap.Error(err))

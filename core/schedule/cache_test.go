@@ -174,8 +174,7 @@ func Benchmark_bytes(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		a.WriteString("111111111111111111111111111")
 		// b.Log(a.Len())
-		c := a.Len()
-		c = c
+		_ = a.Len()
 	}
 }
 
@@ -183,8 +182,7 @@ func Benchmark_append(b *testing.B) {
 	a := make([]byte, 0, 1e2)
 	for i := 0; i < b.N; i++ {
 		a = append(a, []byte("111111111111111111111111111")...)
-		c := len(a)
-		c = c
+		_ = len(a)
 	}
 }
 

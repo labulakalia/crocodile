@@ -35,7 +35,6 @@ func TestDataAPI_Run(t *testing.T) {
 	}))
 	defer ts.Close()
 
-
 	var dataapi = DataAPI{
 		URL:    ts.URL,
 		Method: http.MethodGet,

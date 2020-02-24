@@ -2,8 +2,8 @@ package tasktype
 
 import (
 	"context"
-	"regexp"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 )

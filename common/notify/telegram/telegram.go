@@ -2,13 +2,14 @@ package telegram
 
 import (
 	"net/http"
-	"sync"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/labulaka521/crocodile/common/notify"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
+
 var (
 	once sync.Once
 )
@@ -40,7 +41,7 @@ func NewTelegram(token string) (notify.Sender, error) {
 		return nil, err
 	}
 	telegram.bot = bot
-	
+
 	go func() {
 		once.Do(func() {
 			bot.Start()

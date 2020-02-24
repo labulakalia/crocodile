@@ -6,14 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
 	"github.com/labulaka521/crocodile/common/notify"
 )
-
 
 // getsign generate a sign when secure level is needsign
 func getsign(secret string, now string) string {
@@ -98,7 +97,7 @@ func (d *Ding) Send(tos []string, title string, content string) error {
 		},
 	}
 
-	resp, err := notify.JSONPost(d.url, sendmsg, http.DefaultClient)
+	resp, err := notify.JSONPost(http.MethodPost, d.url, sendmsg, http.DefaultClient)
 	if err != nil {
 		return err
 	}

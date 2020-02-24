@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/labulaka521/crocodile/core/cmd"
+	"github.com/labulaka521/crocodile/core/version"
 	"github.com/spf13/cobra"
 )
 
 var (
-	version   string
-	commit    string
-	builddate string
+	v string
+	c string
+	d string
 )
-
 
 // @title Crocidle API
 // @version 1.0
@@ -30,10 +31,13 @@ var (
 // @in header
 // @name Authorization
 func main() {
+	version.Commit = c
+	version.Version = v
+	version.BuildDate = d
 	rootCmd := &cobra.Command{Use: "crocodile"}
-	rootCmd.AddCommand(cmd.Client(version))
+	rootCmd.AddCommand(cmd.Client())
 	rootCmd.AddCommand(cmd.Server())
-	rootCmd.AddCommand(cmd.Version(version, commit, builddate))
+	rootCmd.AddCommand(cmd.Version())
 	rootCmd.AddCommand(cmd.GeneratePemKey())
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println("rootCmd.Execute failed", err.Error())

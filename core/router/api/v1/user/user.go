@@ -133,7 +133,7 @@ func GetUsers(c *gin.Context) {
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	users, err := model.GetUsers(ctx, nil, q.Offset, q.Limit)
+	users, count, err := model.GetUsers(ctx, nil, q.Offset, q.Limit)
 	if err != nil {
 		log.Error("GetUsers failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -145,7 +145,7 @@ func GetUsers(c *gin.Context) {
 		users[i] = user
 	}
 
-	resp.JSON(c, resp.Success, users)
+	resp.JSON(c, resp.Success, users, count)
 }
 
 // ChangeUserInfo change user self config
@@ -352,11 +352,11 @@ func GetOperateLog(c *gin.Context) {
 	}
 
 	// uid, method, module, limit, offset
-	oplogs, err := model.GetOperate(ctx, q.UID, q.UserName, q.Method, q.Module, q.Limit, q.Offset)
+	oplogs, count, err := model.GetOperate(ctx, q.UID, q.UserName, q.Method, q.Module, q.Limit, q.Offset)
 	if err != nil {
 		log.Error("model.GetOperate filed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.JSON(c, resp.Success, oplogs)
+	resp.JSON(c, resp.Success, oplogs, count)
 }

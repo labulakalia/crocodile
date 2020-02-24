@@ -29,7 +29,7 @@ port = 8080
 maxhttptime = "10s" # 秒
 [server.db]
 drivename = "sqlite3"
-dsn = "db/core.db"
+dsn = "/Users/labulakalia/workerspace/golang/crocodile/db/core.db"
 maxidle = 10
 maxconn = 20
 maxquerytime = "10s"

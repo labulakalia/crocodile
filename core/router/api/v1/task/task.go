@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -46,12 +47,11 @@ func CreateTask(c *gin.Context) {
 	_, err = cronexpr.Parse(task.Cronexpr)
 	if err != nil {
 		log.Error("cronexpr.Parse failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSON(c, resp.ErrCronExpr, nil)
 		return
 	}
 
 	// TODO 检查任务数据
-
 	exist, err := model.Check(ctx, model.TBTask, model.Name, task.Name)
 	if err != nil {
 		log.Error("IsExist failed", zap.Error(err))
@@ -104,7 +104,7 @@ func ChangeTask(c *gin.Context) {
 	_, err = cronexpr.Parse(task.Cronexpr)
 	if err != nil {
 		log.Error("cronexpr.Parse failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSON(c, resp.ErrCronExpr, nil)
 		return
 	}
 
@@ -206,7 +206,7 @@ func DeleteTask(c *gin.Context) {
 		// 判断ID的创建人是否为uid
 		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, deletetask.ID, uid)
 		if err != nil {
-			log.Error("IsExist failed", zap.String("error", err.Error()))
+			log.Error("IsExist failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
 			return
 		}
@@ -218,11 +218,17 @@ func DeleteTask(c *gin.Context) {
 	}
 	err = model.DeleteTask(ctx, deletetask.ID)
 	if err != nil {
-		log.Error("DeleteTask failed", zap.String("error", err.Error()))
+		log.Error(" model.DeleteTask failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	schedule.Cron.Del(deletetask.ID)
+	_, err = model.CleanTaskLog(ctx, "", deletetask.ID, time.Now().UnixNano()/1e6)
+	if err != nil {
+		log.Error(" model.CleanTaskLog failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
 	resp.JSON(c, resp.Success, nil)
 
 }
@@ -232,6 +238,8 @@ func DeleteTask(c *gin.Context) {
 // @Tags Task
 // @Param offset query int false "Offset"
 // @Param limit query int false "Limit"
+// @Param psname query string false "PreSearchName"
+// @Param self query bool false "Self Create Task"
 // @Produce json
 // @Success 200 {object} resp.Response
 // @Router /api/v1/task [get]
@@ -240,8 +248,13 @@ func GetTasks(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
+	type GetQuery struct {
+		define.Query
+		PSName string `form:"psname"`
+		Self   bool   `form:"self"`
+	}
 	var (
-		q   define.Query
+		q   GetQuery
 		err error
 	)
 
@@ -253,14 +266,17 @@ func GetTasks(c *gin.Context) {
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	hgs, err := model.GetTasks(ctx, q.Offset, q.Limit)
-
+	var createby string
+	if q.Self {
+		createby = c.GetString("uid")
+	}
+	hgs, count, err := model.GetTasks(ctx, q.Offset, q.Limit, "", q.PSName, createby)
 	if err != nil {
 		log.Error("GetTasks failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.JSON(c, resp.Success, hgs)
+	resp.JSON(c, resp.Success, hgs, count)
 }
 
 // GetTask get task info
@@ -375,7 +391,7 @@ func GetRunningTask(c *gin.Context) {
 		runningtasks = runningtasks[q.Offset : q.Offset+q.Limit]
 	}
 
-	resp.JSON(c, resp.Success, runningtasks)
+	resp.JSON(c, resp.Success, runningtasks, len(runningtasks))
 }
 
 // LogTask get task log
@@ -423,13 +439,13 @@ func LogTask(c *gin.Context) {
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	logs, err := model.GetLog(ctx, getname.Name, status, q.Offset, q.Limit)
+	logs, count, err := model.GetLog(ctx, getname.Name, status, q.Offset, q.Limit)
 	if err != nil {
 		log.Error("GetLog failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.JSON(c, resp.Success, logs)
+	resp.JSON(c, resp.Success, logs, count)
 }
 
 // LogTreeData get log tree
@@ -666,4 +682,114 @@ func GetSelect(c *gin.Context) {
 		return
 	}
 	resp.JSON(c, resp.Success, data)
+}
+
+// CloneTask clone task
+// @Summary create a task by copy old task
+// @Tags Task
+// @Param Task body define.CloneTask true "clone task"
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/task/clone [post]
+// @Security ApiKeyAuth
+func CloneTask(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+
+	clonetask := define.IDName{}
+
+	err := c.ShouldBindJSON(&clonetask)
+	if err != nil {
+		log.Error("ShouldBindJSON failed", zap.Error(err))
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+
+	task, err := model.GetTaskByID(ctx, clonetask.ID)
+	if err != nil {
+		log.Error("model.GetTaskByID failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	id := utils.GetID()
+	if id == "" {
+		log.Error("utils.GetID return empty", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	err = model.CreateTask(ctx,
+		id,
+		clonetask.Name,
+		task.TaskType,
+		task.TaskData,
+		task.ParentTaskIds,
+		task.ParentRunParallel,
+		task.ChildTaskIds,
+		task.ChildRunParallel,
+		task.Cronexpr,
+		task.Timeout,
+		task.AlarmUserIds,
+		task.RoutePolicy,
+		task.ExpectCode,
+		task.ExpectContent,
+		task.AlarmStatus,
+		c.GetString("uid"),
+		task.HostGroupID,
+		fmt.Sprintf("从任务%s克隆", task.Name))
+	if err != nil {
+		log.Error(" model.CreateTask failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	schedule.Cron.Add(id, clonetask.Name, task.Cronexpr,
+		schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
+	resp.JSON(c, resp.Success, nil)
+}
+
+// CleanTaskLog clean old task log
+// @Summary create a task by copy old task
+// @Tags Task
+// @Param Log body define.Cleanlog true "clean task log"
+// @Produce json
+// @Success 200 {object} resp.Response
+// @Router /api/v1/task/clone [delete]
+// @Security ApiKeyAuth
+func CleanTaskLog(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+
+	cleanlog := define.Cleanlog{}
+
+	err := c.ShouldBindJSON(&cleanlog)
+	if err != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+
+	// TODO 检查任务数据
+	exist, err := model.Check(ctx, model.TBTask, model.Name, cleanlog.Name)
+	if err != nil {
+		log.Error("IsExist failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	if !exist {
+		resp.JSON(c, resp.ErrTaskNotExist, nil)
+		return
+	}
+
+	deletetime := (time.Now().UnixNano() - int64(time.Hour)*24*cleanlog.PreDay) / 1e6
+	delcount, err := model.CleanTaskLog(ctx, cleanlog.Name, "", deletetime)
+	if err != nil {
+		log.Error("model.CleanTaskLog failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	type del struct {
+		DelCount int64 `json:"delcount"`
+	}
+
+	resp.JSON(c, resp.Success, del{DelCount: delcount})
 }

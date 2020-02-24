@@ -52,7 +52,7 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 
 	c.Set("uid", uid)
 	c.Set("username", username)
-	fmt.Println(uid, username)
+
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
@@ -77,11 +77,10 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 	requrl := c.Request.URL.Path
 	method := c.Request.Method
 	enforcer := model.GetEnforcer()
-	fmt.Println(uid, requrl, method)
 	return enforcer.Enforce(uid, requrl, method)
 }
 
-var excludepath = []string{"login", "swagger", "websocket", "/debug/pprof"}
+var excludepath = []string{"login", "logout", "swagger", "websocket", "/debug/pprof"}
 
 // PermissionControl 权限控制middle
 func PermissionControl() func(c *gin.Context) {

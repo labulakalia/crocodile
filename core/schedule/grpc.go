@@ -198,7 +198,7 @@ func RegistryClient(version string, port int) error {
 	_, err = hbClient.RegistryHost(ctx, &regHost)
 	if err != nil {
 		log.Error("registry client failed", zap.Error(err))
-		return errors.Errorf("can not connect server %s", conn.Target())
+		return err
 
 	}
 	log.Info("host registry success")
@@ -245,13 +245,13 @@ func DealRPCErr(err error) error {
 	if ok {
 		switch statusErr.Code() {
 		case codes.DeadlineExceeded:
-			return resp.GetMsgErr(resp.ErrCtxDeadlineExceeded) 
+			return resp.GetMsgErr(resp.ErrCtxDeadlineExceeded)
 		case codes.Canceled:
-			return resp.GetMsgErr(resp.ErrCtxCanceled) 
+			return resp.GetMsgErr(resp.ErrCtxCanceled)
 		case codes.Unauthenticated:
-			return resp.GetMsgErr(resp.ErrRPCUnauthenticated) 
+			return resp.GetMsgErr(resp.ErrRPCUnauthenticated)
 		case codes.Unavailable:
-			return resp.GetMsgErr(resp.ErrRPCUnauthenticated) 
+			return resp.GetMsgErr(resp.ErrRPCUnauthenticated)
 		}
 	}
 	return err

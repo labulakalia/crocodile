@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"time"
 
 	"strconv"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/labulaka521/crocodile/common/notify/slack"
 	"github.com/labulaka521/crocodile/common/notify/telegram"
 	"github.com/labulaka521/crocodile/common/notify/wechat"
+	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
@@ -40,18 +42,17 @@ var send sendNotify
 // errTask name[id]
 
 const (
-	title     = "TaskNotify {{ .TaskName }}[{{ .TaskID }}]"
-	alarmtmpl = `TaskName    : {{ .TaskName }}
-TaskID      : {{ .TaskID }}
-StartTime   : {{ .StartTime }}
-EndTime     : {{ .EndTime }}
-TotalRuntime: {{ .TotalRuntime }}
-Status      : {{ .Status -}}
+	title     = "任务通知 {{ .TaskName }}[{{ .TaskID }}]"
+	alarmtmpl = `任务名称    : {{ .TaskName }}
+任务ID      : {{ .TaskID }}
+开始时间   : {{ .StartTime }}
+结束时间     : {{ .EndTime }}
+总运行时间: {{ .TotalRuntime }}
+状态      : {{ .Status -}}
 {{if eq .Status "fail" }}
-ErrTaskName : {{ .ErrTaskName }}
-ErrTaskID   : {{ .ErrTaskID }}
-ErrTasktype : {{ .ErrTasktypestr }}
-ErrMsg      : {{ .ErrMsg }}
+错误任务名称 : {{ .ErrTaskName }} {{ .ErrTasktypestr }}
+错误任务ID   : {{ .ErrTaskID }}
+错误信息      : {{ .ErrMsg }}
 {{- end }}`
 )
 
@@ -108,7 +109,7 @@ func JudgeNotify(tasklog *define.Log) {
 		return
 	}
 	// Check this task alarm
-	// if task alarmsttaus equal -2,it will alarm when task run
+	// if task alarmsttaus equal -2,it will alarm when task run finish
 	// whether alarm when task alarmstatus equal task run resp statsu
 
 	var status string
@@ -128,8 +129,8 @@ func JudgeNotify(tasklog *define.Log) {
 		err := sendalarm(taskdata.AlarmUserIds,
 			taskdata.Name,
 			tasklog.RunByTaskID,
-			tasklog.StartTimeStr,
-			tasklog.EndTimeStr,
+			utils.UnixToStr(tasklog.StartTime/1e3),
+			utils.UnixToStr(tasklog.EndTime/1e3),
 			status,
 			totalruntime,
 			tasklog.ErrMsg,
@@ -165,7 +166,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 		err := fmt.Errorf("task %s[%s] not exist alarm users", taskname, taskid)
 		return err
 	}
-	alarmusers, err := model.GetUsers(context.Background(), notifyuids, 0, 0)
+	alarmusers, _, err := model.GetUsers(context.Background(), notifyuids, 0, 0)
 	if err != nil {
 		log.Error("get alarm user info failed", zap.Error(err))
 		return err
@@ -212,7 +213,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 	// TODO problem
 	// send webhook
 	if config.CoreConf.Notify.WebHook.Enable {
-		_, err := notify.JSONPost(config.CoreConf.Notify.WebHook.WebHookURL, notifymsg, http.DefaultClient)
+		_, err := notify.JSONPost(http.MethodPost, config.CoreConf.Notify.WebHook.WebHookURL, notifymsg, http.DefaultClient)
 		if err != nil {
 			log.Error("send webhook failed",
 				zap.String("webhookurl", config.CoreConf.Notify.WebHook.WebHookURL),
@@ -244,6 +245,20 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 	if err != nil {
 		log.Error("title template new title failed", zap.Error(err))
 		return err
+	}
+
+	for _, uid := range notifyuids {
+		notify := define.Notify{
+			NotifyType: define.TaskNotify,
+			NotifyUID:  uid,
+			Title:      taskname,
+			Content:    contentbuf.String(),
+			NotifyTime: time.Now().Unix(),
+		}
+		err = model.SaveNewNotify(context.Background(), notify)
+		if err != nil {
+			log.Error("model.SaveNewNotify", zap.Error(err))
+		}
 	}
 
 	// send notify alarm

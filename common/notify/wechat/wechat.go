@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/labulaka521/crocodile/common/notify"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
-	"github.com/labulaka521/crocodile/common/notify"
 )
 
 var (
@@ -92,9 +92,9 @@ func (c *client) Send(tos []string, title, content string) error {
 //Send 发送信息
 func (c *client) send(msg Message) error {
 	c.generateAccessToken()
-	
+
 	url := "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=" + c.Token.AccessToken
-	resultByte, err := notify.JSONPost(url,msg,http.DefaultClient)
+	resultByte, err := notify.JSONPost(http.MethodPost, url, msg, http.DefaultClient)
 	if err != nil {
 		err = errors.New("请求微信接口失败: " + err.Error())
 		return err

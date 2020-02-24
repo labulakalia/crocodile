@@ -66,7 +66,7 @@ func Init() error {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	eps, err := model.GetTasks(ctx, 0, 0)
+	eps, _, err := model.GetTasks(ctx, 0, 0, "", "", "")
 	if err != nil {
 		log.Error("GetTasks failed", zap.Error(err))
 		return err
@@ -320,13 +320,13 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 	defer cancel()
 	task, err = model.GetTaskByID(context.Background(), taskid)
 	if err != nil {
-		log.Error("can't get main taskID from dataBase",zap.String("task", task.Name))
+		log.Error("can't get main taskID from dataBase", zap.String("task", task.Name))
 		cachepool.Put(masterlogcache)
 		return
 	}
 
 	if !task.Run {
-		log.Error("main task is forbid run",zap.String("task", task.Name))
+		log.Error("main task is forbid run", zap.String("task", task.Name))
 		cachepool.Put(masterlogcache)
 		return
 	}

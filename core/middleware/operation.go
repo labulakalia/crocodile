@@ -85,7 +85,7 @@ func Oprtation() func(c *gin.Context) {
 
 		body, err := ioutil.ReadAll(c.Request.Body)
 		if err != nil {
-			log.Error("ioutil.ReadAll", zap.Error(err))
+			log.Error("ioutil.ReadAll failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
 			return
 		}
@@ -94,6 +94,143 @@ func Oprtation() func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(),
 			config.CoreConf.Server.DB.MaxQueryTime.Duration)
 		defer cancel()
+
+		uid := c.GetString("uid")
+		username := c.GetString("username")
+		// 获取用户的类型
+		var role define.Role
+		if v, ok := c.Get("role"); ok {
+			role = v.(define.Role)
+		}
+
+		columns := make([]define.Column, 0, 50)
+
+		// 一些不能使用修改前后两次数据对比的审计
+		// 复制任务
+		// /api/v1/task/clone post
+		if c.Request.Method == http.MethodPost && c.Request.URL.Path == "/api/v1/task/clone" {
+			idname := define.IDName{}
+			err = json.Unmarshal(body, &idname)
+			if err != nil {
+				log.Error("json.Unmarshal failed", zap.Error(err))
+				resp.JSON(c, resp.ErrInternalServer, nil)
+				return
+			}
+			clonetask, err := model.GetTaskByID(ctx, idname.ID)
+			if err != nil {
+				log.Error("model.GetTaskByID failed", zap.Error(err))
+				resp.JSON(c, resp.ErrInternalServer, nil)
+				return
+			}
+			model.SaveOperateLog(ctx,
+				uid,
+				username,
+				role,
+				c.Request.Method,
+				module,
+				idname.Name,
+				operatetimne,
+				fmt.Sprintf("通过任务 %s 克隆新的任务 %s", clonetask.Name, idname.Name), columns)
+			if err != nil {
+				log.Error("model.SaveOperateLog failed", zap.Error(err))
+			}
+			c.Next()
+			return
+		}
+		// 删除日志
+		// /api/v1/task/log delete
+		if c.Request.Method == http.MethodDelete && c.Request.URL.Path == "/api/v1/task/log" {
+			cleanlog := define.Cleanlog{}
+			err = json.Unmarshal(body, &cleanlog)
+			if err != nil {
+				log.Error("json.Unmarshal failed", zap.Error(err))
+				resp.JSON(c, resp.ErrInternalServer, nil)
+				return
+			}
+			var desc string
+			if cleanlog.PreDay > 0 {
+				desc = fmt.Sprintf("清除任务%s %d天前的任务日志", cleanlog.Name, cleanlog.PreDay)
+			} else {
+				desc = "清除全部日志"
+			}
+			model.SaveOperateLog(ctx,
+				uid,
+				username,
+				role,
+				c.Request.Method,
+				module,
+				cleanlog.Name,
+				operatetimne,
+				desc, columns)
+			if err != nil {
+				log.Error("model.SaveOperateLog failed", zap.Error(err))
+			}
+			c.Next()
+			return
+		}
+		// 运行任务
+		// /api/v1/task/run PUT
+		if c.Request.Method == http.MethodPut && c.Request.URL.Path == "/api/v1/task/run" {
+			getid := define.GetID{}
+			err = json.Unmarshal(body, &getid)
+			if err != nil {
+				log.Error("json.Unmarshal failed", zap.Error(err))
+				resp.JSON(c, resp.ErrInternalServer, nil)
+				return
+			}
+			task, err := model.GetTaskByID(ctx, getid.ID)
+			if err != nil {
+				log.Error("model.GetTaskByID failed", zap.Error(err))
+				resp.JSON(c, resp.ErrInternalServer, nil)
+				return
+			}
+			model.SaveOperateLog(ctx,
+				uid,
+				username,
+				role,
+				c.Request.Method,
+				module,
+				task.Name,
+				operatetimne,
+				fmt.Sprintf("触发运行任务%s", task.Name), columns)
+			if err != nil {
+				log.Error("model.SaveOperateLog failed", zap.Error(err))
+			}
+			c.Next()
+			return
+
+		}
+		// 杀死任务
+		// /api/v1/task/kill PUT
+		if c.Request.Method == http.MethodPut && c.Request.URL.Path == "/api/v1/task/kill" {
+			getid := define.GetID{}
+			err = json.Unmarshal(body, &getid)
+			if err != nil {
+				log.Error("json.Unmarshal failed", zap.Error(err))
+				resp.JSON(c, resp.ErrInternalServer, nil)
+				return
+			}
+			task, err := model.GetTaskByID(ctx, getid.ID)
+			if err != nil {
+				log.Error("model.GetTaskByID failed", zap.Error(err))
+				resp.JSON(c, resp.ErrInternalServer, nil)
+				return
+			}
+			model.SaveOperateLog(ctx,
+				uid,
+				username,
+				role,
+				c.Request.Method,
+				module,
+				task.Name,
+				operatetimne,
+				fmt.Sprintf("终止任务%s", task.Name), columns)
+			if err != nil {
+				log.Error("model.SaveOperateLog failed", zap.Error(err))
+			}
+			c.Next()
+			return
+		}
 
 		// get old data
 		switch c.Request.Method {
@@ -246,20 +383,10 @@ func Oprtation() func(c *gin.Context) {
 			}
 		}
 
-		columns := make([]define.Column, 0, 50)
-
 		parseColumn(oldData, newData, &columns, "")
 
 		if len(columns) == 0 {
 			return
-		}
-
-		uid := c.GetString("uid")
-		username := c.GetString("username")
-		// 获取用户的类型
-		var role define.Role
-		if v, ok := c.Get("role"); ok {
-			role = v.(define.Role)
 		}
 
 		err = model.SaveOperateLog(ctx,
@@ -270,6 +397,7 @@ func Oprtation() func(c *gin.Context) {
 			module,
 			modulename,
 			operatetimne,
+			"",
 			columns)
 		if err != nil {
 			log.Error("model.SaveOperateLog failed", zap.Error(err))
@@ -360,7 +488,13 @@ func parseColumn(oldData, newData interface{}, columns *[]define.Column, precm s
 			newvalue = "-"
 		}
 		if precm != "" {
-			comment = fmt.Sprintf("%s-%s-%s", precm, newt.Name(), comment)
+			var name string
+			if oldt.Kind() != reflect.Invalid {
+				name = oldt.Name()
+			} else if newt.Kind() != reflect.Invalid {
+				name = newt.Name()
+			}
+			comment = fmt.Sprintf("%s-%s-%s", precm, name, comment)
 		}
 		c := define.Column{
 			Name:     comment,

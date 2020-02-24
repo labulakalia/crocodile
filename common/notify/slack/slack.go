@@ -18,7 +18,7 @@ type Slack struct {
 type SendMsg struct {
 	Text string `json:"text"`
 	// Channel string `json:"channel"`
-	// UserName string `json:"username"`
+	UserName string `json:"username"`
 	// PreText string `json:"pretext"`
 }
 
@@ -41,7 +41,7 @@ func (s *Slack) Send(tos []string, title string, content string) error {
 	sendmsg := SendMsg{
 		Text: content + "\n" + content,
 	}
-	resp, err := notify.JSONPost(s.webhookurl, sendmsg, s.httpclient)
+	resp, err := notify.JSONPost(http.MethodPost, s.webhookurl, sendmsg, s.httpclient)
 	if err != nil {
 		return err
 	}

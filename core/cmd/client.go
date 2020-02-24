@@ -1,24 +1,26 @@
 package cmd
 
 import (
-	"time"
 	"context"
+	"net"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/router"
 	"github.com/labulaka521/crocodile/core/schedule"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"github.com/labulaka521/crocodile/core/utils/resp"
 	mylog "github.com/labulaka521/crocodile/core/utils/log"
+	"github.com/labulaka521/crocodile/core/utils/resp"
+	"github.com/labulaka521/crocodile/core/version"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"net"
-	"os"
-	"strconv"
 )
 
 // Client crocodile client
-func Client(version string) *cobra.Command {
+func Client() *cobra.Command {
 	var (
 		cfg string
 	)
@@ -41,17 +43,17 @@ func Client(version string) *cobra.Command {
 			}
 			_, port, _ := net.SplitHostPort(lis.Addr().String())
 			intport, _ := strconv.Atoi(port)
-			var maxretry = 10
-			for i:=0;i<maxretry;i++{
-				err = schedule.RegistryClient(version, intport)
+			var maxretry = 3
+			for i := 0; i < maxretry; i++ {
+				err = schedule.RegistryClient(version.Version, intport)
 				if err != nil {
 					if err == context.DeadlineExceeded {
 						err = resp.GetMsgErr(resp.ErrCtxDeadlineExceeded)
 					}
-					log.Error("registryClient failed", zap.Int("trytime", i+1),zap.Error(err))
+					log.Error("registryClient failed", zap.Int("trytime", i+1), zap.Error(err))
 					time.Sleep(time.Second)
-					if i == maxretry - 1 {
-						log.Fatal("registry client failed,already try 10 time")
+					if i == maxretry-1 {
+						log.Fatal("registry client failed")
 					}
 				} else {
 					log.Info("registry success from server")

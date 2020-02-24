@@ -23,6 +23,7 @@ import (
 	"github.com/labulaka521/crocodile/core/middleware"
 	"github.com/labulaka521/crocodile/core/router/api/v1/host"
 	"github.com/labulaka521/crocodile/core/router/api/v1/hostgroup"
+	"github.com/labulaka521/crocodile/core/router/api/v1/notify"
 	"github.com/labulaka521/crocodile/core/router/api/v1/task"
 	"github.com/labulaka521/crocodile/core/router/api/v1/user"
 	"github.com/labulaka521/crocodile/core/schedule"
@@ -68,20 +69,22 @@ func NewHTTPRouter() *http.Server {
 	rt := v1.Group("/task")
 	{
 		rt.GET("", task.GetTasks)
-		rt.GET("/info", task.GetTask) // 获取指定task信息
+		rt.GET("/info", task.GetTask)
 		rt.POST("", task.CreateTask)
+		rt.POST("/clone", task.CloneTask)
 		rt.PUT("", task.ChangeTask)
 		rt.DELETE("", task.DeleteTask)
 		rt.PUT("/run", task.RunTask)
 		rt.PUT("/kill", task.KillTask)
 		rt.GET("/running", task.GetRunningTask)
+		rt.DELETE("/log", task.CleanTaskLog)
 		rt.GET("/log", task.LogTask)
 		rt.GET("/log/tree", task.LogTreeData)
 		rt.GET("/log/websocket", task.RealRunTaskLog)
 		rt.GET("/status/websocket", task.RealRunTaskStatus)
+
 		rt.GET("/cron", task.ParseCron)
 		rt.GET("/select", task.GetSelect)
-
 	}
 	rh := v1.Group("/host")
 	{
@@ -91,13 +94,18 @@ func NewHTTPRouter() *http.Server {
 		rh.GET("/select", host.GetSelect)
 	}
 
+	rn := v1.Group("/notify")
+	{
+		rn.GET("", notify.GetNotify)
+		rn.PUT("", notify.ReadNotify)
+	}
+
 	httpSrv := &http.Server{
 		Handler: router,
 		// ReadTimeout:  config.CoreConf.Server.MaxHTTPTime.Duration,
 		// WriteTimeout: config.CoreConf.Server.MaxHTTPTime.Duration,
 	}
 	return httpSrv
-
 }
 
 // GetListen get listen addr by server or client

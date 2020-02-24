@@ -29,9 +29,11 @@ const (
 	ErrHostgroupNotExist = 10419
 	// ErrDelHostUseByOtherHG 正在被其他的主机组使用，不能删除
 	ErrDelHostUseByOtherHG = 10420
-
 	//ErrHostNotExist 主机不存在
 	ErrHostNotExist = 10421
+
+	// ErrCronExpr CronExpr表达式不规范
+	ErrCronExpr = 10422
 
 	// ErrInternalServer 服务端错误
 	ErrInternalServer = 10500

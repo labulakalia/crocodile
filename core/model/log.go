@@ -58,7 +58,7 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 }
 
 // GetLog get task resp log by taskid
-func GetLog(ctx context.Context, taskname string, status int, offset, limit int) ([]*define.Log, error) {
+func GetLog(ctx context.Context, taskname string, status int, offset, limit int) ([]*define.Log, int, error) {
 	logs := []*define.Log{}
 	getsql := `SELECT 
 					name,
@@ -83,23 +83,27 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 		getsql += ` AND status=?`
 		args = append(args, status)
 	}
+	count, err := countColums(ctx, getsql, args...)
+	if err != nil {
+		return logs, 0, errors.Wrap(err, "countColums")
+	}
 	getsql += ` ORDER BY id DESC LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "db.GetConn")
+		return logs, 0, errors.Wrap(err, "db.GetConn")
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return nil, errors.Wrap(err, "conn.PrepareContext")
+		return logs, 0, errors.Wrap(err, "conn.PrepareContext")
 	}
 
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "stmt.QueryContext")
+		return logs, 0, errors.Wrap(err, "stmt.QueryContext")
 	}
 	for rows.Next() {
 		getlog := define.Log{}
@@ -129,7 +133,7 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 		getlog.Triggerstr = getlog.Trigger.String()
 		logs = append(logs, &getlog)
 	}
-	return logs, nil
+	return logs, count, nil
 }
 
 // GetTreeLog get tree log data
@@ -253,8 +257,42 @@ func GetTreeLog(ctx context.Context, id string, startTime int64) ([]*define.Task
 	return retTasksStatus, nil
 }
 
+// CleanTaskLog clean old task from time ago
+func CleanTaskLog(ctx context.Context, name, taskid string, deletetime int64) (int64, error) {
+	delsql := `DELETE FROM crocodile_log WHERE starttime < ?`
+	args := []interface{}{deletetime}
+	if name != "" {
+		delsql += " AND name=? "
+		args = append(args, name)
+	} else if taskid != "" {
+		delsql += " AND taskid=? "
+		args = append(args, taskid)
+	} else {
+		return 0, errors.New("no delete id or name")
+	}
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return 0, errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+	stmt, err := conn.PrepareContext(ctx, delsql)
+	if err != nil {
+		return 0, errors.Wrap(err, "conn.PrepareContext")
+	}
+	defer stmt.Close()
+
+	res, err := stmt.ExecContext(ctx, args...)
+	if err != nil {
+		return 0, errors.Wrap(err, "stmt.ExecContext")
+	}
+
+	delcount, _ := res.RowsAffected()
+
+	return delcount, nil
+}
+
 // SaveOperateLog save all user change operate
-func SaveOperateLog(ctx context.Context, uid, username string, role define.Role, method, module, modulename string, operatetime int64, columns []define.Column) error {
+func SaveOperateLog(ctx context.Context, uid, username string, role define.Role, method, module, modulename string, operatetime int64, desc string, columns []define.Column) error {
 	log.Debug("start save operate", zap.String("username", username))
 	operatesql := `INSERT INTO crocodile_operate
 			(uid,
@@ -264,10 +302,11 @@ func SaveOperateLog(ctx context.Context, uid, username string, role define.Role,
 			module,
 			modulename,
 			operatetime,
+			desc,
 			columns)
 			VALUES
 			(
-				?,?,?,?,?,?,?,?
+				?,?,?,?,?,?,?,?,?
 			)
 		`
 	conn, err := db.GetConn(ctx)
@@ -281,7 +320,7 @@ func SaveOperateLog(ctx context.Context, uid, username string, role define.Role,
 	}
 	defer stmt.Close()
 	columnsdata, err := json.Marshal(columns)
-	_, err = stmt.ExecContext(ctx, uid, username, role, method, module, modulename, operatetime, columnsdata)
+	_, err = stmt.ExecContext(ctx, uid, username, role, method, module, modulename, operatetime, desc, columnsdata)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
@@ -289,13 +328,14 @@ func SaveOperateLog(ctx context.Context, uid, username string, role define.Role,
 }
 
 // GetOperate get operate log
-func GetOperate(ctx context.Context, uid, username, method, module string, limit, offset int) ([]define.OperateLog, error) {
+func GetOperate(ctx context.Context, uid, username, method, module string, limit, offset int) ([]define.OperateLog, int, error) {
 	getsql := `SELECT 
-				uid,username,role,method,module,modulename, operatetime,columns
+				uid,username,role,method,module,modulename, operatetime,desc,columns
 			   FROM 
 				crocodile_operate `
 	query := []string{}
 	args := []interface{}{}
+	var count int
 
 	if uid != "" {
 		query = append(query, " uid=? ")
@@ -318,28 +358,33 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 		getsql += "WHERE"
 		getsql += strings.Join(query, "AND")
 	}
+	oplogs := make([]define.OperateLog, 0, limit)
+
 	if limit > 0 {
+		var err error
+		count, err = countColums(ctx, getsql, args...)
+		if err != nil {
+			return oplogs, 0, errors.Wrap(err, "countColums")
+		}
 		getsql += `ORDER BY id DESC LIMIT ? OFFSET ?`
 		args = append(args, limit, offset)
 	}
-	log.Debug("get operate sql", zap.String("operatesql", getsql))
+
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "db.GetConn")
+		return oplogs, 0, errors.Wrap(err, "db.GetConn")
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return nil, errors.Wrap(err, "conn.PrepareContext")
+		return oplogs, 0, errors.Wrap(err, "conn.PrepareContext")
 	}
 
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return nil, errors.Wrap(err, "stmt.QueryContext")
+		return oplogs, 0, errors.Wrap(err, "stmt.QueryContext")
 	}
-
-	oplogs := make([]define.OperateLog, 0, limit)
 
 	for rows.Next() {
 		var (
@@ -356,6 +401,7 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 			&oplog.Module,
 			&oplog.ModuleName,
 			&operatetime,
+			&oplog.Desc,
 			&columnsdata,
 		)
 		if err != nil {
@@ -374,5 +420,107 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 
 		oplogs = append(oplogs, oplog)
 	}
-	return oplogs, nil
+	return oplogs, count, nil
+}
+
+// SaveNewNotify save new notify
+func SaveNewNotify(ctx context.Context, notify define.Notify) error {
+	savesql := `INSERT INTO crocodile_notify
+				(
+					notyfytype,
+					notifyuid,
+					title,
+					content,
+					is_read,
+					notifytime
+				)
+			  VALUES 
+				(
+					?,?,?,?,?,?
+				)
+					`
+	log.Debug("start save new notify", zap.Any("notify", notify))
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareContext(ctx, savesql)
+	if err != nil {
+		return errors.Wrap(err, "conn.PrepareContext")
+	}
+
+	_, err = stmt.ExecContext(ctx,
+		notify.NotifyType,
+		notify.NotifyUID,
+		notify.Title,
+		notify.Content,
+		false,
+		notify.NotifyTime,
+	)
+	if err != nil {
+		return errors.Wrap(err, "stmt.ExecContext")
+	}
+
+	return nil
+}
+
+// GetNotifyByUID get user's notify
+func GetNotifyByUID(ctx context.Context, uid string) ([]define.Notify, error) {
+	getsql := `SELECT 
+					id,notyfytype,title,content,notifytime
+			   FROM 
+					crocodile_notify 
+			   WHERE 
+			   		is_read=? AND notifyuid=?`
+	notifys := []define.Notify{}
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return notifys, errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareContext(ctx, getsql)
+	if err != nil {
+		return notifys, errors.Wrap(err, "conn.PrepareContext")
+	}
+
+	rows, err := stmt.QueryContext(ctx, false, uid)
+	if err != nil {
+		return notifys, errors.Wrap(err, "stmt.QueryContext")
+	}
+
+	for rows.Next() {
+		var notify define.Notify
+		err = rows.Scan(&notify.ID, &notify.NotifyType, &notify.Title, &notify.Content, &notify.NotifyTime)
+		if err != nil {
+			log.Error("rows.Scan failed", zap.Error(err))
+			continue
+		}
+		notify.NotifyTypeDesc = notify.NotifyType.String()
+		notify.NotifyTimeDesc = utils.UnixToStr(notify.NotifyTime)
+		notifys = append(notifys, notify)
+	}
+	return notifys, nil
+}
+
+// NotifyRead make notify status is readed
+func NotifyRead(ctx context.Context, id int, uid string) error {
+	updatesql := `UPDATE crocodile_notify SET is_read=? WHERE id=? AND notifyuid=?`
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return errors.Wrap(err, "db.GetConn")
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareContext(ctx, updatesql)
+	if err != nil {
+		return errors.Wrap(err, "conn.PrepareContext")
+	}
+	_, err = stmt.ExecContext(ctx, true, id, uid)
+	if err != nil {
+		return errors.Wrap(err, "stmt.ExecContext")
+	}
+	return nil
 }

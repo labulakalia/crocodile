@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+
 	"github.com/labulaka521/crocodile/common/log"
 	"go.uber.org/zap"
 )
@@ -23,12 +24,12 @@ type Sender interface {
 // server jiang
 
 //JSONPost Post req json data to url
-func JSONPost(url string, data interface{}, client *http.Client) ([]byte, error) {
+func JSONPost(method, url string, data interface{}, client *http.Client) ([]byte, error) {
 	jsonBody, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req, err := http.NewRequest(method, url, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, err
 	}

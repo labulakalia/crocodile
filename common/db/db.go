@@ -11,7 +11,6 @@ var (
 	_db *sql.DB
 )
 
-
 type dbCfg struct {
 	DriveName         string
 	Dsn               string
@@ -41,6 +40,7 @@ func Dsn(dsn string) func(*dbCfg) {
 		dbcfg.Dsn = dsn
 	}
 }
+
 // MaxIdleConnection set sql db max idle conn
 func MaxIdleConnection(idle int) Option {
 	return func(dbcfg *dbCfg) {

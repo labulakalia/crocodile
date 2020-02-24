@@ -15,6 +15,7 @@ webhook := "https://oapi.dingtalk.com/robot/send?access_token=..."
 func SendDing() {
    ding := NewDing(webhook, Sign, secret)
    err := ding.Send([]string{"..."}, "测试标题", "测试内容")
+
    if err != nil {
       t.Error(err)
    }

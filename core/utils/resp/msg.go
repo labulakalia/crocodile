@@ -22,6 +22,8 @@ var msgcode = map[int]string{
 	ErrDelHostUseByOtherHG: "正在被其他的主机组使用，不能删除",
 	ErrHostNotExist:        "主机不存在",
 
+	ErrCronExpr: "CronExpr表达式不规范",
+
 	ErrInternalServer: "服务端错误",
 
 	ErrCtxDeadlineExceeded: "调用超时",
