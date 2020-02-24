@@ -55,4 +55,13 @@ const (
 	ErrRPCNotValidHost = 10605
 	// ErrRPCNotConnHost 未找到存活的worker
 	ErrRPCNotConnHost = 10606
+
+	// NeedInstall 系统还未安装，请等待安装后再进行操作
+	NeedInstall = 10700
+	// IsInstall 系统已经安装完成，请勿再次执行
+	IsInstall = 10701
+	// ErrInstall 安装失败
+	ErrInstall = 10702
+	// ErrDBConnFail 数据库连接失败
+	ErrDBConnFail = 10703
 )

@@ -1,4 +1,7 @@
 .idea
 *.log
 .vscode
-db
+*.db
+web/node_modules
+*.pem
+build/*

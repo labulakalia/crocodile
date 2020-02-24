@@ -79,19 +79,33 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 	if conn != nil {
 		return conn, nil
 	}
+	var (
+		c credentials.TransportCredentials
+		err error
+	)
 
-	c, err := credentials.NewClientTLSFromFile(config.CoreConf.Cert.CertFile, cert.ServerName)
-	if err != nil {
-		log.Error("credentials.NewClientTLSFromFile failed", zap.Error(err))
-		return nil, err
-	}
-	rpcctx, cancel := context.WithTimeout(ctx, defaultRPCTimeout)
-	defer cancel()
-	conn, err = grpc.DialContext(rpcctx, addr, grpc.WithTransportCredentials(c),
+	dialoptions := []grpc.DialOption{
 		grpc.WithPerRPCCredentials(
 			&Auth{SecretToken: config.CoreConf.SecretToken},
 		),
-		grpc.WithBlock())
+		grpc.WithBlock(),
+	}
+
+
+	if config.CoreConf.Cert.Enable {
+		c, err = credentials.NewClientTLSFromFile(config.CoreConf.Cert.CertFile, cert.ServerName)
+		if err != nil {
+			log.Error("credentials.NewClientTLSFromFile failed", zap.Error(err))
+			return nil, err
+		}
+		dialoptions = append(dialoptions,grpc.WithTransportCredentials(c))
+	} else {
+		dialoptions = append(dialoptions,grpc.WithInsecure())
+	}
+
+	rpcctx, cancel := context.WithTimeout(ctx, defaultRPCTimeout)
+	defer cancel()
+	conn, err = grpc.DialContext(rpcctx, addr, dialoptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -101,19 +115,24 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 
 // NewgRPCServer new gRPC server
 func NewgRPCServer(mode define.RunMode) (*grpc.Server, error) {
-	c, err := credentials.NewServerTLSFromFile(config.CoreConf.Cert.CertFile, config.CoreConf.Cert.KeyFile)
-	if err != nil {
-		log.Error("credentials.NewServerTLSFromFile failed", zap.Error(err))
-		return nil, err
-	}
-	auth := Auth{SecretToken: config.CoreConf.SecretToken}
-	grpcserver := grpc.NewServer(grpc.Creds(c),
+	serveroptions := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(
 			middleware.RecoveryInterceptor,
-			// middleware.LoggerInterceptor,
+			middleware.LoggerInterceptor,
 			middleware.CheckSecretInterceptor,
 		),
-	)
+	}
+	if config.CoreConf.Cert.Enable {
+		c, err := credentials.NewServerTLSFromFile(config.CoreConf.Cert.CertFile, config.CoreConf.Cert.KeyFile)
+		if err != nil {
+			log.Error("credentials.NewServerTLSFromFile failed", zap.Error(err))
+			return nil, err
+		}
+		serveroptions = append(serveroptions,grpc.Creds(c))
+
+	}
+	auth := Auth{SecretToken: config.CoreConf.SecretToken}
+	grpcserver := grpc.NewServer(serveroptions...)
 	switch mode {
 	case define.Server:
 		pb.RegisterHeartbeatServer(grpcserver, &HeartbeatService{Auth: auth})
@@ -138,7 +157,7 @@ func (a *Auth) GetRequestMetadata(ctx context.Context, uri ...string) (map[strin
 // RequireTransportSecurity indicates whether the credentials requires
 // transport security.
 func (a *Auth) RequireTransportSecurity() bool {
-	return true
+	return config.CoreConf.Cert.Enable
 }
 
 // try Get grpc client conn

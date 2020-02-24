@@ -80,7 +80,7 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 	return enforcer.Enforce(uid, requrl, method)
 }
 
-var excludepath = []string{"login", "logout", "swagger", "websocket", "/debug/pprof"}
+var excludepath = []string{"login", "favicon.ico", "crocodile", "logout", "install", "swagger", "websocket", "/debug/pprof"}
 
 // PermissionControl 权限控制middle
 func PermissionControl() func(c *gin.Context) {
@@ -89,6 +89,10 @@ func PermissionControl() func(c *gin.Context) {
 			code = resp.Success
 			err  error
 		)
+		if c.Request.URL.Path == "/" {
+			c.Next()
+			return
+		}
 		for _, url := range excludepath {
 			if strings.Contains(c.Request.URL.Path, url) {
 				c.Next()

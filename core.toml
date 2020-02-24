@@ -18,10 +18,12 @@ loglevel  = "debug"
 # text or json output
 format = "text"
 
-# cert file
+# tls cert file
 [cert]
-certfile="core/cert/cert.pem"
-keyfile="core/cert/key.pem"
+# enable check tls cert
+enable = false
+certfile="cert.pem"
+keyfile="key.pem"
 
 # crocodile server
 [server]

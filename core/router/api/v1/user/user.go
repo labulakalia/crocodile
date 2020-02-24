@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
@@ -79,12 +80,13 @@ func GetUser(c *gin.Context) {
 	defer cancel()
 
 	uid := c.GetString("uid")
-	c.Set("operate", "获取用户")
+	fmt.Println(uid)
 	// check uid exist
 	exist, err := model.Check(ctx, model.TBUser, model.ID, uid)
 	if err != nil {
 		log.Error("IsExist failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
 	}
 	if !exist {
 		resp.JSON(c, resp.ErrUserNotExist, nil)

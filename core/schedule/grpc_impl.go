@@ -3,6 +3,7 @@ package schedule
 import (
 	"context"
 	"fmt"
+	"github.com/labulaka521/crocodile/core/utils/resp"
 	"io"
 	"net"
 	"strings"
@@ -149,6 +150,18 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	log.Debug("registryHost new worker", zap.Any("req", req))
 	req.Ip = ip
 	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
+
+
+	isinstall, err := model.QueryIsInstall(ctx)
+	if err != nil {
+		log.Error("model.QueryIsInstall failed",zap.Error(err))
+		return &pb.Empty{}, err
+	}
+
+	if !isinstall {
+		return &pb.Empty{}, resp.GetMsgErr(resp.NeedInstall)
+	}
+
 	host, exist, err := model.ExistAddr(ctx, addr)
 	if err != nil {
 		return &pb.Empty{}, err

@@ -133,6 +133,13 @@ type RegistryUser struct {
 	Remark   string `json:"remark"`                      // 备注
 }
 
+// CreateAdminUser first run must be create admin user
+type CreateAdminUser struct {
+	Name     string `json:"username" binding:"required"` // 用户名
+	Password string `json:"password" binding:"required"` // 用户密码
+
+}
+
 // AdminChangeUser struct
 type AdminChangeUser struct {
 	ID       string `json:"id"  binding:"required"`  // user id

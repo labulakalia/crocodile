@@ -44,6 +44,7 @@ type Log struct {
 
 // Cert tls cert
 type Cert struct {
+	Enable   bool
 	CertFile string
 	KeyFile  string
 }

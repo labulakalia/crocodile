@@ -8,7 +8,7 @@ var msgcode = map[int]string{
 	ErrUnauthorized: "非法请求",
 	ErrBadRequest:   "请求参数错误",
 
-	ErrUserPassword:  "用户密码错误",
+	ErrUserPassword:  "用户或密码错误",
 	ErrUserForbid:    "禁止登陆",
 	ErrEmailExist:    "邮箱已经存在",
 	ErrUserNameExist: "用户名已存在",
@@ -35,6 +35,11 @@ var msgcode = map[int]string{
 	ErrRPCUnknow:           "调用未知错误",
 	ErrRPCNotValidHost:     "未发现worker",
 	ErrRPCNotConnHost:      "未找到存活的worker",
+
+	NeedInstall:   "系统还未安装，请等待安装后再进行操作",
+	IsInstall:     "系统已经安装完成，请勿再次执行安装操作",
+	ErrInstall:    "安装失败",
+	ErrDBConnFail: "数据库连接失败",
 }
 
 // GetMsg get msg by code

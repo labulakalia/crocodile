@@ -15,7 +15,7 @@ import (
 )
 
 // InitDb init db
-func InitDb() {
+func InitDb() error {
 	var (
 		err error
 	)
@@ -27,9 +27,11 @@ func InitDb() {
 		db.MaxQueryTime(dbcfg.MaxQueryTime.Duration),
 	)
 	if err != nil {
-		log.Fatal("InitDb failed", zap.Error(err))
+		return err
 	}
-	
+	log.Debug("InitDb Success", zap.String("drive", dbcfg.Drivename), zap.String("DSN", dbcfg.Dsn))
+	return nil
+
 }
 
 type checkType uint
@@ -49,22 +51,27 @@ const (
 	NameCreateByUID
 )
 
-// Tb selcet table name
-type Tb string
-
 const (
 	// TBUser select ccrocodile_user
-	TBUser Tb = "crocodile_user"
+	TBUser string = "crocodile_user"
 	// TBHostgroup select ccrocodile_user
-	TBHostgroup Tb = "crocodile_hostgroup"
+	TBHostgroup string = "crocodile_hostgroup"
 	// TBTask select crocodile_task
-	TBTask Tb = "crocodile_task"
+	TBTask string = "crocodile_task"
 	// TBHost select crocodile_host
-	TBHost Tb = "crocodile_host"
+	TBHost string = "crocodile_host"
+	// TBLog log table
+	TBLog string = "crocodile_log"
+	// TBNotify notify table
+	TBNotify string = "crocodile_notify"
+	// TBOperate operate table
+	TBOperate string = "crocodile_operate"
+	// TBCasbin casbin table
+	TBCasbin string = "casbin_rule"
 )
 
 // Check check some msg is valid
-func Check(ctx context.Context, table Tb, checkType checkType, args ...interface{}) (bool, error) {
+func Check(ctx context.Context, table string, checkType checkType, args ...interface{}) (bool, error) {
 	check := fmt.Sprintf("select COUNT(id) FROM %s WHERE ", table)
 	switch checkType {
 	case Email:
@@ -134,7 +141,7 @@ func QueryUserRule(ctx context.Context, uid string) (define.Role, error) {
 }
 
 // GetNameID get return name,id
-func GetNameID(ctx context.Context, t Tb) ([]define.KlOption, error) {
+func GetNameID(ctx context.Context, t string) ([]define.KlOption, error) {
 	getsql := `SELECT id,name FROM ` + string(t)
 	if t == TBHost {
 		getsql = `SELECT id,addr FROM ` + string(t)

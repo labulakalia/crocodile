@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"net/http"
 	"time"
-
 	"strconv"
 
 	"github.com/labulaka521/crocodile/common/log"
@@ -221,6 +220,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 			)
 		}
 	}
+
 	alarmtitle, err := template.New("title").Parse(title)
 	if err != nil {
 		log.Error("template new title failed", zap.Error(err))

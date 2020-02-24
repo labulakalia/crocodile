@@ -21,6 +21,7 @@ import (
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -66,6 +67,15 @@ func Init() error {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
+	isinstalll, err := model.QueryIsInstall(ctx)
+	if err != nil {
+		log.Error("model.QueryIsInstall failed", zap.Error(err))
+		return errors.Wrap(err, "model.QueryIsInstall")
+	}
+	if !isinstalll {
+		log.Debug("Crocodile is Not Install")
+		return nil
+	}
 	eps, _, err := model.GetTasks(ctx, 0, 0, "", "", "")
 	if err != nil {
 		log.Error("GetTasks failed", zap.Error(err))

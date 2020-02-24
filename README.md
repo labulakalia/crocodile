@@ -1,34 +1,40 @@
-# Crocodile 任务调度系统.v3
+# Crocodile 任务调度系统
+[![Downloads](https://img.shields.io/github/downloads/labulaka521/crocodile/total.svg)](https://github.com/ouqiang/gocron/releases)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/labulaka521/crocodile/blob/master/LICENSE)
+[![Release](https://img.shields.io/github/release/ouqiang/gocron.svg?label=Release)](https://github.com/labulaka521/crocodile/releases)
 
 
-## 特性
+## Introduction
+基于Golang开发的定时任务调度系统，支持http请求、运行golang、python、shell等调度任务
+
+## Features
+- 在Web节点对任务进行增加、修改、删除、克隆、运行任务等操作
+- 实时查看正在运行的任务和任务的实时日志，并且可以对正在运行的任务进行终止操作
 - 多种任务类型:
     - 执行`http`请求任务
     - 运行`shell`、`python`、`golang`代码任务
-- 父、子任务: 
+- 父、子任务:   
     当设置了父任务或者子任务后，先会运行`父任务`->`主任务`->`子任务`，任意任务出错后会立即中断整个流程，还可以设置父任务或子任务`并行`或者`串行`运行
 - 调度算法:  
-    支持四种调度算法`随机`、`轮训`、`Worker权重`、`Worker最少任务数`来调度Worker运行任务，
+    支持四种调度算法随机、轮训、Worker权重、Worker最少任务数来调用Worker运行任务，
 - 自定义报警策略:  
-    可以设置当`任务成功`、`失败`、或者`运行完成后`报警给多个用户  
-    设置任务的`返回码`或者`返回内容`来比较任务的`实际返回码`或者`返回内容`是否相同来判断任务运行成功或者，code任务默认为0，http任务默认为200  
-- 在Web节点对任务进行增加、修改删除、克隆、删除任务等操作
-- 实时查看`正在运行`的任务和任务的`实时日志`，并且可以对正在运行的任务进行`终止`操作
+    可以设置当任务`成功`、`失败`、或者`运行完成后`报警给多个用户  
+    设置任务的返回码或者返回内容来比较任务的实际返回码或者返回内容是否相同来判断任务运行成功或者，code任务默认为0，http任务默认为200  
 - 主机组:  
     一个任务只可以绑定到任意一个主机组，任务的运行会通过任务的路由策略来选取这个主机组中的一个任务来运行任务
 - 主机:  
     一个主机组可以绑定多个主机，主机是实际运行任务的节点,注册后调度中心自动发现
 - 安全策略  
-    使用tls来进行调度之间数据加密  
-    设置`访问令牌`来确保正常通讯
+    证书加密加密通讯数据   
+    访问令牌
 - 任务的日志管理，清理日志
 - 报警通知支持平台  
-    邮件  
-    企业微信  
-    钉钉  
-    Slack Channel   
-    Telegram Bot
-    WebHooks
+    - 邮件  
+    - 企业微信  
+    - 钉钉  
+    - Slack Channel   
+    - Telegram Bot
+    - WebHook URL
 - 详细的任务审计功能  
     对用户的所有对数据改变改变的操作都会记录下来
 - 权限控制  
@@ -41,9 +47,42 @@
         只有查看的权限、无任何操作修改权限，但是不能查看审计记录、所有用户
 
 
+## Supported platforms
+- Linux
+- Mac
+
+## Install
+- [点击下载](https://github.com/labulaka521/crocodile/releases)编译好的二进制文件
+- 运行生成cert证书的命令
+    ```shell
+    crocodile cert
+    ```
+    然后会在当前目录本地生成两个文件`cert.pem`、`key.pem`，将这两个文件保存后，将文件的路径填写值配置文件中,每个节点都需要这两个文件
+- 修改配置文件的配置
+- 作为一个调度中心来运行
+    ```shell
+    ./crocodile server -c config.toml
+    ```
+- 作为一个Worker(主机)节点来运行
+    ```shell
+    ./crocodile server -c config.toml
+    ```
+- 查看版本编译信息
+    ```
+    ./crocodile version
+    ```
+## Development
+- 前端
+    - 安装`yarn`
+    - 进入web目录,先下载依赖`yarn`,然后单独运行前端`yarn run dev`
+- 后端
+    - 作为调度中心运行`make runs`
+    - 作为Worker节点运行`make runc`
+
+
 # TODO
 - [x] 用户管理  
-      普通用户、管理员
+      普通用户、管理员、访客
 - [x] 主机组管理
 - [x] 主机管理
 - [x] rpc调度任务执行
@@ -68,7 +107,7 @@
 - [x] 报警
     - 配置告警模式，任务失败、成功 时报警
     - 通过检测返回结果、状态码，来判断是否报警，默认只检查返回码。
-    - 报警方式: email,telegram,slack,钉钉,webhooks，
+    - 报警方式: 邮箱,钉钉,企业微信,Telegram,Slack,自定义Webhook
 - [x] 支持语言`shell`,`golang`,`python`
 - [x] Swagger API
 - [x] 返回统计总数
@@ -79,5 +118,8 @@
 - [x] 前端
 - [ ] ldap支持
 - [ ] `Prometheus`+`grafana` 监控
-- [ ] 压力测试
 - [ ] 调度中心集群
+
+
+## License
+Crocodile is under the MIT license. See the [LICENSE](./LICENSE) file for details.

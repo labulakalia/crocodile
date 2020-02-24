@@ -3,8 +3,10 @@ package db
 import (
 	"context"
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3" // registry  sqlite3
 	"time"
+
+	_ "github.com/go-sql-driver/mysql" // registry sqlite3 deive
+	_ "github.com/mattn/go-sqlite3"    // registry  mysql drive
 )
 
 var (

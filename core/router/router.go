@@ -12,22 +12,25 @@ import (
 	"time"
 
 	"github.com/gin-contrib/pprof"
-
-	"github.com/gin-gonic/gin"
-	_ "github.com/labulaka521/crocodile/core/docs" // init swagger docs
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/middleware"
+	"github.com/labulaka521/crocodile/core/router/api/v1/asset"
 	"github.com/labulaka521/crocodile/core/router/api/v1/host"
 	"github.com/labulaka521/crocodile/core/router/api/v1/hostgroup"
+	"github.com/labulaka521/crocodile/core/router/api/v1/install"
 	"github.com/labulaka521/crocodile/core/router/api/v1/notify"
 	"github.com/labulaka521/crocodile/core/router/api/v1/task"
 	"github.com/labulaka521/crocodile/core/router/api/v1/user"
 	"github.com/labulaka521/crocodile/core/schedule"
 	"github.com/labulaka521/crocodile/core/utils/define"
+
+	"github.com/gin-gonic/gin"
+	_ "github.com/labulaka521/crocodile/core/docs" // init swagger docs
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	assetfs "github.com/elazarl/go-bindata-assetfs"
+
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -37,8 +40,32 @@ import (
 func NewHTTPRouter() *http.Server {
 	//gin.SetMode("release")
 	router := gin.New()
+
+	fs := &assetfs.AssetFS{
+		Asset:     asset.Asset,
+		AssetDir:  asset.AssetDir,
+		AssetInfo: asset.AssetInfo,
+		Prefix:    "crocodile",
+	}
+
+	router.StaticFS("/crocodile", fs)
+	router.GET("/static/*url", func(c *gin.Context) {
+		pre, exist := c.Params.Get("url")
+		if !exist {
+			return
+		}
+		c.Redirect(http.StatusMovedPermanently, "/crocodile/static"+pre)
+	})
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/crocodile/favicon.ico")
+	})
+	router.GET("/index.html", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/crocodile")
+	})
+
 	pprof.Register(router)
 	//gin.SetMode(gin.ReleaseMode)
+	//,
 	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl(), middleware.Oprtation())
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -98,6 +125,11 @@ func NewHTTPRouter() *http.Server {
 	{
 		rn.GET("", notify.GetNotify)
 		rn.PUT("", notify.ReadNotify)
+	}
+	ri := v1.Group("/install")
+	{
+		ri.GET("/status", install.QueryIsInstall)
+		ri.POST("", install.StartInstall)
 	}
 
 	httpSrv := &http.Server{
@@ -178,14 +210,16 @@ func tryDisConn(gRPCServer *grpc.Server, httpServer *http.Server, mode define.Ru
 		}()
 		log.Info(fmt.Sprintf("get signal %s, application will shutdown.", sig))
 		schedule.DoStopConn(mode)
-		time.Sleep(time.Second)
+
 		// g := errgroup.Group{}
+		log.Debug("Start Stop GrpcServer")
 		gRPCServer.Stop()
 		if mode == define.Server {
+			log.Debug("Start Stop HttpServer")
 			httpServer.Shutdown(context.Background())
 		}
 		// g.Wait()
-		time.Sleep(time.Second * 11)
+		//time.Sleep(time.Second * 11)
 		os.Exit(0)
 	}
 

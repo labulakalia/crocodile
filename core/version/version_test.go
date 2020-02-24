@@ -11,6 +11,9 @@ import (
 func Test_checkverson(t *testing.T) {
 	config.Init("/Users/labulakalia/workerspace/golang/crocodile/core/config/core.toml")
 	mylog.Init()
-	model.InitDb()
+	err:=model.InitDb()
+	if err != nil {
+		t.Fatal(err)
+	}
 	checkverson()
 }

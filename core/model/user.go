@@ -96,6 +96,7 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 	if !ok {
 		return errors.New("AddRoleForUser failed")
 	}
+	
 
 	return nil
 }

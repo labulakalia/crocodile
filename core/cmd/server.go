@@ -32,7 +32,10 @@ func Server() *cobra.Command {
 			config.Init(cfg)
 			mylog.Init()
 			alarm.InitAlarm()
-			model.InitDb()
+			err := model.InitDb()
+			if err != nil {
+				log.Fatal("InitDb failed", zap.Error(err))
+			}
 			model.InitRabc()
 			go version.CheckLatest() // check new version
 		},
