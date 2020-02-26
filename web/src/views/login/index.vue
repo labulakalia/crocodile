@@ -96,6 +96,7 @@ import { validUsername } from "@/utils/validate";
 import { queryinstallstatus, startinstall } from "@/api/install";
 import { Message } from "element-ui";
 import { login, logout } from "@/api/user";
+
 export default {
   name: "Login",
   data() {

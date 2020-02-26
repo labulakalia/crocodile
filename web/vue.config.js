@@ -12,7 +12,7 @@ const name = defaultSettings.title || 'vue Admin Template' // page title
 // For example, Mac: sudo npm run
 const port = 9528 // dev port
 
-const target = `http://localhost:8080`
+const target = `http://localhost:8088`
 
 // All configuration item explanations can be find in https://cli.vuejs.org/config/
 module.exports = {

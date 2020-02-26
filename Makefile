@@ -39,15 +39,15 @@ proto: clean
 
 build:
 	CGO_ENABLED=1 go build -o crocodile -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" core/main.go
-frontend: proto
+frontend:
 	cd web && yarn run build:prod
 	cd web && go-bindata -o=../core/router/api/v1/asset/asset.go  -pkg=asset ./crocodile/... && rm -rf ./crocodile
 
 runs:
-	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" core/main.go server -c ${CFGPATH}
+	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go server -c ${CFGPATH}
 runc:
-	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" core/main.go client -c ${CFGPATH}
+	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go client -c ${CFGPATH}
 version:
-	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" core/main.go version
+	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go version
 run:
-	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" core/main.go
+	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go

@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -198,6 +199,7 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 
 // RegistryClient registry client to server
 func RegistryClient(version string, port int) error {
+	fmt.Println(os.Args)
 	conn, err := getgRPCConn(context.Background(), config.CoreConf.Client.ServerAddr)
 	if err != nil {
 		return err

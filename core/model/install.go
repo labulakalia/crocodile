@@ -50,6 +50,7 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(err, "db.GetConn")
 	}
+	defer conn.Close()
 	err = conn.QueryRowContext(ctx, querytable, needtables...).Scan(&count)
 	if err != nil {
 		log.Error("msg string", zap.Error(err))
@@ -195,7 +196,7 @@ func StartInstall(ctx context.Context, username, password string) error {
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
 	}
-
+	defer conn.Close()
 	for tbname, tbsql := range crcocodileTables {
 		_, err = conn.ExecContext(ctx, tbsql)
 		if err != nil {

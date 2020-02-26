@@ -43,18 +43,20 @@ func Client() *cobra.Command {
 			}
 			_, port, _ := net.SplitHostPort(lis.Addr().String())
 			intport, _ := strconv.Atoi(port)
-			var maxretry = 3
-			for i := 0; i < maxretry; i++ {
+			//var maxretry = 30000
+			//for i := 0; i < maxretry; i++ {
+			for{
 				err = schedule.RegistryClient(version.Version, intport)
 				if err != nil {
 					if err == context.DeadlineExceeded {
 						err = resp.GetMsgErr(resp.ErrCtxDeadlineExceeded)
 					}
-					log.Error("registryClient failed", zap.Int("trytime", i+1), zap.Error(err))
-					time.Sleep(time.Second)
-					if i == maxretry-1 {
+					//log.Error("registryClient failed", zap.Int("trytime", i+1), zap.Error(err))
+					log.Error("registryClient failed", zap.Error(err))
+					time.Sleep(time.Second * 1)
+				/*	if i == maxretry-1 {
 						log.Fatal("registry client failed")
-					}
+					}*/
 				} else {
 					log.Info("registry success from server")
 					break

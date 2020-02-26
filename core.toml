@@ -85,7 +85,7 @@ webhookurl = ""
 # crocodile client
 [client]
 # client port
-port = 8081        # default rand port
+port = 0        # default rand port
 # crocodile server addr
 serveraddr = "127.0.0.1:8080"
 # client's hostgroup is exist hostgroup must be exist

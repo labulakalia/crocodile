@@ -1,1 +1,1 @@
-web: bin/crocodile
+web: sh run.sh

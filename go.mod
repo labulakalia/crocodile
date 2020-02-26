@@ -50,3 +50,5 @@ require (
 )
 
 replace gopkg.in/jcmturner/rpc.v1 => gopkg.in/jcmturner/rpc.v1 v1.1.0
+
+// +heroku goVersion go1.13

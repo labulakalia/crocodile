@@ -1,11 +1,13 @@
 # Crocodile 任务调度系统
 [![Downloads](https://img.shields.io/github/downloads/labulaka521/crocodile/total.svg)](https://github.com/ouqiang/gocron/releases)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/labulaka521/crocodile/blob/master/LICENSE)
-[![Release](https://img.shields.io/github/release/ouqiang/gocron.svg?label=Release)](https://github.com/labulaka521/crocodile/releases)
+[![Release](https://img.shields.io/github/release/labulaka521/crocodile.svg?label=Release)](https://github.com/labulaka521/crocodile/releases)
 
 
 ## Introduction
-基于Golang开发的定时任务调度系统，支持http请求、运行golang、python、shell等调度任务
+基于Golang开发的定时任务调度系统，支持http请求、运行golang、python、shell等调度任务  
+
+**[Online Preview](http://crocodile-test.herokuapp.com/crocodile/)** admin/admin
 
 ## Features
 - 在Web节点对任务进行增加、修改、删除、克隆、运行任务等操作

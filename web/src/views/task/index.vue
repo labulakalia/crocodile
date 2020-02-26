@@ -498,7 +498,7 @@
         </el-table>
         <div style="margin-top: 10px;float:right;height: 70px;">
           <el-pagination
-           :page-size="runningquery.limit"
+            :page-size="runningquery.limit"
             @current-change="handleCurrentChangeruntask"
             background
             layout="total,prev, pager, next"
@@ -708,7 +708,7 @@
       </el-table>
       <div style="margin-top: 10px;float:right;height: 70px;">
         <el-pagination
-         :page-size="query.limit"
+          :page-size="query.limit"
           @current-change="handleCurrentChangetask"
           background
           layout="total,prev, pager, next"
@@ -751,12 +751,6 @@ import { isNumber } from "@/utils/validate";
 import { Message } from "element-ui";
 
 import cron from "@/components/Cron/cron";
-
-const config = require("../../../vue.config.js");
-const wsbaseurl = config.devServer.proxy[
-  process.env.VUE_APP_BASE_API
-].target.replace("http", "ws");
-
 export default {
   components: {
     editor: require("vue2-ace-editor"),
@@ -1039,9 +1033,9 @@ func main() {
       });
     },
     submittask() {
-      this.task.expect_code = parseInt(this.task.expect_code)
+      this.task.expect_code = parseInt(this.task.expect_code);
       if (isNaN(this.task.expect_code)) {
-        Message.error("Execpt Code only allow is number")
+        Message.error("Execpt Code only allow is number");
       }
       if (this.task.task_type === 1) {
         this.task.task_data = this.savecode;
@@ -1327,15 +1321,15 @@ func main() {
     getrunningtaskpre(query) {
       this.is_running = true;
 
-      var getrundatafunc = function() {
-        getrunningtasks(query).then(resp => {
-          this.runningdata = resp.data;
-          this.pagecount = resp.count;
-        });
-      };
-      getrundatafunc(this.runningquery);
+      this.getrundatafunc(query);
 
-      this.runningInterval = setInterval(getrundatafunc, 5000);
+      this.runningInterval = setInterval(this.getrundatafunc, 5000);
+    },
+    getrundatafunc(query) {
+      getrunningtasks(query).then(resp => {
+        this.runningdata = resp.data;
+        this.pagecount = resp.count;
+      });
     },
     handleCurrentChangetask(val) {
       this.query.offset = (val - 1) * this.query.limit;
@@ -1352,7 +1346,17 @@ func main() {
       this.diarealtasktitle = `实时任务日志: ${task.name}`;
       this.diarealogVisible = true;
       var token = getToken();
-      var wsurl = `${wsbaseurl}/api/v1/task/status/websocket?id=${task.id}`;
+      var host = "";
+      if (process.env.NODE_ENV === "production") {
+        host = `ws://${location.hostname}`;
+      } else {
+        const config = require("../../../vue.config.js");
+        host = config.devServer.proxy[
+          process.env.VUE_APP_BASE_API
+        ].target.replace("http", "ws");
+      }
+      var wsurl = `${host}/api/v1/task/status/websocket?id=${task.id}`;
+
       this.trsocket = new WebSocket(wsurl);
 
       this.trsocket.onopen = event => {
@@ -1393,7 +1397,17 @@ func main() {
 
       this.realtasklog = "";
       var token = getToken();
-      var wsurl = `${wsbaseurl}/api/v1/task/log/websocket?id=${this.currenttasklogid}&realid=${data.id}&type=${data.tasktype}`;
+
+      var host = "";
+      if (process.env.NODE_ENV === "production") {
+        host = `ws://${location.hostname}`;
+      } else {
+        const config = require("../../../vue.config.js");
+        host = config.devServer.proxy[
+          process.env.VUE_APP_BASE_API
+        ].target.replace("http", "ws");
+      }
+      var wsurl = `${host}/api/v1/task/log/websocket?id=${this.currenttasklogid}&realid=${data.id}&type=${data.tasktype}`;
       console.log(`start conn websocket ${wsurl}`);
       this.tlsocket = new WebSocket(wsurl);
 

@@ -68,6 +68,7 @@ type db struct {
 type Client struct {
 	Port       int
 	ServerAddr string
+	ServerPort int
 	HostGroup  string
 	Weight     int
 	Remark     string

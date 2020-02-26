@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/labulaka521/crocodile/core/config"
 	"net"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/labulaka521/crocodile/common/log"
-	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/middleware"
 	"github.com/labulaka521/crocodile/core/router/api/v1/asset"
 	"github.com/labulaka521/crocodile/core/router/api/v1/host"
@@ -25,11 +25,11 @@ import (
 	"github.com/labulaka521/crocodile/core/schedule"
 	"github.com/labulaka521/crocodile/core/utils/define"
 
+	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gin-gonic/gin"
 	_ "github.com/labulaka521/crocodile/core/docs" // init swagger docs
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	assetfs "github.com/elazarl/go-bindata-assetfs"
 
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
@@ -147,9 +147,15 @@ func GetListen(mode define.RunMode) (net.Listener, error) {
 	)
 	switch mode {
 	case define.Server:
-		addr = fmt.Sprintf(":%d", config.CoreConf.Server.Port)
+		if os.Getenv("PORT") != "" {
+			addr =  ":"+os.Getenv("PORT")
+		} else {
+			addr = fmt.Sprintf(":%d", config.CoreConf.Server.Port)
+		}
+
 	case define.Client:
 		addr = fmt.Sprintf(":%d", config.CoreConf.Client.Port)
+
 	default:
 		return nil, errors.New("Unsupport mode")
 	}
@@ -179,10 +185,25 @@ func Run(mode define.RunMode, lis net.Listener) error {
 		go httpServer.Serve(httpL)
 		log.Info("start run http server", zap.String("addr", lis.Addr().String()))
 	}
+	//
+	//grpcL := m.Match(cmux.Any())
+	//go gRPCServer.Serve(grpcL)
+	//
+	if mode == define.Server {
+		grpclis,err := net.Listen("tcp",":8080")
+		if err != nil {
+			log.Error("net.Listen failed",zap.Error(err))
+			return err
+		}
+		go gRPCServer.Serve(grpclis)
+		log.Info("start run grpc server", zap.String("addr", grpclis.Addr().String()))
+	} else {
+		grpcL := m.Match(cmux.Any())
+		go gRPCServer.Serve(grpcL)
+		log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
+	}
 
-	grpcL := m.Match(cmux.Any())
-	go gRPCServer.Serve(grpcL)
-	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
+
 
 	go tryDisConn(gRPCServer, httpServer, mode)
 	return m.Serve()
