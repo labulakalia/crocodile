@@ -1,6 +1,5 @@
 ### 如何使用企业微信号来接收通知
-- 注册企业微信  
-   [点击注册](https://work.weixin.qq.com/wework_admin/register_wx?from=myhome)  
+- [注册企业微信](https://work.weixin.qq.com/wework_admin/register_wx?from=myhome)  
 - 获取corpid  
   每个企业都拥有唯一的corpid，获取此信息可在管理后台**我的企业**－>**企业信息**->**企业ID**（需要有管理员权限）  
 - 创建应用  

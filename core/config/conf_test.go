@@ -78,6 +78,7 @@ cropid = "cropid"
 agentid = 100002
 agentsecret = "agentsecret"
 [notify.webhook]
+enable = true
 webhookurl = "http://webhook.test"
 `
 
@@ -85,6 +86,6 @@ func TestInit(t *testing.T) {
 	testfile := "/tmp/crocodile.toml"
 	ioutil.WriteFile(testfile, []byte(conf), 0644)
 	Init(testfile)
-	t.Logf("%+v", CoreConf.Notify.WeChat)
+	t.Logf("%+v", CoreConf.Notify.WebHook)
 	os.Remove(testfile)
 }

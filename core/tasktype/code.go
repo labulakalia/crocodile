@@ -40,7 +40,7 @@ func (l Lang) String() string {
 	case shell:
 		return "shell"
 	case python:
-		return "python"
+		return "python3"
 	case golang:
 		return "golang"
 	default:
@@ -98,7 +98,7 @@ func runpython(ctx context.Context, code string) (*exec.Cmd, error) {
 	}
 	tmpfile.Sync()
 	tmpfile.Close()
-	cmd := exec.CommandContext(ctx, "python", pythoncodepath)
+	cmd := exec.CommandContext(ctx, "python3", pythoncodepath)
 	return cmd, nil
 }
 
@@ -125,7 +125,7 @@ func rungolang(ctx context.Context, code string) (*exec.Cmd, error) {
 	re := regexp.MustCompile(pattern)
 	goversion := re.FindString(string(out))
 	if goversion < "1.11" {
-		err := errors.New("go version must rather equal go1.11")
+		err := errors.New("go version must rather equal go1.11 and enable go module")
 		return nil, err
 	}
 	if os.Getenv("GO111MODULE") != "on" {

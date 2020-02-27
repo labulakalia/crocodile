@@ -49,6 +49,12 @@
                   :value="item.value"
                 ></el-option>
               </el-select>
+              <span class="sub-title" v-if="savecode.lang === 2">
+                所选主机组内的所有主机必须已经安装python3
+              </span>
+              <span class="sub-title" v-if="savecode.lang === 3">
+                所选主机组内的所有主机必须已经安装golang,支持并开启Go Module
+              </span>
               <div style="margin-top:5px;">
                 <el-card :body-style="{ padding: '0px' }">
                   <editor
@@ -615,7 +621,7 @@
             <span>{{ scope.row.name }}</span>
           </template>
         </el-table-column>
-        <el-table-column align="center" label="任务类型" width="125">
+        <el-table-column align="center" label="任务类型" width="150">
           <template slot-scope="scope">
             <span v-if="scope.row.task_type == 1">
               <el-tag size="small" type="warning">{{ scope.row.task_typedesc }}</el-tag>
@@ -902,7 +908,7 @@ export default {
         },
         {
           value: 2,
-          label: "python"
+          label: "python3"
         },
         {
           value: 3,
@@ -985,7 +991,7 @@ function main() {
 
 main
         `,
-        2: `#!/usr/bin/env python
+        2: `#!/usr/bin/env python3
 def main():
     print("run python")
 
@@ -1459,7 +1465,7 @@ func main() {
 .sub-title {
   text-align: left;
   color: #909399;
-  font-size: 20px;
+  font-size: 16px;
   font-family: "Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif";
   // margin-bottom: 6px;
   font-weight: 700;

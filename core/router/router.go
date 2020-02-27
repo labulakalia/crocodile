@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/labulaka521/crocodile/core/config"
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/swaggo/gin-swagger/swaggerFiles"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/labulaka521/crocodile/core/config"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/labulaka521/crocodile/common/log"
@@ -67,8 +68,6 @@ func NewHTTPRouter() *http.Server {
 	//gin.SetMode(gin.ReleaseMode)
 	//,
 	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl(), middleware.Oprtation())
-
-
 
 	v1 := router.Group("/api/v1")
 	ru := v1.Group("/user")
@@ -131,6 +130,10 @@ func NewHTTPRouter() *http.Server {
 		ri.GET("/status", install.QueryIsInstall)
 		ri.POST("", install.StartInstall)
 	}
+	// if nor find router, will rediret to /crocodile/
+	router.NoRoute(func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/crocodile/")
+	})
 
 	httpSrv := &http.Server{
 		Handler: router,
@@ -148,7 +151,7 @@ func GetListen(mode define.RunMode) (net.Listener, error) {
 	switch mode {
 	case define.Server:
 		if os.Getenv("PORT") != "" {
-			addr =  ":"+os.Getenv("PORT")
+			addr = ":" + os.Getenv("PORT")
 		} else {
 			addr = fmt.Sprintf(":%d", config.CoreConf.Server.Port)
 		}
@@ -186,6 +189,7 @@ func Run(mode define.RunMode, lis net.Listener) error {
 		log.Info("start run http server", zap.String("addr", lis.Addr().String()))
 	}
 	//
+	cmux.HTTP1()
 	grpcL := m.Match(cmux.Any())
 	go gRPCServer.Serve(grpcL)
 	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
@@ -204,8 +208,6 @@ func Run(mode define.RunMode, lis net.Listener) error {
 	//	go gRPCServer.Serve(grpcL)
 	//	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
 	//}
-
-
 
 	go tryDisConn(gRPCServer, httpServer, mode)
 	return m.Serve()

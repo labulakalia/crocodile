@@ -79,8 +79,8 @@ cropid = "" # wwb2f31bd2bad4dce9
 agentid = 1000002
 agentsecret = ""
 [notify.webhook]
-enable = false
-webhookurl = ""
+enable = true
+webhookurl = "http://127.0.0.1:8088"
 
 # crocodile client
 [client]

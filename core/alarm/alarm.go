@@ -133,7 +133,7 @@ func JudgeNotify(tasklog *define.Log) {
 			status,
 			totalruntime,
 			tasklog.ErrMsg,
-			tasklog.ErrTaskTypeStr,
+			tasklog.ErrTasktype.String(),
 			tasklog.ErrTask,
 			tasklog.ErrTaskID,
 		)
@@ -193,6 +193,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 		if user.Telegram != "" {
 			alarmTelegram = append(alarmTelegram, user.Telegram)
 		}
+		alarmUsernNames = append(alarmUsernNames,user.Name)
 	}
 
 	notifymsg := notifymsg{
@@ -211,7 +212,9 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 
 	// TODO problem
 	// send webhook
+
 	if config.CoreConf.Notify.WebHook.Enable {
+		log.Debug("start send alarm to webhooks")
 		_, err := notify.JSONPost(http.MethodPost, config.CoreConf.Notify.WebHook.WebHookURL, notifymsg, http.DefaultClient)
 		if err != nil {
 			log.Error("send webhook failed",
@@ -263,6 +266,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 
 	// send notify alarm
 	if send.dingding != nil && len(alarmDingDing) != 0 {
+		log.Debug("start send alarm to dingding", zap.Strings("alarmuser", alarmDingDing))
 		err := send.dingding.Send(alarmDingDing, titlebuf.String(), contentbuf.String())
 		if err != nil {
 			log.Error("send dingding notify failed", zap.Error(err))
@@ -270,6 +274,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 	}
 
 	if send.email != nil && len(alarmEmail) != 0 {
+		log.Debug("start send alarm to email", zap.Strings("alarmuser", alarmEmail))
 		err := send.email.Send(alarmEmail, titlebuf.String(), contentbuf.String())
 		if err != nil {
 			log.Error("send email notify failed", zap.Error(err))
@@ -277,6 +282,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 	}
 
 	if send.wechat != nil && len(alarmWeChat) != 0 {
+		log.Debug("start send alarm to wechat", zap.Strings("alarmuser", alarmWeChat))
 		err := send.wechat.Send(alarmWeChat, titlebuf.String(), contentbuf.String())
 		if err != nil {
 			log.Error("send wechat notify failed", zap.Error(err))
@@ -284,6 +290,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 	}
 
 	if send.slack != nil && len(alarmSlack) != 0 {
+		log.Debug("start send alarm to slack", zap.Strings("alarmuser", alarmSlack))
 		err := send.slack.Send(alarmSlack, titlebuf.String(), contentbuf.String())
 		if err != nil {
 			log.Error("send slack notify failed", zap.Error(err))
@@ -291,6 +298,7 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 	}
 
 	if send.telegram != nil && len(alarmTelegram) != 0 {
+		log.Debug("start send alarm to telegram", zap.Strings("alarmuser", alarmTelegram))
 		err := send.telegram.Send(alarmTelegram, titlebuf.String(), contentbuf.String())
 		if err != nil {
 			log.Error("send telegram notify failed", zap.Error(err))

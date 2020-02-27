@@ -80,7 +80,7 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 		return conn, nil
 	}
 	var (
-		c credentials.TransportCredentials
+		c   credentials.TransportCredentials
 		err error
 	)
 
@@ -91,16 +91,15 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 		grpc.WithBlock(),
 	}
 
-
 	if config.CoreConf.Cert.Enable {
 		c, err = credentials.NewClientTLSFromFile(config.CoreConf.Cert.CertFile, cert.ServerName)
 		if err != nil {
 			log.Error("credentials.NewClientTLSFromFile failed", zap.Error(err))
 			return nil, err
 		}
-		dialoptions = append(dialoptions,grpc.WithTransportCredentials(c))
+		dialoptions = append(dialoptions, grpc.WithTransportCredentials(c))
 	} else {
-		dialoptions = append(dialoptions,grpc.WithInsecure())
+		dialoptions = append(dialoptions, grpc.WithInsecure())
 	}
 
 	rpcctx, cancel := context.WithTimeout(ctx, defaultRPCTimeout)
@@ -128,7 +127,7 @@ func NewgRPCServer(mode define.RunMode) (*grpc.Server, error) {
 			log.Error("credentials.NewServerTLSFromFile failed", zap.Error(err))
 			return nil, err
 		}
-		serveroptions = append(serveroptions,grpc.Creds(c))
+		serveroptions = append(serveroptions, grpc.Creds(c))
 
 	}
 	auth := Auth{SecretToken: config.CoreConf.SecretToken}

@@ -63,7 +63,8 @@
 - 修改配置文件的配置
 
 ## Running
-  >前提: 调度中心和Worker之间通过对方的IP:PORT都可以正常通信
+  >调度中心和Worker之间通过对方的IP:PORT都可以正常通信  
+  >数据库可以是sqlite3或者mysql
 - 作为一个调度中心来运行
     ```shell
     ./crocodile server -c config.toml
