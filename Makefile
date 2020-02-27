@@ -18,8 +18,7 @@ ALL_LINUX = linux-amd64 \
 	linux-arm64
 
 ALL = $(ALL_LINUX) \
-	darwin-amd64 \
-	windows-amd64
+	darwin-amd64
 
 build_linux: $(ALL_LINUX:%=build/%)
 
@@ -43,6 +42,8 @@ frontend:
 	cd web && yarn run build:prod
 	cd web && go-bindata -o=../core/router/api/v1/asset/asset.go  -pkg=asset ./crocodile/... && rm -rf ./crocodile
 
+vet:
+	go vet main.go
 runs:
 	go run -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go server -c ${CFGPATH}
 runc:

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/labulaka521/crocodile/core/config"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
 	"net"
 	"net/http"
 	"os"
@@ -28,9 +30,6 @@ import (
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gin-gonic/gin"
 	_ "github.com/labulaka521/crocodile/core/docs" // init swagger docs
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -64,11 +63,12 @@ func NewHTTPRouter() *http.Server {
 	})
 
 	pprof.Register(router)
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	//gin.SetMode(gin.ReleaseMode)
 	//,
 	router.Use(gin.Recovery(), middleware.ZapLogger(), middleware.PermissionControl(), middleware.Oprtation())
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 
 	v1 := router.Group("/api/v1")
 	ru := v1.Group("/user")
@@ -186,22 +186,24 @@ func Run(mode define.RunMode, lis net.Listener) error {
 		log.Info("start run http server", zap.String("addr", lis.Addr().String()))
 	}
 	//
-	//grpcL := m.Match(cmux.Any())
-	//go gRPCServer.Serve(grpcL)
-	//
-	if mode == define.Server {
-		grpclis,err := net.Listen("tcp",":8080")
-		if err != nil {
-			log.Error("net.Listen failed",zap.Error(err))
-			return err
-		}
-		go gRPCServer.Serve(grpclis)
-		log.Info("start run grpc server", zap.String("addr", grpclis.Addr().String()))
-	} else {
-		grpcL := m.Match(cmux.Any())
-		go gRPCServer.Serve(grpcL)
-		log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
-	}
+	grpcL := m.Match(cmux.Any())
+	go gRPCServer.Serve(grpcL)
+	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
+
+	// deploy heroku need custom port
+	//if mode == define.Server {
+	//	grpclis,err := net.Listen("tcp",":8080")
+	//	if err != nil {
+	//		log.Error("net.Listen failed",zap.Error(err))
+	//		return err
+	//	}
+	//	go gRPCServer.Serve(grpclis)
+	//	log.Info("start run grpc server", zap.String("addr", grpclis.Addr().String()))
+	//} else {
+	//	grpcL := m.Match(cmux.Any())
+	//	go gRPCServer.Serve(grpcL)
+	//	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
+	//}
 
 
 

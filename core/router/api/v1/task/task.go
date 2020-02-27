@@ -334,6 +334,10 @@ func GetTask(c *gin.Context) {
 // @Router /api/v1/task/run [put]
 // @Security ApiKeyAuth
 func RunTask(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+
 	runtask := define.GetID{}
 	err := c.ShouldBindJSON(&runtask)
 	if err != nil {
@@ -343,6 +347,29 @@ func RunTask(c *gin.Context) {
 	if utils.CheckID(runtask.ID) != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
+	}
+	uid := c.GetString("uid")
+
+	// 获取用户的类型
+	var role define.Role
+	if v, ok := c.Get("role"); ok {
+		role = v.(define.Role)
+	}
+
+	// 这里只需要确定如果rule的用户类型是否为Admin
+	if role != define.AdminUser {
+		// 判断ID的创建人是否为uid
+		exist, err := model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, runtask.ID, uid)
+		if err != nil {
+			log.Error("model.Check failed", zap.Error(err))
+			resp.JSON(c, resp.ErrInternalServer, nil)
+			return
+		}
+
+		if !exist {
+			resp.JSON(c, resp.ErrUnauthorized, nil)
+			return
+		}
 	}
 	go schedule.Cron.RunTask(runtask.ID, define.Manual)
 	resp.JSON(c, resp.Success, nil)
