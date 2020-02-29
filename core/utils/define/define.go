@@ -155,7 +155,6 @@ type ChangeUserSelf struct {
 	Email     string `json:"email"`                  // 用户邮箱
 	WeChat    string `json:"wechat"`                 // wechat id
 	DingPhone string `json:"dingphone"`              // dingding phone
-	Slack     string `json:"slack"`                  // slack user name
 	Telegram  string `json:"telegram"`               // telegram bot chat id
 	Password  string `json:"password"`
 	Remark    string `json:"remark"`

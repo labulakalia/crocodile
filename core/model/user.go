@@ -96,7 +96,6 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 	if !ok {
 		return errors.New("AddRoleForUser failed")
 	}
-	
 
 	return nil
 }
@@ -111,7 +110,6 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 					email,
 					wechat,
 					dingphone,
-					slack,
 					telegram,
 					remark,
 					createTime,
@@ -176,7 +174,6 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 			&user.Email,
 			&user.WeChat,
 			&user.DingPhone,
-			&user.Slack,
 			&user.Telegram,
 			&user.Remark,
 			&createTime,
@@ -311,7 +308,7 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid bo
 
 // ChangeUserInfo user change self's config define.ChangeUserSelf
 // func ChangeUserInfo(ctx context.Context, id string, changeinfo *define.ChangeUserSelf) error {
-func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, slack, telegram, password, remark string) error {
+func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, telegram, password, remark string) error {
 	var (
 		changeuser   string
 		hashpassword string
@@ -339,7 +336,6 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, sla
 						email=?,
 						wechat=?,
 						dingphone=?,
-						slack=?,
 						telegram=?,
 						updateTime=?,
 						remark=? 
@@ -356,7 +352,6 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, sla
 		email,
 		wechat,
 		dingding,
-		slack,
 		telegram,
 		updateTime,
 		remark,

@@ -189,6 +189,7 @@ func DeleteTask(c *gin.Context) {
 	}
 
 	if !exist {
+		log.Warn("unauthorized ", zap.String("id", deletetask.ID))
 		resp.JSON(c, resp.ErrHostgroupNotExist, nil)
 		return
 	}
@@ -204,7 +205,7 @@ func DeleteTask(c *gin.Context) {
 	// 这里只需要确定如果rule的用户类型是否为Admin
 	if role != define.AdminUser {
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, deletetask.ID, uid)
+		exist, err = model.Check(ctx, model.TBTask, model.IDCreateByUID, deletetask.ID, uid)
 		if err != nil {
 			log.Error("model.Check failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)

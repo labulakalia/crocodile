@@ -182,7 +182,6 @@ func ChangeUserInfo(c *gin.Context) {
 		newinfo.Email,
 		newinfo.WeChat,
 		newinfo.DingPhone,
-		newinfo.Slack,
 		newinfo.Telegram,
 		newinfo.Password,
 		newinfo.Remark)
