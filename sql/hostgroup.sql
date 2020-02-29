@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS crocodile_hostgroup;
 CREATE TABLE IF NOT EXISTS crocodile_hostgroup (
                                 id VARCHAR(50) PRIMARY KEY NOT NULL,-- "ID",
                                 name VARCHAR(10) NOT NULL DEFAULT "",-- "名称",

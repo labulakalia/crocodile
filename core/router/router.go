@@ -18,7 +18,6 @@ import (
 	"github.com/gin-contrib/pprof"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/middleware"
-	"github.com/labulaka521/crocodile/core/router/api/v1/asset"
 	"github.com/labulaka521/crocodile/core/router/api/v1/host"
 	"github.com/labulaka521/crocodile/core/router/api/v1/hostgroup"
 	"github.com/labulaka521/crocodile/core/router/api/v1/install"
@@ -26,6 +25,7 @@ import (
 	"github.com/labulaka521/crocodile/core/router/api/v1/task"
 	"github.com/labulaka521/crocodile/core/router/api/v1/user"
 	"github.com/labulaka521/crocodile/core/schedule"
+	"github.com/labulaka521/crocodile/core/utils/asset"
 	"github.com/labulaka521/crocodile/core/utils/define"
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
@@ -45,7 +45,7 @@ func NewHTTPRouter() *http.Server {
 		Asset:     asset.Asset,
 		AssetDir:  asset.AssetDir,
 		AssetInfo: asset.AssetInfo,
-		Prefix:    "crocodile",
+		Prefix:    "web/crocodile",
 	}
 
 	router.StaticFS("/crocodile", fs)

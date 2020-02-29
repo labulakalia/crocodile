@@ -60,14 +60,14 @@
                 style="width: 300px;"
               ></el-input>
             </el-form-item>
-            <el-form-item label="Slack">
+            <!-- <el-form-item label="Slack">
               <el-input
                 :disabled="!alarmstatus.slack"
                 v-model="userinfo.slack"
                 size="mini"
                 style="width: 300px;"
               ></el-input>
-            </el-form-item>
+            </el-form-item> -->
             <el-form-item label="Telegram">
               <el-input
                 :disabled="!alarmstatus.telegram"

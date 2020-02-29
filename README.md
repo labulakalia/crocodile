@@ -1,4 +1,6 @@
 # Crocodile 任务调度系统
+
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/labulaka521/crocodile/Build_release)
 [![Downloads](https://img.shields.io/github/downloads/labulaka521/crocodile/total.svg)](https://github.com/ouqiang/gocron/releases)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/labulaka521/crocodile/blob/master/LICENSE)
 [![Release](https://img.shields.io/github/release/labulaka521/crocodile.svg?label=Release)](https://github.com/labulaka521/crocodile/releases)
@@ -7,14 +9,14 @@
 ## Introduction
 基于Golang开发的定时任务调度系统，支持http请求、运行golang、python、shell等调度任务  
 
-**[Online Preview](http://crocodile-test.herokuapp.com/crocodile/)** admin/admin
+**[Online Preview](http://crocodile-test.herokuapp.com/crocodile/)** normal/normal
 
 ## Features
 - 在Web节点对任务进行增加、修改、删除、克隆、运行任务等操作
 - 实时查看正在运行的任务和任务的实时日志，并且可以对正在运行的任务进行终止操作
 - 多种任务类型:
     - 执行`http`请求任务
-    - 运行`shell`、`python`、`golang`代码任务
+    - 运行`shell`、`python`、`golang`代码(当然其他语言也可以支持，如需要请提出)
 - 父、子任务:   
     当设置了父任务或者子任务后，先会运行`父任务`->`主任务`->`子任务`，任意任务出错后会立即中断整个流程，还可以设置父任务或子任务`并行`或者`串行`运行
 - 调度算法:  
@@ -64,7 +66,7 @@
 
 ## Running
   >调度中心和Worker之间通过对方的IP:PORT都可以正常通信  
-  >数据库可以是sqlite3或者mysql
+  >数据库支持sqlite3或者mysql
 - 作为一个调度中心来运行
     ```shell
     ./crocodile server -c config.toml
@@ -77,6 +79,7 @@
     ```
     ./crocodile version
     ```
+- [配置报警](https://github.com/labulaka521/crocodile/wiki/%E9%85%8D%E7%BD%AE%E6%8A%A5%E8%AD%A6%E9%80%9A%E7%9F%A5)
 ## Development
 - 前端
     - 安装`yarn`
@@ -122,9 +125,11 @@
 - [x] 获取正在运行的任务及实时任务日志(`websocket`)
 - [x] 操作审计
 - [x] 前端
-- [ ] ldap支持
-- [ ] `Prometheus`+`grafana` 监控
+- [ ] 系统统计图
 - [ ] 调度中心集群
+- [ ] `Prometheus`+`grafana` 监控
+- [ ] ldap支持
+
 
 
 ## License

@@ -32,7 +32,7 @@
           <el-tooltip content="修改密码" placement="top">
             <el-switch v-if="!is_create" v-model="changepasswd"></el-switch>
           </el-tooltip>
-          <span v-if="changepasswd">
+          <span v-if="changepasswd ">
             <br />
           </span>
           <el-input
@@ -43,7 +43,7 @@
             clearable
             style="width: 500px;"
           ></el-input>
-          <span v-if="changepasswd">
+          <span v-if="changepasswd || is_create">
             <br />
           </span>
           <el-input

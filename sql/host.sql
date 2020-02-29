@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS  crocodile_host ;
 CREATE TABLE IF NOT EXISTS crocodile_host (
         id VARCHAR(50) PRIMARY KEY NOT NULL ,-- "ID",
         addr VARCHAR(20) UNIQUE NOT NULL ,-- "地址",

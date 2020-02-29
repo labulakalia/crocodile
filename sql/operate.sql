@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS  crocodile_operate ;
 CREATE TABLE IF NOT EXISTS crocodile_operate (
         id INTEGER  PRIMARY KEY AUTOINCREMENT,
         uid VARCHAR(50) NOT NULL DEFAULT "",-- "操作用户ID",

@@ -12,6 +12,7 @@ require (
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/gin-contrib/pprof v1.2.1
 	github.com/gin-gonic/gin v1.5.0
+	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/go-openapi/spec v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.7 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect

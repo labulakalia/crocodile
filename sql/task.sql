@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS crocodile_task;
 CREATE TABLE IF NOT EXISTS crocodile_task (
 	id VARCHAR ( 50 ) PRIMARY KEY NOT NULL ,-- "ID",
 	name VARCHAR ( 10 ) NOT NULL ,-- "名称",
@@ -22,7 +21,3 @@ CREATE TABLE IF NOT EXISTS crocodile_task (
 	createTime INT NOT NULL DEFAULT 0,-- "创建时间",
 	updateTime INT NOT NULL DEFAULT 0-- "更新时间" 
 )
-
-SELECT count() FROM sqlite_master WHERE type="table" 
-AND name="crocodile_host" AND name=? AND name=? AND name=? AND name=? AND name=? AND name=? 
-[ crocodile_hostgroup crocodile_log crocodile_notify crocodile_operate crocodile_task crocodile_user]

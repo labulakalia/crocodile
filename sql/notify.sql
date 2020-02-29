@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS crocodile_notify;
 CREATE TABLE IF NOT EXISTS crocodile_notify (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     notyfytype INTEGER NOT NULL DEFAULT 0 ,-- "通知类型",

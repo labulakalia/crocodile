@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS crocodile_log;
 CREATE TABLE IF NOT EXISTS crocodile_log (
     id INTEGER  PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(50) NOT NULL DEFAULT "" ,-- "任务名称",
