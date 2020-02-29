@@ -73,7 +73,7 @@
     ```
 - 作为一个Worker(主机)节点来运行
     ```shell
-    ./crocodile server -c config.toml
+    ./crocodile client -c config.toml
     ```
 - 查看版本编译信息
     ```

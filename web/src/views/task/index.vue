@@ -1354,14 +1354,14 @@ func main() {
       var token = getToken();
       var host = "";
       if (process.env.NODE_ENV === "production") {
-        host = `ws://${location.hostname}`;
+        host = `${location.origin}`;
       } else {
         const config = require("../../../vue.config.js");
         host = config.devServer.proxy[
           process.env.VUE_APP_BASE_API
-        ].target.replace("http", "ws");
+        ].target;
       }
-      var wsurl = `${host}/api/v1/task/status/websocket?id=${task.id}`;
+      var wsurl = `${host.replace("http","ws")}/api/v1/task/status/websocket?id=${task.id}`;
 
       this.trsocket = new WebSocket(wsurl);
 
@@ -1406,14 +1406,14 @@ func main() {
 
       var host = "";
       if (process.env.NODE_ENV === "production") {
-        host = `ws://${location.hostname}`;
+        host = `${location.origin}`;
       } else {
         const config = require("../../../vue.config.js");
         host = config.devServer.proxy[
           process.env.VUE_APP_BASE_API
-        ].target.replace("http", "ws");
+        ].target;
       }
-      var wsurl = `${host}/api/v1/task/log/websocket?id=${this.currenttasklogid}&realid=${data.id}&type=${data.tasktype}`;
+      var wsurl = `${host.replace("http","ws")}/api/v1/task/log/websocket?id=${this.currenttasklogid}&realid=${data.id}&type=${data.tasktype}`;
       console.log(`start conn websocket ${wsurl}`);
       this.tlsocket = new WebSocket(wsurl);
 

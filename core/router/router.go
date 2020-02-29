@@ -188,17 +188,16 @@ func Run(mode define.RunMode, lis net.Listener) error {
 		go httpServer.Serve(httpL)
 		log.Info("start run http server", zap.String("addr", lis.Addr().String()))
 	}
-	//
-	cmux.HTTP1()
+	////
 	grpcL := m.Match(cmux.Any())
 	go gRPCServer.Serve(grpcL)
 	log.Info("start run grpc server", zap.String("addr", lis.Addr().String()))
 
-	// deploy heroku need custom port
+	//deploy heroku need custom port
 	//if mode == define.Server {
-	//	grpclis,err := net.Listen("tcp",":8080")
+	//	grpclis, err := net.Listen("tcp", ":8080")
 	//	if err != nil {
-	//		log.Error("net.Listen failed",zap.Error(err))
+	//		log.Error("net.Listen failed", zap.Error(err))
 	//		return err
 	//	}
 	//	go gRPCServer.Serve(grpclis)
