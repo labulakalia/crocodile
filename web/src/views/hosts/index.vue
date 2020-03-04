@@ -84,14 +84,13 @@ export default {
     changestate(id) {
       var data = {
         id: id,
-        addr: ""
       };
       stophost(data).then(resp => {
         if (resp.code === 0) {
-          Message.success("修改Worker状态成功");
+          Message.success("修改状态成功");
           this.startgethost();
         } else {
-          Message.error("修改Worker状态失败");
+          Message.error(`修改状态失败 errmsg: ${resp.msg}`);
         }
       });
     },
