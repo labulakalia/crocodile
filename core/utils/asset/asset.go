@@ -136,7 +136,7 @@ func webCrocodileFaviconIco() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/favicon.ico", size: 67646, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/favicon.ico", size: 67646, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -156,7 +156,7 @@ func webCrocodileIndexHtml() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/index.html", size: 4821, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/index.html", size: 4821, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -176,7 +176,7 @@ func webCrocodileStaticCssApp569f083fCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/app.569f083f.css", size: 8517, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/app.569f083f.css", size: 8517, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -196,7 +196,7 @@ func webCrocodileStaticCssChunk162f486f6e666ea4Css() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-162f486f.6e666ea4.css", size: 767, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-162f486f.6e666ea4.css", size: 767, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -216,7 +216,7 @@ func webCrocodileStaticCssChunk1c9fad549586f055Css() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-1c9fad54.9586f055.css", size: 674, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-1c9fad54.9586f055.css", size: 674, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -236,7 +236,7 @@ func webCrocodileStaticCssChunk1d4f719731c20e2bCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-1d4f7197.31c20e2b.css", size: 2322, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-1d4f7197.31c20e2b.css", size: 2322, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -256,7 +256,7 @@ func webCrocodileStaticCssChunk38aaca2468f5a9feCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-38aaca24.68f5a9fe.css", size: 33, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-38aaca24.68f5a9fe.css", size: 33, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -276,7 +276,7 @@ func webCrocodileStaticCssChunk6cfaed90A3f362daCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-6cfaed90.a3f362da.css", size: 271, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-6cfaed90.a3f362da.css", size: 271, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -296,7 +296,7 @@ func webCrocodileStaticCssChunk821d13c62454a4a9Css() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-821d13c6.2454a4a9.css", size: 503, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-821d13c6.2454a4a9.css", size: 503, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -316,7 +316,7 @@ func webCrocodileStaticCssChunk82b13e2eEbf7242cCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-82b13e2e.ebf7242c.css", size: 271, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-82b13e2e.ebf7242c.css", size: 271, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -336,7 +336,7 @@ func webCrocodileStaticCssChunk82bf2ede2ca5507dCss() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-82bf2ede.2ca5507d.css", size: 1788, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-82bf2ede.2ca5507d.css", size: 1788, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -356,7 +356,7 @@ func webCrocodileStaticCssChunk9a0d9ce0542e45d8Css() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-9a0d9ce0.542e45d8.css", size: 129, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-9a0d9ce0.542e45d8.css", size: 129, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -376,7 +376,7 @@ func webCrocodileStaticCssChunkC9c77a48A37cd815Css() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-c9c77a48.a37cd815.css", size: 4748, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-c9c77a48.a37cd815.css", size: 4748, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -396,7 +396,7 @@ func webCrocodileStaticCssChunkElementuiDed27da0Css() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-elementUI.ded27da0.css", size: 233320, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-elementUI.ded27da0.css", size: 233320, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -416,7 +416,7 @@ func webCrocodileStaticCssChunkLibs3dfb7769Css() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-libs.3dfb7769.css", size: 3568, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/css/chunk-libs.3dfb7769.css", size: 3568, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -436,7 +436,7 @@ func webCrocodileStaticFontsElementIcons535877f5Woff() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/fonts/element-icons.535877f5.woff", size: 28200, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/fonts/element-icons.535877f5.woff", size: 28200, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -456,7 +456,7 @@ func webCrocodileStaticFontsElementIcons732389deTtf() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/fonts/element-icons.732389de.ttf", size: 55956, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/fonts/element-icons.732389de.ttf", size: 55956, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -476,7 +476,7 @@ func webCrocodileStaticImg404A57b6f31Png() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/img/404.a57b6f31.png", size: 98071, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/img/404.a57b6f31.png", size: 98071, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -496,7 +496,7 @@ func webCrocodileStaticImg404_cloud0f4bc32bPng() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/img/404_cloud.0f4bc32b.png", size: 4766, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/img/404_cloud.0f4bc32b.png", size: 4766, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -516,7 +516,7 @@ func webCrocodileStaticImgCrocodile39dec91ePng() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/img/crocodile.39dec91e.png", size: 6542, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/img/crocodile.39dec91e.png", size: 6542, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -536,7 +536,7 @@ func webCrocodileStaticJsAppD061c47dJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/app.d061c47d.js", size: 75338, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/app.d061c47d.js", size: 75338, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -556,7 +556,7 @@ func webCrocodileStaticJsChunk162f486f565a6218Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-162f486f.565a6218.js", size: 10300, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-162f486f.565a6218.js", size: 10300, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -576,7 +576,7 @@ func webCrocodileStaticJsChunk1c9fad54D9e97dbaJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-1c9fad54.d9e97dba.js", size: 6873, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-1c9fad54.d9e97dba.js", size: 6873, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -596,7 +596,7 @@ func webCrocodileStaticJsChunk1d4f71976db0697bJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-1d4f7197.6db0697b.js", size: 8608, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-1d4f7197.6db0697b.js", size: 8608, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -616,7 +616,7 @@ func webCrocodileStaticJsChunk2d230a36Ef0ea212Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-2d230a36.ef0ea212.js", size: 4314, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-2d230a36.ef0ea212.js", size: 4314, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -636,7 +636,7 @@ func webCrocodileStaticJsChunk38aaca246315c0ceJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-38aaca24.6315c0ce.js", size: 4020, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-38aaca24.6315c0ce.js", size: 4020, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -656,7 +656,7 @@ func webCrocodileStaticJsChunk414925e857512db8Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-414925e8.57512db8.js", size: 342532, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-414925e8.57512db8.js", size: 342532, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -676,7 +676,7 @@ func webCrocodileStaticJsChunk6cfaed90C59bd470Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-6cfaed90.c59bd470.js", size: 8973, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-6cfaed90.c59bd470.js", size: 8973, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -696,7 +696,7 @@ func webCrocodileStaticJsChunk821d13c6E5602c78Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-821d13c6.e5602c78.js", size: 68776, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-821d13c6.e5602c78.js", size: 68776, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -716,7 +716,7 @@ func webCrocodileStaticJsChunk82b13e2e7cad78f0Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-82b13e2e.7cad78f0.js", size: 8678, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-82b13e2e.7cad78f0.js", size: 8678, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -736,7 +736,7 @@ func webCrocodileStaticJsChunk82bf2ede4447c789Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-82bf2ede.4447c789.js", size: 4830, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-82bf2ede.4447c789.js", size: 4830, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -756,7 +756,7 @@ func webCrocodileStaticJsChunk955568986d904ccbJs() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-95556898.6d904ccb.js", size: 429361, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-95556898.6d904ccb.js", size: 429361, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -776,7 +776,7 @@ func webCrocodileStaticJsChunk9a0d9ce09397e6c0Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-9a0d9ce0.9397e6c0.js", size: 1811, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-9a0d9ce0.9397e6c0.js", size: 1811, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -796,7 +796,7 @@ func webCrocodileStaticJsChunkC9c77a487e3b5398Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-c9c77a48.7e3b5398.js", size: 1893, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-c9c77a48.7e3b5398.js", size: 1893, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -816,7 +816,7 @@ func webCrocodileStaticJsChunkElementui4de05055Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-elementUI.4de05055.js", size: 668118, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-elementUI.4de05055.js", size: 668118, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -836,7 +836,7 @@ func webCrocodileStaticJsChunkLibs22042878Js() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-libs.22042878.js", size: 218523, mode: os.FileMode(420), modTime: time.Unix(1582989338, 0)}
+	info := bindataFileInfo{name: "web/crocodile/static/js/chunk-libs.22042878.js", size: 218523, mode: os.FileMode(420), modTime: time.Unix(1583320267, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }

@@ -30,7 +30,7 @@ var (
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
-func main1() {
+func main() {
 	version.Commit = c
 	version.Version = v
 	version.BuildDate = d

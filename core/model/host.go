@@ -224,15 +224,12 @@ func GetHostByIDS(ctx context.Context, ids []string) ([]*define.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(hosts) != 1 {
-		return nil, errors.New("can not find hostid")
-	}
 	return hosts, nil
 }
 
 // StopHost will stop run worker in hostid
 func StopHost(ctx context.Context, hostid string, stop bool) error {
-	stopsql := `UPDATE crocodile_host SET stop=?`
+	stopsql := `UPDATE crocodile_host SET stop=? WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "db.GetConn")
@@ -242,7 +239,7 @@ func StopHost(ctx context.Context, hostid string, stop bool) error {
 	if err != nil {
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
-	_, err = stmt.ExecContext(ctx, stop)
+	_, err = stmt.ExecContext(ctx, stop, hostid)
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
 	}
