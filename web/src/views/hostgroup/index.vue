@@ -19,13 +19,22 @@
           ></el-input>
         </el-form-item>
         <el-form-item label="Worker" prop="task_type" placeholder="请选择主机">
-          <el-select multiple filterable clearable v-model="hostgroup.addrs">
+          <el-select multiple filterable v-model="hostgroup.addrs" style="width: 500px;">
             <el-option
               v-for="item in hostselect"
               :key="item.label"
               :label="item.label"
               :value="item.value"
-            ></el-option>
+            >
+              <span style="float: left">{{ item.label }}</span>
+              <!-- <span
+                style="float: right; color: #8492a6; font-size: 13px;margin-right: 30px;"
+              >{{ item.online }}</span>-->
+              <span style="float: right; color: #8492a6; font-size: 13px;margin-right: 30px;">
+                <el-tag v-if="item.online === 1" size="mini" type="success">Online</el-tag>
+                <el-tag v-if="item.online === -1" size="mini" type="danger">Offline</el-tag>
+              </span>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
@@ -133,7 +142,7 @@
       </el-table>
       <div style="margin-top: 10px;float:right;height: 70px;">
         <el-pagination
-        :page-size="hostgroupquery.limit"
+          :page-size="hostgroupquery.limit"
           @current-change="handleCurrentChangerun"
           background
           layout="total,prev, pager, next"

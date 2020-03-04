@@ -269,7 +269,7 @@ func DealRPCErr(err error) error {
 		case codes.Unauthenticated:
 			return resp.GetMsgErr(resp.ErrRPCUnauthenticated)
 		case codes.Unavailable:
-			return resp.GetMsgErr(resp.ErrRPCUnauthenticated)
+			return resp.GetMsgErr(resp.ErrRPCUnavailable)
 		}
 	}
 	return err

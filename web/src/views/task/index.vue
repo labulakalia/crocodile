@@ -49,12 +49,11 @@
                   :value="item.value"
                 ></el-option>
               </el-select>
-              <span class="sub-title" v-if="savecode.lang === 2">
-                所选主机组内的所有主机必须已经安装python3
-              </span>
-              <span class="sub-title" v-if="savecode.lang === 3">
-                所选主机组内的所有主机必须已经安装golang,支持并开启Go Module
-              </span>
+              <span class="sub-title" v-if="savecode.lang === 2">所选主机组内的所有主机必须已经安装python3</span>
+              <span
+                class="sub-title"
+                v-if="savecode.lang === 3"
+              >所选主机组内的所有主机必须已经安装golang,支持并开启Go Module</span>
               <div style="margin-top:5px;">
                 <el-card :body-style="{ padding: '0px' }">
                   <editor
@@ -1351,17 +1350,19 @@ func main() {
       this.currenttasklogid = task.id;
       this.diarealtasktitle = `实时任务日志: ${task.name}`;
       this.diarealogVisible = true;
+      this.runtaskdata = [];
       var token = getToken();
       var host = "";
       if (process.env.NODE_ENV === "production") {
         host = `${location.origin}`;
       } else {
         const config = require("../../../vue.config.js");
-        host = config.devServer.proxy[
-          process.env.VUE_APP_BASE_API
-        ].target;
+        host = config.devServer.proxy[process.env.VUE_APP_BASE_API].target;
       }
-      var wsurl = `${host.replace("http","ws")}/api/v1/task/status/websocket?id=${task.id}`;
+      var wsurl = `${host.replace(
+        "http",
+        "ws"
+      )}/api/v1/task/status/websocket?id=${task.id}`;
 
       this.trsocket = new WebSocket(wsurl);
 
@@ -1409,11 +1410,11 @@ func main() {
         host = `${location.origin}`;
       } else {
         const config = require("../../../vue.config.js");
-        host = config.devServer.proxy[
-          process.env.VUE_APP_BASE_API
-        ].target;
+        host = config.devServer.proxy[process.env.VUE_APP_BASE_API].target;
       }
-      var wsurl = `${host.replace("http","ws")}/api/v1/task/log/websocket?id=${this.currenttasklogid}&realid=${data.id}&type=${data.tasktype}`;
+      var wsurl = `${host.replace("http", "ws")}/api/v1/task/log/websocket?id=${
+        this.currenttasklogid
+      }&realid=${data.id}&type=${data.tasktype}`;
       console.log(`start conn websocket ${wsurl}`);
       this.tlsocket = new WebSocket(wsurl);
 

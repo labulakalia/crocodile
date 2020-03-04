@@ -400,8 +400,9 @@ type Query struct {
 
 // KlOption vue el-select
 type KlOption struct {
-	Label string `json:"label"`
-	Value string `json:"value"`
+	Label  string `json:"label"`
+	Value  string `json:"value"`
+	Online int   `json:"online,omitempty"` // online: 1 offline: -1
 }
 
 // TaskStatusTree real task tree

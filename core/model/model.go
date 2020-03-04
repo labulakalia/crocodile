@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
@@ -144,7 +145,7 @@ func QueryUserRule(ctx context.Context, uid string) (define.Role, error) {
 func GetNameID(ctx context.Context, t string) ([]define.KlOption, error) {
 	getsql := `SELECT id,name FROM ` + string(t)
 	if t == TBHost {
-		getsql = `SELECT id,addr FROM ` + string(t)
+		getsql = `SELECT id,addr,lastUpdateTimeUnix FROM ` + string(t)
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
@@ -165,17 +166,31 @@ func GetNameID(ctx context.Context, t string) ([]define.KlOption, error) {
 	kloptions := []define.KlOption{}
 	for rows.Next() {
 		var (
-			id, name string
+			id, name           string
+			lastUpdateTimeUnix int64
 		)
-		err = rows.Scan(&id, &name)
-		if err != nil {
-			log.Error("rows.Scan failed", zap.Error(err))
-			continue
-		}
-		kloption := define.KlOption{
-			Label: name,
-			Value: id,
-		}
+		kloption := define.KlOption{}
+		if t == TBHost {
+			err = rows.Scan(&id, &name, &lastUpdateTimeUnix)
+			if err != nil {
+				log.Error("rows.Scan failed", zap.Error(err))
+				continue
+			}
+
+			if lastUpdateTimeUnix+maxWorkerTTL > time.Now().Unix() {
+				kloption.Online = 1
+			} else {
+				kloption.Online = -1
+			}
+		} else {
+			err = rows.Scan(&id, &name)
+			if err != nil {
+				log.Error("rows.Scan failed", zap.Error(err))
+				continue
+			}
+		}	
+		kloption.Label = name
+		kloption.Value = id
 		kloptions = append(kloptions, kloption)
 	}
 	return kloptions, nil
