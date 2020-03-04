@@ -1,9 +1,9 @@
-# secret token
+# 认证密钥
 secrettoken = "weinjuwiwiuwu"
 
 # log
 [log]
-# if "" will Stdout
+# if logpath is empty,will console by stdout
 logpath = ""
 # log size (M)
 maxsize = 10
@@ -18,10 +18,10 @@ loglevel  = "debug"
 # text or json output
 format = "text"
 
-# tls cert file
+# tls
 [cert]
-# enable check tls cert
-enable = false
+# if enable, must be set cert，key file
+enable = false 
 certfile="cert.pem"
 keyfile="key.pem"
 
@@ -88,7 +88,7 @@ webhookurl = "http://127.0.0.1:8088"
 port = 0        # default rand port
 # crocodile server addr
 serveraddr = "127.0.0.1:8080"
-# client's hostgroup is exist hostgroup must be exist
+# set default client hostgroup, ignore if not exist in server
 hostgroup = "crocodile_hostgroup"
 # client's weight default 100
 weight = 100

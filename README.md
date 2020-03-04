@@ -57,7 +57,9 @@
 
 ## Install
 - [点击下载](https://github.com/labulaka521/crocodile/releases)编译好的二进制文件
-- 运行生成cert证书的命令
+- 下载[配置文件](https://raw.githubusercontent.com/labulaka521/crocodile/master/core.toml)
+- 如果需要开启调度节点之间的证书认证，请生成证书，
+    运行生成cert证书的命令
     ```shell
     crocodile cert
     ```
@@ -69,17 +71,18 @@
   >数据库支持sqlite3或者mysql
 - 作为一个调度中心来运行
     ```shell
-    ./crocodile server -c config.toml
+    ./crocodile server -c core.toml
     ```
 - 作为一个Worker(主机)节点来运行
     ```shell
-    ./crocodile client -c config.toml
+    ./crocodile client -c core.toml
     ```
 - 查看版本编译信息
     ```
     ./crocodile version
     ```
 - [配置报警](https://github.com/labulaka521/crocodile/wiki/%E9%85%8D%E7%BD%AE%E6%8A%A5%E8%AD%A6%E9%80%9A%E7%9F%A5)
+
 ## Development
 - 前端
     - 安装`yarn`

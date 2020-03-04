@@ -1,7 +1,5 @@
 package main
 
-
-
 import (
 	"fmt"
 
@@ -32,7 +30,7 @@ var (
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
-func main() {
+func main1() {
 	version.Commit = c
 	version.Version = v
 	version.BuildDate = d
@@ -45,4 +43,3 @@ func main() {
 		fmt.Println("rootCmd.Execute failed", err.Error())
 	}
 }
-
