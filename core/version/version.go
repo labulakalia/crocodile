@@ -3,6 +3,7 @@ package version
 import (
 	"context"
 	"encoding/json"
+
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -26,7 +27,7 @@ var (
 )
 
 const (
-	crocodileGithub = "https://api.github.com/repos/labulaka521/yuque_sync/releases/latest"
+	crocodileGithub = "https://api.github.com/repos/labulaka521/crocodile/releases/latest"
 )
 
 type githubapi struct {
@@ -78,6 +79,7 @@ func checkverson() {
 		return
 
 	}
+
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		log.Error("Request StatusCode is not 200")
