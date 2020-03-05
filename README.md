@@ -91,6 +91,8 @@
     - 作为调度中心运行`make runs`
     - 作为Worker节点运行`make runc`
 
+## Feedback
+请在[Issue](https://github.com/labulaka521/crocodile/issues/new)提出，并且描述清除上下文
 
 # TODO
 - [x] 用户管理  
