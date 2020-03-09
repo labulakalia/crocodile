@@ -87,6 +87,7 @@
 - 前端
     - 安装`yarn`
     - 进入web目录,先下载依赖`yarn`,然后单独运行前端`yarn run dev`
+    - 打包至go，执行`make frontrnd`，
 - 后端
     - 作为调度中心运行`make runs`
     - 作为Worker节点运行`make runc`

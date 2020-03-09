@@ -29,6 +29,8 @@ jobs:
 
       - name: Build All Release
         run: |
+          make frontend
+          make bindata
           make clean
           make vet
           make build_all

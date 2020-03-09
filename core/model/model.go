@@ -188,7 +188,7 @@ func GetNameID(ctx context.Context, t string) ([]define.KlOption, error) {
 				log.Error("rows.Scan failed", zap.Error(err))
 				continue
 			}
-		}	
+		}
 		kloption.Label = name
 		kloption.Value = id
 		kloptions = append(kloptions, kloption)
@@ -219,6 +219,6 @@ func countColums(ctx context.Context, querysql string, args ...interface{}) (int
 func gencountsql(querysql string) string {
 	to := strings.Index(querysql, "FROM")
 	from := 6
-	return strings.Replace(querysql, querysql[from:to], " count() ", -1)
+	return strings.Replace(querysql, querysql[from:to], " count(*) ", -1)
 
 }

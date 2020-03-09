@@ -36,7 +36,7 @@ m = g(r.sub, p.sub) && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)
 	if err != nil {
 		log.Panic("NewModelFromString Err", zap.Error(err))
 	}
-	a, err := gormadapter.NewAdapter(dbcfg.Drivename, dbcfg.Dsn)
+	a, err := gormadapter.NewAdapter(dbcfg.Drivename, dbcfg.Dsn, true)
 	if err != nil {
 		log.Panic("NewAdapter Err", zap.Error(err))
 	}

@@ -174,6 +174,7 @@ export default {
           Message.success("恭喜你已经安装成功🎉");
         } else {
           Message.error(resp.msg);
+          this.installloading = false;
           this.needinstall = false;
         }
       });

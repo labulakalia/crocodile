@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS crocodile_user (
                                 id VARCHAR(50) PRIMARY KEY NOT NULL ,-- "ID",
                                 name VARCHAR(10) NOT NULL DEFAULT "" ,-- "用户名",
-                                hashpassword VARCHAR(10) NOT NULL DEFAULT "" ,-- "加密后的密码",
+                                hashpassword VARCHAR(100) NOT NULL DEFAULT "" ,-- "加密后的密码",
                                 role INT(1) NOT NULL DEFAULT 0 ,-- "用户类型",
                                 forbid INT(1) NOT NULL DEFAULT 0 ,-- "禁止登陆",
                                 remark VARCHAR(100) NOT NULL  DEFAULT "" DEFAULT "" ,-- "备注",

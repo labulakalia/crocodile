@@ -25,7 +25,7 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 				totalruntime,
 				status,
 				taskresps,
-				trigger,
+				triggertype,
 				errcode,
 				errmsg,
 				errtasktype,
@@ -67,7 +67,7 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 					endtime,
 					totalruntime,
 					status,
-					trigger,
+					triggertype,
 					errcode,
 					errmsg,
 					errtasktype,
@@ -302,7 +302,7 @@ func SaveOperateLog(ctx context.Context, uid, username string, role define.Role,
 			module,
 			modulename,
 			operatetime,
-			desc,
+			description,
 			columns)
 			VALUES
 			(
@@ -330,9 +330,9 @@ func SaveOperateLog(ctx context.Context, uid, username string, role define.Role,
 // GetOperate get operate log
 func GetOperate(ctx context.Context, uid, username, method, module string, limit, offset int) ([]define.OperateLog, int, error) {
 	getsql := `SELECT 
-				uid,username,role,method,module,modulename, operatetime,desc,columns
+					uid,username,role,method,module,modulename, operatetime,description,columns
 			   FROM 
-				crocodile_operate `
+					crocodile_operate`
 	query := []string{}
 	args := []interface{}{}
 	var count int

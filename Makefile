@@ -40,6 +40,8 @@ build:
 	go build -o crocodile -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go
 frontend:
 	cd web && yarn && yarn run build:prod
+
+bindata:
 	go get -u github.com/go-bindata/go-bindata/...
 	~/go/bin/go-bindata -o=core/utils/asset/asset.go  -pkg=asset web/crocodile/... sql/... && rm -rf ./crocodile
 

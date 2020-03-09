@@ -42,10 +42,10 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 
 	drivename := config.CoreConf.Server.DB.Drivename
 	if drivename == "sqlite3" {
-		querytable = `SELECT count() FROM sqlite_master WHERE type="table" AND (`
+		querytable = `SELECT count(*) FROM sqlite_master WHERE type="table" AND (`
 		queryname = "name"
 	} else if drivename == "mysql" {
-		querytable = `SELECT count() FROM information_schema.TABLES WHERE (`
+		querytable = `SELECT count(*) FROM information_schema.TABLES WHERE (`
 		queryname = "table_name"
 	} else {
 		return false, fmt.Errorf("unsupport drive type %s, only support sqlite3 or mysql", drivename)
@@ -111,11 +111,31 @@ func StartInstall(ctx context.Context, username, password string) error {
 			log.Error("ioutil.ReadAll failed", zap.Error(err))
 			continue
 		}
-		_, err = conn.ExecContext(ctx, string(content))
-		if err != nil {
-			log.Error("conn.ExecContext failed", zap.Error(err), zap.String("tbname", tbname))
-			return errors.Wrap(err, "conn.ExecContext")
+		var execsql string
+		if config.CoreConf.Server.DB.Drivename == "sqlite3" {
+			// sqlite3 的自增字段为AUTOINCREMENT
+			execsql = strings.Replace(string(content), "AUTO_INCREMENT", "AUTOINCREMENT", -1)
+		} else {
+			execsql = string(content)
 		}
+
+		if tbname == TBCasbin {
+			for _,sql := range strings.Split(execsql, "\n") {
+				_, err = conn.ExecContext(context.Background(), sql)
+				if err != nil {
+					log.Error("conn.ExecContext failed", zap.Error(err))
+					return errors.Wrap(err, "conn.ExecContext")
+				}
+			}
+		} else {
+			_, err = conn.ExecContext(ctx, execsql)
+			if err != nil {
+				log.Error("conn.ExecContext failed", zap.Error(err), zap.String("tbname", tbname))
+				return errors.Wrap(err, "conn.ExecContext")
+			}
+		}
+
+
 		// wait second
 		time.Sleep(time.Second / 2)
 	}

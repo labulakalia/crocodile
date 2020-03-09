@@ -57,6 +57,7 @@ func StartInstall(c *gin.Context) {
 
 	err = model.StartInstall(ctx, adminuser.Name, adminuser.Password)
 	if err != nil {
+		log.Error("model.StartInstall", zap.Error(err))
 		resp.JSON(c, resp.ErrInstall, nil)
 		return
 	}

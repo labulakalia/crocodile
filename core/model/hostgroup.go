@@ -102,7 +102,7 @@ func getHostGroups(ctx context.Context, id, hgname string, limit, offset int) ([
 				FROM 
 					crocodile_hostgroup as hg,crocodile_user as u
 				WHERE
-					hg.createByID == u.id`
+					hg.createByID = u.id`
 	var count int
 	args := []interface{}{}
 	if id != "" {

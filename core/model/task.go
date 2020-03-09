@@ -231,8 +231,7 @@ func getTasks(ctx context.Context,
 	first bool, /*Preventing endless loops*/
 	presearchname,
 	createbyid string) ([]define.GetTask, int, error) {
-	getsql := `SELECT 
-					t.id,
+	getsql := `SELECT t.id,
 					t.name,
 					t.tasktype,
 					t.taskdata,
@@ -254,10 +253,11 @@ func getTasks(ctx context.Context,
 					t.hostGroupID,
 					t.remark,
 					t.createTime,
-					t.updateTime 
+					t.updateTime
 				FROM 
-				  crocodile_task as t,crocodile_user as u,crocodile_hostgroup as hg
-				WHERE t.createByID == u.id AND t.hostGroupID = hg.id`
+					crocodile_task as t,crocodile_user as u,crocodile_hostgroup as hg 
+				WHERE
+					t.createByID = u.id AND t.hostGroupID = hg.id`
 	args := []interface{}{}
 	var count int
 	if len(ids) != 0 {
