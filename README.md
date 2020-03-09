@@ -91,9 +91,10 @@
 - 后端
     - 作为调度中心运行`make runs`
     - 作为Worker节点运行`make runc`
+> sql目录也是被打包在`go-bindata`中的，在安装时会从`go-bindata`生成的文件读取sql创建语句，如果修改了sql，就重新执行下`make bin-data`
 
 ## Feedback
-请在[Issue](https://github.com/labulaka521/crocodile/issues/new)提出，并且描述清除上下文
+请在[Issue](https://github.com/labulaka521/crocodile/issues/new)提出，并且描述清楚上下文
 
 # TODO
 - [x] 用户管理  
