@@ -97,6 +97,8 @@
 ## Feedback
 请在[Issue](https://github.com/labulaka521/crocodile/issues/new)提出，并且描述清楚上下文
 
+QQ群: **704802230**
+
 # TODO
 - [x] 用户管理  
       普通用户、管理员、访客
