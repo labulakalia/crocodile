@@ -76,7 +76,7 @@
         </el-form-item>
       </el-form>
       <div style="margin-left: 120px;">
-        <el-button size="small" type="primary" @click="submituser">确 定</el-button>
+        <el-button size="small" type="primary" @click="submituser('user')">确 定</el-button>
         <el-button size="small" @click="is_create = false;is_change = false">取 消</el-button>
       </div>
     </div>
@@ -261,37 +261,7 @@ export default {
       this.password2 === "";
     },
 
-    submituser() {
-      if (this.is_create === true) {
-        if (this.password1 === "" || this.password2 === "") {
-          Message.error("密码不能为空，请重新输入");
-          return;
-        }
-        if (this.password1 !== this.password2) {
-          Message.error("两次输入密码不一致，请重新输入");
-          return;
-        }
-        try {
-          window.btoa(`${this.user.name}:${this.password1}`);
-        } catch (error) {
-          Message.error("用户名和密码只能使用字母、数字、符号");
-          return;
-        }
-
-        this.user.password = this.password1;
-        delete this.user.id;
-        delete this.user.forbid;
-
-        createuser(this.user).then(resp => {
-          if (resp.code === 0) {
-            Message.success(`创建用户 ${this.user.name} 成功`);
-            this.startgetallusers();
-            this.is_create = false;
-          } else {
-            Message.error(`创建用户 ${name} 失败: ${resp.msg}`);
-          }
-        });
-      }
+    submituser(formName) {
       if (this.is_change === true) {
         var name = this.user.name;
         delete this.user.name;
@@ -320,6 +290,41 @@ export default {
             this.is_change = false;
           } else {
             Message.error(`修改用户 ${name} 失败: ${resp.msg}`);
+          }
+        });
+      } else {
+        this.$refs[formName].validate(valid => {
+          if (valid) {
+            if (this.is_create === true) {
+              if (this.password1 === "" || this.password2 === "") {
+                Message.error("密码不能为空，请重新输入");
+                return;
+              }
+              if (this.password1 !== this.password2) {
+                Message.error("两次输入密码不一致，请重新输入");
+                return;
+              }
+              try {
+                window.btoa(`${this.user.name}:${this.password1}`);
+              } catch (error) {
+                Message.error("用户名和密码只能使用字母、数字、符号");
+                return;
+              }
+
+              this.user.password = this.password1;
+              delete this.user.id;
+              delete this.user.forbid;
+
+              createuser(this.user).then(resp => {
+                if (resp.code === 0) {
+                  Message.success(`创建用户 ${this.user.name} 成功`);
+                  this.startgetallusers();
+                  this.is_create = false;
+                } else {
+                  Message.error(`创建用户 ${name} 失败: ${resp.msg}`);
+                }
+              });
+            }
           }
         });
       }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
@@ -74,11 +75,13 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 					errtaskid,
 					errtask
 				FROM 
-					crocodile_log
-			   	WHERE 
-					name=?`
+					crocodile_log`
+	args := []interface{}{}
+	if taskname != "" {
+		args = append(args, taskname)
+		getsql += ` WHERE name=?`
+	}
 
-	args := []interface{}{taskname}
 	if status != 0 {
 		getsql += ` AND status=?`
 		args = append(args, status)
@@ -292,7 +295,14 @@ func CleanTaskLog(ctx context.Context, name, taskid string, deletetime int64) (i
 }
 
 // SaveOperateLog save all user change operate
-func SaveOperateLog(ctx context.Context, uid, username string, role define.Role, method, module, modulename string, operatetime int64, desc string, columns []define.Column) error {
+func SaveOperateLog(ctx context.Context,
+	c *gin.Context, uid, username string,
+	role define.Role, method, module, modulename string,
+	operatetime int64, desc string, columns []define.Column) error {
+	if c.GetInt("statuscode") != 0 {
+		log.Error("req status code is not 0, do not save", zap.Int("statuscode", c.GetInt("statuscode")))
+		return errors.New("return code is not equal 0")
+	}
 	log.Debug("start save operate", zap.String("username", username))
 	operatesql := `INSERT INTO crocodile_operate
 			(uid,
@@ -366,7 +376,7 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 		if err != nil {
 			return oplogs, 0, errors.Wrap(err, "countColums")
 		}
-		getsql += `ORDER BY id DESC LIMIT ? OFFSET ?`
+		getsql += ` ORDER BY id DESC LIMIT ? OFFSET ?`
 		args = append(args, limit, offset)
 	}
 
@@ -375,7 +385,7 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 		return oplogs, 0, errors.Wrap(err, "db.GetConn")
 	}
 	defer conn.Close()
-
+	log.Debug("sql", zap.String("sql", getsql))
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
 		return oplogs, 0, errors.Wrap(err, "conn.PrepareContext")

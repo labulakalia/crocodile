@@ -817,6 +817,7 @@ func CleanTaskLog(c *gin.Context) {
 		return
 	}
 	if !exist {
+		log.Error("task is not exist", zap.String("name", cleanlog.Name))
 		resp.JSON(c, resp.ErrTaskNotExist, nil)
 		return
 	}

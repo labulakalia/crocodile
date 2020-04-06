@@ -62,7 +62,14 @@
                     :lang="lang[savecode.lang]"
                     height="300"
                     @init="initEditor"
-                    :options="{ readOnly: is_preview }"
+                    :options="{ 
+                      readOnly: is_preview,
+                      wrap: 'free',
+                      indentedSoftWrap: false,
+                      enableBasicAutocompletion: true,
+                      enableSnippets: true,
+                      enableLiveAutocompletion: true
+                 }"
                   ></editor>
                 </el-card>
                 <br />
@@ -226,7 +233,10 @@
                           lang="json"
                           height="300"
                           @init="initEditor"
-                          :options="{ readOnly: is_preview }"
+                          :options="{ 
+                            readOnly: is_preview,
+                            wrap: 'free',
+                            indentedSoftWrap: false}"
                         ></editor>
                       </el-card>
                     </el-table-column>
@@ -434,7 +444,12 @@
         </el-form-item>
       </el-form>
       <div style="margin-left: 120px;">
-        <el-button v-if="is_preview === false" size="small" type="primary" @click="submittask">确 定</el-button>
+        <el-button
+          v-if="is_preview === false"
+          size="small"
+          type="primary"
+          @click="submittask('task')"
+        >确 定</el-button>
         <el-button
           v-if="is_preview === false"
           size="small"
@@ -544,7 +559,7 @@
                   height="400"
                   width="100%"
                   @init="initEditor"
-                  :options="{ readOnly: true }"
+                  :options="{ readOnly: true,wrap: 'free' }"
                 ></editor>
               </el-card>
             </el-main>
@@ -1037,64 +1052,72 @@ func main() {
         this.pagecount = resp.count;
       });
     },
-    submittask() {
-      this.task.expect_code = parseInt(this.task.expect_code);
-      if (isNaN(this.task.expect_code)) {
-        Message.error("Execpt Code only allow is number");
-      }
-      if (this.task.task_type === 1) {
-        this.task.task_data = this.savecode;
-      } else if (this.task.task_type === 2) {
-        // add header
-        this.headerlist.forEach(item => {
-          if (item.key !== "") {
-            this.saveapi.header[item.key] = item.value;
+    submittask(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          this.task.expect_code = parseInt(this.task.expect_code);
+          if (isNaN(this.task.expect_code)) {
+            Message.error("Execpt Code only allow is number");
           }
-        });
-        // add method
-        if (["GET", "HEAD"].includes(this.saveapi.method) === false) {
-          if (this.content_type === "application/x-www-form-urlencoded") {
-            var formlist = [];
-            this.formlist.forEach(item => {
+          if (this.task.task_type === 1) {
+            this.task.task_data = this.savecode;
+          } else if (this.task.task_type === 2) {
+            // add header
+            this.headerlist.forEach(item => {
               if (item.key !== "") {
-                formlist.push(`${item.key}=${item.value}`);
+                this.saveapi.header[item.key] = item.value;
               }
             });
-            this.saveapi.payload = formlist.join("&");
-          } else if (this.content_type === "application/json") {
-            this.saveapi.payload = this.jsonplayload;
+            // add method
+            if (["GET", "HEAD"].includes(this.saveapi.method) === false) {
+              if (this.content_type === "application/x-www-form-urlencoded") {
+                var formlist = [];
+                this.formlist.forEach(item => {
+                  if (item.key !== "") {
+                    formlist.push(`${item.key}=${item.value}`);
+                  }
+                });
+                this.saveapi.payload = formlist.join("&");
+              } else if (this.content_type === "application/json") {
+                this.saveapi.payload = this.jsonplayload;
+              }
+            }
+            this.task.task_data = this.saveapi;
+          } else {
+            console.log("err: support task type", this.task.task_type);
           }
+
+          if (this.is_create === true) {
+            delete this.task.id;
+            createtask(this.task).then(response => {
+              if (response.code === 0) {
+                Message.success(`创建任务 ${this.task.name} 成功`);
+                this.getalltask();
+                this.is_create = false;
+              } else {
+                Message.error(
+                  `创建任务 ${this.task.name} 失败: ${response.msg}`
+                );
+              }
+            });
+          } else if (this.is_change === true) {
+            var name = this.task.name;
+
+            // delete this.task.name;
+            changetask(this.task).then(response => {
+              if (response.code === 0) {
+                Message.success(`修改任务 ${name} 成功`);
+                this.getalltask();
+                this.is_change = false;
+              } else {
+                Message.error(`修改任务 ${name} 失败: ${response.msg}`);
+              }
+            });
+          }
+        } else {
+          return false;
         }
-        this.task.task_data = this.saveapi;
-      } else {
-        console.log("err: support task type", this.task.task_type);
-      }
-
-      if (this.is_create === true) {
-        delete this.task.id;
-        createtask(this.task).then(response => {
-          if (response.code === 0) {
-            Message.success(`创建任务 ${this.task.name} 成功`);
-            this.getalltask();
-            this.is_create = false;
-          } else {
-            Message.error(`创建任务 ${this.task.name} 失败: ${response.msg}`);
-          }
-        });
-      } else if (this.is_change === true) {
-        var name = this.task.name;
-
-        // delete this.task.name;
-        changetask(this.task).then(response => {
-          if (response.code === 0) {
-            Message.success(`修改任务 ${name} 成功`);
-            this.getalltask();
-            this.is_change = false;
-          } else {
-            Message.error(`修改任务 ${name} 失败: ${response.msg}`);
-          }
-        });
-      }
+      });
     },
     startdeletetask(task) {
       var deldata = {
@@ -1134,28 +1157,6 @@ func main() {
       });
     },
     changelang() {
-      var examplecode = {
-        1: `#!/usr/bin/env sh
-function main() {
-    echo "run shell"
-}
-
-main
-        `,
-        2: `#!/usr/bin/env python
-def main():
-    print("run python")
-
-if __name__ == '__main__':
-    main()`,
-        3: `package main
-
-import "fmt"
-
-func main() {
-	fmt.Println("run golang")
-}`
-      };
       this.savecode.code = this.examplecode[this.savecode.lang];
     },
     edit_header() {

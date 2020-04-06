@@ -9,11 +9,11 @@
         label-width="120px"
         size="mini"
       >
-        <el-form-item label="任务名称" prop="name">
+        <el-form-item label="执行器名称" prop="name">
           <el-input
             :disabled="is_change"
             v-model="hostgroup.name"
-            placeholder="请输入任务名称"
+            placeholder="请输入执行器名称"
             clearable
             style="width: 500px;"
           ></el-input>
@@ -48,7 +48,7 @@
         </el-form-item>
       </el-form>
       <div style="margin-left: 120px;">
-        <el-button size="small" type="primary" @click="submithostgroup">确 定</el-button>
+        <el-button size="small" type="primary" @click="submithostgroup('hostgroup')">确 定</el-button>
         <el-button size="small" @click="is_create = false;is_change = false">取 消</el-button>
       </div>
     </div>
@@ -259,32 +259,36 @@ export default {
         this.hostselect = resp.data;
       });
     },
-    submithostgroup() {
-      var name = this.hostgroup.name;
-      if (this.is_create === true) {
-        delete this.hostgroup.id;
-        createhostgroup(this.hostgroup).then(resp => {
-          if (resp.code === 0) {
-            Message.success(`创建主机组 ${name} 成功`);
-            this.getallhostgroup();
-            this.is_create = false;
-          } else {
-            Message.error(`创建主机组 ${name} 失败: ${resp.msg}`);
+    submithostgroup(formName) {
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          var name = this.hostgroup.name;
+          if (this.is_create === true) {
+            delete this.hostgroup.id;
+            createhostgroup(this.hostgroup).then(resp => {
+              if (resp.code === 0) {
+                Message.success(`创建主机组 ${name} 成功`);
+                this.getallhostgroup();
+                this.is_create = false;
+              } else {
+                Message.error(`创建主机组 ${name} 失败: ${resp.msg}`);
+              }
+            });
           }
-        });
-      }
-      if (this.is_change === true) {
-        delete this.hostgroup.name;
-        changehostgroup(this.hostgroup).then(resp => {
-          if (resp.code === 0) {
-            Message.success(`修改主机组 ${name} 成功`);
-            this.getallhostgroup();
-            this.is_change = false;
-          } else {
-            Message.error(`修改主机组 ${name} 失败: ${resp.msg}`);
+          if (this.is_change === true) {
+            delete this.hostgroup.name;
+            changehostgroup(this.hostgroup).then(resp => {
+              if (resp.code === 0) {
+                Message.success(`修改主机组 ${name} 成功`);
+                this.getallhostgroup();
+                this.is_change = false;
+              } else {
+                Message.error(`修改主机组 ${name} 失败: ${resp.msg}`);
+              }
+            });
           }
-        });
-      }
+        }
+      });
     },
     handleCurrentChangerun(page) {
       this.hostgroupquery.offset = (page - 1) * this.hostgroupquery.limit;

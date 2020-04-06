@@ -5,119 +5,99 @@
         <el-tab-pane name="setting">
           <span slot="label">
             <svg-icon icon-class="usersetting" />设置
-          </span> -->
-          <el-form label-position="right" label-width="80px" :model="userinfo">
-            <el-form-item label="修改密码">
-              <el-tooltip content="修改密码" placement="top">
-                <el-switch v-model="changepasswd"></el-switch>
-              </el-tooltip>
-              <span v-if="changepasswd">
-                <br />
-              </span>
+      </span>-->
+      <el-form label-position="right" label-width="80px" :model="userinfo">
+        <el-form-item label="修改密码">
+          <el-tooltip content="修改密码" placement="top">
+            <el-switch v-model="changepasswd"></el-switch>
+          </el-tooltip>
+
+          <el-form v-if="changepasswd" :model="pass" ref="pass" :rules="rules" size="mini">
+            <el-form-item prop="password1">
               <el-input
-                v-if="changepasswd"
                 type="password"
-                v-model="password1"
+                v-model="pass.password1"
                 size="mini"
                 clearable
                 placeholder="请输入密码"
                 style="width: 300px;"
               ></el-input>
-              <span v-if="changepasswd">
-                <br />
-              </span>
+            </el-form-item>
+            <el-form-item prop="password2">
               <el-input
                 type="password"
-                v-if="changepasswd"
-                v-model="password2"
+                v-model="pass.password2"
                 size="mini"
                 clearable
                 placeholder="请再次输入密码"
                 style="width: 300px;"
               ></el-input>
             </el-form-item>
-            <el-form-item label="邮箱">
-              <el-input
-                :disabled="!alarmstatus.email"
-                v-model="userinfo.email"
-                size="mini"
-                style="width: 300px;"
-              ></el-input>
-            </el-form-item>
-            <el-form-item label="WeChat">
-              <el-input
-                :disabled="!alarmstatus.wechat"
-                v-model="userinfo.wechat"
-                size="mini"
-                style="width: 300px;"
-              ></el-input>
-            </el-form-item>
-            <el-form-item label="钉钉">
-              <el-input
-                :disabled="!alarmstatus.dingphone"
-                v-model="userinfo.dingphone"
-                size="mini"
-                style="width: 300px;"
-              ></el-input>
-            </el-form-item>
-            <!-- <el-form-item label="Slack">
-              <el-input
-                :disabled="!alarmstatus.slack"
-                v-model="userinfo.slack"
-                size="mini"
-                style="width: 300px;"
-              ></el-input>
-            </el-form-item> -->
-            <el-form-item label="Telegram">
-              <el-input
-                :disabled="!alarmstatus.telegram"
-                v-model="userinfo.telegram"
-                size="mini"
-                style="width: 300px;"
-              ></el-input>
-            </el-form-item>
-            <el-form-item label="备注">
-              <el-input type="textarea" v-model="userinfo.remark" size="mini" style="width: 300px;"></el-input>
-            </el-form-item>
           </el-form>
-          <div style="margin-left: 80px;">
-            <el-popconfirm
-              :hideIcon="true"
-              title="确定修改个人信息?"
-              @onConfirm="submitchangeinfo"
-            >
-              <el-button slot="reference" size="small" type="primary">更 新</el-button>
-            </el-popconfirm>
-          </div>
-        <!-- </el-tab-pane> -->
-        <!-- <el-tab-pane name="operatelog">
-          <span slot="label">
-            <svg-icon icon-class="operate" />操作日志
+
+          <!-- <el-input
+            v-if="changepasswd"
+            type="password"
+            v-model="password1"
+            size="mini"
+            clearable
+            placeholder="请输入密码"
+            style="width: 300px;"
+          ></el-input>
+          <span v-if="changepasswd">
+            <br />
           </span>
-          <div class="block">
-            <el-timeline>
-              <el-timeline-item timestamp="2018/4/12" placement="top">
-                <el-card>
-                  <h4>更新 Github 模板</h4>
-                  <p>王小虎 提交于 2018/4/12 20:46</p>
-                </el-card>
-              </el-timeline-item>
-              <el-timeline-item timestamp="2018/4/3" placement="top">
-                <el-card>
-                  <h4>更新 Github 模板</h4>
-                  <p>王小虎 提交于 2018/4/3 20:46</p>
-                </el-card>
-              </el-timeline-item>
-              <el-timeline-item timestamp="2018/4/2" placement="top">
-                <el-card>
-                  <h4>更新 Github 模板</h4>
-                  <p>王小虎 提交于 2018/4/2 20:46</p>
-                </el-card>
-              </el-timeline-item>
-            </el-timeline>
-          </div>
-        </el-tab-pane> -->
-      </el-tabs>
+          <el-input
+            type="password"
+            v-if="changepasswd"
+            v-model="password2"
+            size="mini"
+            clearable
+            placeholder="请再次输入密码"
+            style="width: 300px;"
+          ></el-input>-->
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input
+            :disabled="!alarmstatus.email"
+            v-model="userinfo.email"
+            size="mini"
+            style="width: 300px;"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="WeChat">
+          <el-input
+            :disabled="!alarmstatus.wechat"
+            v-model="userinfo.wechat"
+            size="mini"
+            style="width: 300px;"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="钉钉">
+          <el-input
+            :disabled="!alarmstatus.dingphone"
+            v-model="userinfo.dingphone"
+            size="mini"
+            style="width: 300px;"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="Telegram">
+          <el-input
+            :disabled="!alarmstatus.telegram"
+            v-model="userinfo.telegram"
+            size="mini"
+            style="width: 300px;"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input type="textarea" v-model="userinfo.remark" size="mini" style="width: 300px;"></el-input>
+        </el-form-item>
+      </el-form>
+      <div style="margin-left: 80px;">
+        <el-popconfirm :hideIcon="true" title="确定修改个人信息?" @onConfirm="submitchangeinfo">
+          <el-button slot="reference" size="small" type="primary">更 新</el-button>
+        </el-popconfirm>
+      </div>
     </div>
   </div>
 </template>
@@ -132,6 +112,16 @@ export default {
       name: this.$store.getters.name,
       password1: "",
       password2: "",
+      pass: {
+        password1: "",
+        password2: ""
+      },
+      rules: {
+        password1: [{ required: true, message: "请输入密码", trigger: "blur" }],
+        password2: [
+          { required: true, message: "请再次输入密码", trigger: "blur" }
+        ]
+      },
       userinfo: {
         id: "",
         email: "",
@@ -175,33 +165,101 @@ export default {
     },
     submitchangeinfo() {
       if (this.changepasswd) {
-        if (
-          this.password1 === "" ||
-          this.password2 === "" ||
-          this.password1 !== this.password2
-        ) {
-          Message.error("两次密码输入不一致请重新输入");
-          return;
-        } else {
-          try {
-            window.btoa(`${this.password1}`);
-          } catch (error) {
-            Message.error("密码只能使用字母、数字、符号");
-            return;
+        this.$refs["pass"].validate(valid => {
+          if (this.changepasswd && valid) {
+            if (this.pass.password1 !== this.pass.password2) {
+              Message.warning("两次密码输入不一致请重新输入");
+              return;
+            } else {
+              try {
+                window.btoa(`${this.pass.password1}`);
+              } catch (error) {
+                Message.warning("密码只能使用字母、数字、符号");
+                return;
+              }
+              this.userinfo.password = this.pass.password1;
+            }
+          } else {
+            return false;
           }
-          this.userinfo.password = this.password1;
-        }
+          changeselfinfo(this.userinfo).then(resp => {
+            if (resp.code === 0) {
+              Message.success("更新成功");
+              this.changepasswd = false;
+              this.password1 = "";
+              this.password2 = "";
+            } else {
+              Message.error(`更新失败 ${resp.msg}`);
+            }
+          });
+        });
+      } else {
+        changeselfinfo(this.userinfo).then(resp => {
+          if (resp.code === 0) {
+            Message.success("更新成功");
+            this.changepasswd = false;
+            this.password1 = "";
+            this.password2 = "";
+          } else {
+            Message.error(`更新失败 ${resp.msg}`);
+          }
+        });
       }
-      changeselfinfo(this.userinfo).then(resp => {
-        if (resp.code === 0) {
-          Message.success("更新成功");
-          this.changepasswd = false;
-          this.password1 = "";
-          this.password2 = "";
-        } else {
-          Message.error(`更新失败 ${resp.msg}`);
-        }
-      });
+      // this.$refs["pass"].validate(valid => {
+      //   if (this.changepasswd && valid) {
+      //     if (this.pass.password1 !== this.pass.password2) {
+      //       Message.warning("两次密码输入不一致请重新输入");
+      //       return;
+      //     } else {
+      //       try {
+      //         window.btoa(`${this.pass.password1}`);
+      //       } catch (error) {
+      //         Message.warning("密码只能使用字母、数字、符号");
+      //         return;
+      //       }
+      //       this.userinfo.password = this.pass.password1;
+      //     }
+      //   } else {
+      //     return false;
+      //   }
+      //   changeselfinfo(this.userinfo).then(resp => {
+      //     if (resp.code === 0) {
+      //       Message.success("更新成功");
+      //       this.changepasswd = false;
+      //       this.password1 = "";
+      //       this.password2 = "";
+      //     } else {
+      //       Message.error(`更新失败 ${resp.msg}`);
+      //     }
+      //   });
+      // });
+
+      // if (this.changepasswd) {
+      //   this.$refs["pass"].validate(valid => {
+      //     if (valid) {
+      //       if (this.password1 !== this.password2) {
+      //         Message.warning("两次密码输入不一致请重新输入");
+      //         return;
+      //       } else {
+      //         try {
+      //           window.btoa(`${this.password1}`);
+      //         } catch (error) {
+      //           Message.warning("密码只能使用字母、数字、符号");
+      //           return;
+      //         }
+      //         this.userinfo.password = this.password1;
+      //       }
+      //       return true;
+      //     } else {
+      //       Message.warning("密码只能使用字母、数字、符号");
+      //       return false;
+      //     }
+      //   });
+      //   if (this.password1 === "" || this.password2 === "") {
+      //     Message.warning("请输入密码");
+      //     return;
+      //   }
+      // }
     },
     startgetalarmstatus() {
       getalarmstatus().then(resp => {

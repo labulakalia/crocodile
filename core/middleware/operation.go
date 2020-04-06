@@ -16,7 +16,6 @@ import (
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"github.com/labulaka521/crocodile/core/utils/resp"
 	"go.uber.org/zap"
 )
 
@@ -37,7 +36,6 @@ var moduleMap = map[string]string{
 // Oprtation save all user operate log
 func Oprtation() func(c *gin.Context) {
 	return func(c *gin.Context) {
-
 
 		for _, url := range excludepath {
 			if strings.Contains(c.Request.RequestURI, url) {
@@ -78,7 +76,7 @@ func Oprtation() func(c *gin.Context) {
 		body, err := ioutil.ReadAll(c.Request.Body)
 		if err != nil {
 			log.Error("ioutil.ReadAll failed", zap.Error(err))
-			resp.JSON(c, resp.ErrInternalServer, nil)
+			c.Next()
 			return
 		}
 
@@ -105,16 +103,17 @@ func Oprtation() func(c *gin.Context) {
 			err = json.Unmarshal(body, &idname)
 			if err != nil {
 				log.Error("json.Unmarshal failed", zap.Error(err))
-				resp.JSON(c, resp.ErrInternalServer, nil)
+				c.Next()
 				return
 			}
 			clonetask, err := model.GetTaskByID(ctx, idname.ID)
 			if err != nil {
 				log.Error("model.GetTaskByID failed", zap.Error(err))
-				resp.JSON(c, resp.ErrInternalServer, nil)
+				c.Next()
 				return
 			}
-			model.SaveOperateLog(ctx,
+			c.Next() // 为了获取状态码
+			model.SaveOperateLog(ctx, c,
 				uid,
 				username,
 				role,
@@ -126,7 +125,6 @@ func Oprtation() func(c *gin.Context) {
 			if err != nil {
 				log.Error("model.SaveOperateLog failed", zap.Error(err))
 			}
-			c.Next()
 			return
 		}
 		// 删除日志
@@ -136,7 +134,7 @@ func Oprtation() func(c *gin.Context) {
 			err = json.Unmarshal(body, &cleanlog)
 			if err != nil {
 				log.Error("json.Unmarshal failed", zap.Error(err))
-				resp.JSON(c, resp.ErrInternalServer, nil)
+				c.Next()
 				return
 			}
 			var desc string
@@ -145,7 +143,8 @@ func Oprtation() func(c *gin.Context) {
 			} else {
 				desc = "清除全部日志"
 			}
-			model.SaveOperateLog(ctx,
+			c.Next() // 为了获取状态码
+			model.SaveOperateLog(ctx, c,
 				uid,
 				username,
 				role,
@@ -157,7 +156,6 @@ func Oprtation() func(c *gin.Context) {
 			if err != nil {
 				log.Error("model.SaveOperateLog failed", zap.Error(err))
 			}
-			c.Next()
 			return
 		}
 		// 运行任务
@@ -167,16 +165,17 @@ func Oprtation() func(c *gin.Context) {
 			err = json.Unmarshal(body, &getid)
 			if err != nil {
 				log.Error("json.Unmarshal failed", zap.Error(err))
-				resp.JSON(c, resp.ErrInternalServer, nil)
+				c.Next()
 				return
 			}
 			task, err := model.GetTaskByID(ctx, getid.ID)
 			if err != nil {
 				log.Error("model.GetTaskByID failed", zap.Error(err))
-				resp.JSON(c, resp.ErrInternalServer, nil)
+				c.Next()
 				return
 			}
-			model.SaveOperateLog(ctx,
+			c.Next()
+			model.SaveOperateLog(ctx, c,
 				uid,
 				username,
 				role,
@@ -188,7 +187,6 @@ func Oprtation() func(c *gin.Context) {
 			if err != nil {
 				log.Error("model.SaveOperateLog failed", zap.Error(err))
 			}
-			c.Next()
 			return
 
 		}
@@ -199,16 +197,17 @@ func Oprtation() func(c *gin.Context) {
 			err = json.Unmarshal(body, &getid)
 			if err != nil {
 				log.Error("json.Unmarshal failed", zap.Error(err))
-				resp.JSON(c, resp.ErrInternalServer, nil)
+				c.Next()
 				return
 			}
 			task, err := model.GetTaskByID(ctx, getid.ID)
 			if err != nil {
 				log.Error("model.GetTaskByID failed", zap.Error(err))
-				resp.JSON(c, resp.ErrInternalServer, nil)
+				c.Next()
 				return
 			}
-			model.SaveOperateLog(ctx,
+			c.Next() // 为了获取状态码
+			model.SaveOperateLog(ctx, c,
 				uid,
 				username,
 				role,
@@ -220,7 +219,6 @@ func Oprtation() func(c *gin.Context) {
 			if err != nil {
 				log.Error("model.SaveOperateLog failed", zap.Error(err))
 			}
-			c.Next()
 			return
 		}
 
@@ -250,7 +248,7 @@ func Oprtation() func(c *gin.Context) {
 				userData, err := model.GetUserByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetUserByID", zap.String("uid", id), zap.Error(err))
-					resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				modulename = userData.Name
@@ -259,7 +257,7 @@ func Oprtation() func(c *gin.Context) {
 				hostgroupData, err := model.GetHostGroupByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetHostGroupByID", zap.String("id", id), zap.Error(err))
-					resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				modulename = hostgroupData.Name
@@ -268,7 +266,7 @@ func Oprtation() func(c *gin.Context) {
 				hostData, err := model.GetHostByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetHostByID", zap.String("id", id), zap.Error(err))
-					resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				modulename = hostData.Addr
@@ -277,7 +275,7 @@ func Oprtation() func(c *gin.Context) {
 				taskData, err := model.GetTaskByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetHostByID", zap.String("id", id), zap.Error(err))
-					resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				modulename = taskData.Name
@@ -293,7 +291,7 @@ func Oprtation() func(c *gin.Context) {
 		}
 
 		c.Next()
-		log.Debug("get request return code", zap.Int("code", c.GetInt("statuscode")))
+
 		if c.GetInt("statuscode") != 0 {
 			log.Error("req status code is not 0", zap.Int("statuscode", c.GetInt("statuscode")))
 			return
@@ -307,7 +305,7 @@ func Oprtation() func(c *gin.Context) {
 				userData, err := model.GetUserByName(ctx, name)
 				if err != nil {
 					log.Error("model.GetUserByID", zap.String("name", name), zap.Error(err))
-					// resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				modulename = userData.Name
@@ -316,7 +314,7 @@ func Oprtation() func(c *gin.Context) {
 				hostgroupData, err := model.GetHostGroupByName(ctx, name)
 				if err != nil {
 					log.Error("model.GetHostGroupByName", zap.String("name", name), zap.Error(err))
-					// resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				modulename = hostgroupData.Name
@@ -325,7 +323,7 @@ func Oprtation() func(c *gin.Context) {
 				taskData, err := model.GetTaskByName(ctx, name)
 				if err != nil {
 					log.Error("model.GetTaskByName", zap.String("name", name), zap.Error(err))
-					// resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				modulename = taskData.Name
@@ -341,7 +339,7 @@ func Oprtation() func(c *gin.Context) {
 				userData, err := model.GetUserByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetUserByID", zap.String("uid", id), zap.Error(err))
-					// resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				newData = *userData
@@ -349,7 +347,7 @@ func Oprtation() func(c *gin.Context) {
 				hostgroupData, err := model.GetHostGroupByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetHostGroupByID", zap.String("id", id), zap.Error(err))
-					// resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				newData = *hostgroupData
@@ -357,7 +355,7 @@ func Oprtation() func(c *gin.Context) {
 				hostData, err := model.GetHostByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetHostByID", zap.String("id", id), zap.Error(err))
-					// resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				newData = *hostData
@@ -365,7 +363,7 @@ func Oprtation() func(c *gin.Context) {
 				taskData, err := model.GetTaskByID(ctx, id)
 				if err != nil {
 					log.Error("model.GetHostByID", zap.String("id", id), zap.Error(err))
-					// resp.JSON(c, resp.ErrInternalServer, nil)
+					c.Next()
 					return
 				}
 				newData = *taskData
@@ -382,7 +380,7 @@ func Oprtation() func(c *gin.Context) {
 			return
 		}
 
-		err = model.SaveOperateLog(ctx,
+		err = model.SaveOperateLog(ctx, c,
 			uid,
 			username,
 			role,

@@ -27,17 +27,17 @@
         </el-form-item>
       </el-form>
       <el-dialog title="清理日志" center :visible.sync="cleanlogvisible" width="25%">
-        <el-form>
-          <el-form-item label="任务名称">
+        <el-form :rules="rules" size="mini" :model="cleanlog" ref="cleanlog">
+          <el-form-item label="任务名称" prop="name">
             <el-input
-              v-model="logquery.name"
+              v-model="cleanlog.name"
               size="mini"
               placeholder="请输入需要清理的任务名称"
               style="width: 70%;"
             ></el-input>
           </el-form-item>
-          <el-form-item label="清理时间">
-            <el-select size="mini" v-model="cleanpredat" style="width: 70%;">
+          <el-form-item label="清理时间" prop="cleanpredat">
+            <el-select size="mini" v-model="cleanlog.cleanpredat" style="width: 70%;">
               <el-option
                 v-for="item in cleantimeoption"
                 :key="item.label"
@@ -47,10 +47,9 @@
             </el-select>
           </el-form-item>
         </el-form>
-
         <p></p>
         <div style="text-align: center;">
-          <el-button type="primary" size="mini" @click="startcleantask">确定</el-button>
+          <el-button type="primary" size="mini" @click="startcleantask('cleanlog')">确定</el-button>
           <el-button size="mini" type="text" @click="cleanlogvisible = false">取消</el-button>
         </div>
       </el-dialog>
@@ -141,7 +140,7 @@
     </el-table>
     <div style="margin-top: 10px;float:right;height: 70px;">
       <el-pagination
-       :page-size="logquery.limit"
+        :page-size="logquery.limit"
         @current-change="handleCurrentChangerun"
         background
         layout="total,prev, pager, next"
@@ -171,7 +170,7 @@
               height="500"
               width="100%"
               @init="initEditor"
-              :options="{ readOnly: true }"
+              :options="{ readOnly: true,wrap: 'free', indentedSoftWrap: false}"
             ></editor>
           </el-card>
         </el-main>
@@ -188,6 +187,15 @@ import router from "@/router";
 export default {
   components: {
     editor: require("vue2-ace-editor")
+  },
+  watch: {
+    "logquery.name": {
+      handler(newv, oldv) {
+        this.cleanlog.name = newv;
+      },
+      deep: true,
+      immediate: true
+    }
   },
   data() {
     return {
@@ -230,7 +238,10 @@ export default {
         label: "name"
       },
       cleanlogvisible: false,
-      cleanpredat: "",
+      cleanlog: {
+        name: "",
+        cleanpredat: ""
+      },
       cleantimeoption: [
         {
           label: "全部日志",
@@ -261,7 +272,13 @@ export default {
           label: "一年以前的日志",
           value: 365
         }
-      ]
+      ],
+      rules: {
+        name: [{ required: true, message: "请输入任务名称", trigger: "blur" }],
+        cleanpredat: [
+          { required: true, message: "请选择清理时间", trigger: "blur" }
+        ]
+      }
     };
   },
 
@@ -285,9 +302,6 @@ export default {
       this.startgettasklog();
     },
     startgettasklog() {
-      if (this.logquery.name === "") {
-        return;
-      }
       gettaskLog(this.logquery).then(resp => {
         this.data = resp.data;
         this.pagecount = resp.count;
@@ -329,20 +343,27 @@ export default {
         this.treetaskdata = resp.data;
       });
     },
-    startcleantask() {
-      var reqdata = {
-        name: this.logquery.name,
-        preday: this.cleanpredat
-      };
-      cleantasklog(reqdata).then(resp => {
-        if (resp.code === 0) {
-          Message.success(
-            `总共清理任务 ${this.logquery.name} 的日志共 ${resp.data.delcount} 条`
-          );
-          this.cleanlogvisible = false;
-          this.startgettasklog();
-        } else {
-          Message.error(`清理任务失败 ${resp.msg}`);
+    startcleantask(formName) {
+      if (this.logquery.name !== "") {
+        this.cleanlog.name = this.logquery.name;
+      }
+      this.$refs[formName].validate(valid => {
+        if (valid) {
+          var reqdata = {
+            name: this.cleanlog.name,
+            preday: this.cleanlog.cleanpredat
+          };
+          cleantasklog(reqdata).then(resp => {
+            if (resp.code === 0) {
+              Message.success(
+                `总共清理任务 ${this.logquery.name} 的日志共 ${resp.data.delcount} 条`
+              );
+              this.cleanlogvisible = false;
+              this.startgettasklog();
+            } else {
+              Message.error(`清理任务失败 ${resp.msg}`);
+            }
+          });
         }
       });
     }

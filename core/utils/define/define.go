@@ -98,7 +98,7 @@ type GetID struct {
 
 // GetName get task name in post
 type GetName struct {
-	Name string `json:"name" form:"name" binding:"required"`
+	Name string `json:"name" form:"name"`
 }
 
 // Common struct
