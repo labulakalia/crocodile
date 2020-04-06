@@ -1,9 +1,9 @@
 # 认证密钥
 secrettoken = "weinjuwiwiuwu"
 
-# log
+# 日志
 [log]
-# if logpath is empty,will console by stdout
+# 日志路径，为空将输出控制台
 logpath = ""
 # log size (M)
 maxsize = 10
@@ -18,7 +18,7 @@ loglevel  = "debug"
 # text or json output
 format = "text"
 
-# tls
+# tls验证
 [cert]
 # if enable, must be set cert，key file
 enable = false 
@@ -84,15 +84,15 @@ agentsecret = ""
 enable = true
 webhookurl = "http://127.0.0.1:8088"
 
-# crocodile client
+# 执行器设置
 [client]
 # client port
-port = 0        # default rand port
-# crocodile server addr
+port = 0        # 默认随机端口
+# 调度中心地址
 serveraddr = "127.0.0.1:8080"
-# set default client hostgroup, ignore if not exist in server
+# 将保存只此主机组，如果不存在或者选项为空将忽略
 hostgroup = "crocodile_hostgroup"
-# client's weight default 100
+# 权重
 weight = 100
 # remark
 remark = "test remark"
