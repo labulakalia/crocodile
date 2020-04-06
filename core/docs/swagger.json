@@ -10,8 +10,8 @@
             "email": "labulakalia@gmail.com"
         },
         "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "name": "MIT 2.0",
+            "url": "https://github.com/labulaka521/crocodile/blob/master/LICENSE"
         },
         "version": "1.0"
     },
@@ -1223,10 +1223,6 @@
                     "type": "string"
                 },
                 "remark": {
-                    "type": "string"
-                },
-                "slack": {
-                    "description": "slack user name",
                     "type": "string"
                 },
                 "telegram": {

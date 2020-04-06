@@ -23,14 +23,14 @@ var (
 // @contact.url http://www.swagger.io/support
 // @contact.email labulakalia@gmail.com
 
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+// @license.name MIT 2.0
+// @license.url https://github.com/labulaka521/crocodile/blob/master/LICENSE
 
 // @securityDefinitions.basic BasicAuth
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
-func main() {
+func main1() {
 	version.Commit = c
 	version.Version = v
 	version.BuildDate = d

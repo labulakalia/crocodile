@@ -37,15 +37,7 @@ var moduleMap = map[string]string{
 // Oprtation save all user operate log
 func Oprtation() func(c *gin.Context) {
 	return func(c *gin.Context) {
-		// operate id
-		// 操作人id，姓名，用户类型
-		// Method 创建，修改，删除
-		// 模块: 用户，主机组，主机，任务，用户
-		// 操作对象名称
-		// 修改时间
-		// 	修改字段
-		// 	旧值
-		// 	新值
+
 
 		for _, url := range excludepath {
 			if strings.Contains(c.Request.RequestURI, url) {
@@ -301,6 +293,7 @@ func Oprtation() func(c *gin.Context) {
 		}
 
 		c.Next()
+		log.Debug("get request return code", zap.Int("code", c.GetInt("statuscode")))
 		if c.GetInt("statuscode") != 0 {
 			log.Error("req status code is not 0", zap.Int("statuscode", c.GetInt("statuscode")))
 			return
