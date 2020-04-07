@@ -16,7 +16,7 @@
     >
       <div class="title-container">
         <h3 class="title">Crocodile 任务调度平台</h3>
-        <h6 v-show="needinstall" class="installtitle">首次运行请先进行安装操作</h6>
+        <h6 v-show="needinstall" class="installtitle">首次运行请先创建默认管理员用户然后进行安装操作</h6>
       </div>
 
       <el-form-item prop="username">
@@ -47,7 +47,6 @@
           name="password"
           tabindex="2"
           auto-complete="on"
-          @keyup.enter.native="handleLogin"
         />
         <!-- <span class="show-pwd" @click="showPwd(passwordType)">
           <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
@@ -66,7 +65,6 @@
           name="password"
           tabindex="2"
           auto-complete="on"
-          @keyup.enter.native="handleLogin"
         />
         <!-- <span class="show-pwd" @click="showPwd(passwordType2)">
           <svg-icon :icon-class="passwordType2 === 'password' ? 'eye' : 'eye-open'" />
@@ -155,27 +153,36 @@ export default {
       });
     },
     startinstallcrocodile() {
-      if (this.loginForm.password !== this.password2) {
-        Message.error("两次密码输入不相同");
-        return;
-      }
-      try {
-        window.btoa(`${this.loginForm.username}:${this.loginForm.password}`);
-      } catch (error) {
-        Message.error("用户名和密码只能使用字母、数字、符号");
-        return;
-      }
-      this.installloading = true;
-      startinstall(this.loginForm).then(resp => {
-        if (resp.code === 0) {
-          this.startqueryinstallstatus();
-          this.installloading = false;
-          this.needinstall = false;
-          Message.success("恭喜你已经安装成功🎉");
+      // loginForm
+      this.$refs["loginForm"].validate(valid => {
+        if (valid) {
+          if (this.loginForm.password !== this.password2) {
+            Message.warning("两次密码输入不相同");
+            return;
+          }
+          try {
+            window.btoa(
+              `${this.loginForm.username}:${this.loginForm.password}`
+            );
+          } catch (error) {
+            Message.warning("用户名和密码只能使用字母、数字、符号");
+            return;
+          }
+          this.installloading = true;
+          startinstall(this.loginForm).then(resp => {
+            if (resp.code === 0) {
+              this.startqueryinstallstatus();
+              this.installloading = false;
+              this.needinstall = false;
+              Message.success("恭喜你已经安装成功🎉");
+            } else {
+              Message.error(resp.msg);
+              this.installloading = false;
+              this.needinstall = false;
+            }
+          });
         } else {
-          Message.error(resp.msg);
-          this.installloading = false;
-          this.needinstall = false;
+          return false;
         }
       });
     },
