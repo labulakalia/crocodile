@@ -12,6 +12,14 @@
 ## Online Preview
 **[Online Preview](http://crocodile-test.herokuapp.com/crocodile/)** normal/normal
 
+
+<div align="center">
+ <img src="./screenshot/1.png" width = "50%" height = "50%"><img src="./screenshot/2.png" width = "50%" height = "50%">
+</div>
+<div align="center">
+ <img src="./screenshot/4.png" width = "50%" height = "50%"><img src="./screenshot/5.png" width = "50%" height = "50%">
+</div>
+
 ## Features
 - 在Web节点对任务进行增加、修改、删除、克隆、运行任务等操作
 - 实时查看正在运行的任务和任务的实时日志，并且可以对正在运行的任务进行终止操作

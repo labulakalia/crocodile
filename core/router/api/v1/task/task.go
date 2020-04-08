@@ -451,14 +451,8 @@ func GetRunningTask(c *gin.Context) {
 // @Router /api/v1/task/log [get]
 // @Security ApiKeyAuth
 func LogTask(c *gin.Context) {
-	getname := define.GetName{}
-	err := c.BindQuery(&getname)
-	if err != nil {
-		log.Error("BindQuery", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
 
+	name := c.Query("name")
 	statusstr := c.Query("status")
 
 	status, err := strconv.Atoi(statusstr)
@@ -484,7 +478,7 @@ func LogTask(c *gin.Context) {
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	logs, count, err := model.GetLog(ctx, getname.Name, status, q.Offset, q.Limit)
+	logs, count, err := model.GetLog(ctx, name, status, q.Offset, q.Limit)
 	if err != nil {
 		log.Error("GetLog failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
