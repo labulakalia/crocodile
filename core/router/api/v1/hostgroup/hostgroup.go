@@ -274,10 +274,13 @@ func GetHostsByIHGID(c *gin.Context) {
 		return
 	}
 	hosts, err := model.GetHostsByHGID(ctx, getid.ID)
-	if err != nil {
+	switch err.(type) {
+	case nil:
+		resp.JSON(c, resp.Success, hosts)
+	case define.ErrNotExist:
+		resp.JSON(c, resp.ErrHostgroupNotExist, nil)
+	default:
 		log.Error("model.GetHostsByHGID", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
 	}
-	resp.JSON(c, resp.Success, hosts)
 }

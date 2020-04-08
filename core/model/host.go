@@ -213,7 +213,8 @@ func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 	}
 	if len(hosts) != 1 {
 		log.Warn("can not find hostid", zap.Error(err))
-		return nil, nil
+		err = define.ErrNotExist{Value: id}
+		return nil, err
 	}
 	return hosts[0], nil
 }

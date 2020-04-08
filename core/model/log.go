@@ -167,9 +167,6 @@ func GetTreeLog(ctx context.Context, id string, startTime int64) ([]*define.Task
 	}
 	retTasksStatus := define.GetTasksTreeStatus()
 	task, err := GetTaskByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
 	switch err.(type) {
 	case nil:
 		goto Next

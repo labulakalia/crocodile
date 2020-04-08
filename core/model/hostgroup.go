@@ -174,7 +174,8 @@ func GetHostGroupByID(ctx context.Context, id string) (*define.HostGroup, error)
 		return nil, err
 	}
 	if len(hostgroups) != 1 {
-		return nil, errors.New("can not find hostgroup id: " + id)
+		err = define.ErrNotExist{Value: id}
+		return nil, err
 	}
 	return &hostgroups[0], nil
 }

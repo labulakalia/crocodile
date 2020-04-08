@@ -78,17 +78,18 @@ func ChangeHostState(c *gin.Context) {
 		return
 	}
 	host, err := model.GetHostByID(ctx, gethost.ID)
-	if err != nil {
-		log.Error("model.GetHostByID", zap.Error(err))
+	switch err.(type) {
+	case nil:
+		goto Next
+	case define.ErrNotExist:
+		resp.JSON(c, resp.ErrHostNotExist, nil)
+		return
+	default:
+		
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	if host == nil {
-		log.Error("can not get host", zap.String("taskid", gethost.ID))
-		resp.JSON(c, resp.ErrHostNotExist, nil)
-		return
-	}
-
+Next:
 	err = model.StopHost(ctx, gethost.ID, !host.Stop)
 	if err != nil {
 		log.Error("model.StopHost", zap.Error(err))
