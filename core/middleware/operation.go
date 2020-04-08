@@ -113,6 +113,11 @@ func Oprtation() func(c *gin.Context) {
 				return
 			}
 			c.Next() // 为了获取状态码
+			// 任务ID不存在时，返回值为nil
+			if c.GetInt("statuscode") != 0 {
+				log.Error("req status code is not 0, do not save", zap.Int("statuscode", c.GetInt("statuscode")))
+				return
+			}
 			model.SaveOperateLog(ctx, c,
 				uid,
 				username,
@@ -321,7 +326,7 @@ func Oprtation() func(c *gin.Context) {
 				newData = *hostgroupData
 			case task:
 				taskData, err := model.GetTaskByName(ctx, name)
-				if err != nil {
+				if err != nil  {
 					log.Error("model.GetTaskByName", zap.String("name", name), zap.Error(err))
 					c.Next()
 					return

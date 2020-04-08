@@ -28,3 +28,12 @@ type ErrDelHostID struct {
 func (u ErrDelHostID) Error() string {
 	return fmt.Sprintf("can delete hostid %s, it use by other hostgroup", u.ID)
 }
+
+// ErrNotExist query not exist
+type ErrNotExist struct {
+	Value string
+}
+
+func (u ErrNotExist) Error() string {
+	return fmt.Sprintf("value %s is not exist", u.Value)
+}

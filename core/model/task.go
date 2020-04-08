@@ -18,7 +18,7 @@ import (
 )
 
 // CreateTask create task
-func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, taskData interface{},
+func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, taskData interface{}, run bool,
 	parentTaskIds []string, parentRunParallel bool, childTaskIds []string, childRunParallel bool,
 	cronExpr string, timeout int, alarmUserIds []string, routePolicy define.RoutePolicy, expectCode int,
 	expectContent string, alarmStatus define.AlarmStatus, createByID, hostGroupID, remark string) error {
@@ -62,7 +62,7 @@ func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, 
 		name,
 		tasktype,
 		fmt.Sprintf("%s", taskdata),
-		true,
+		run,
 		strings.Join(parentTaskIds, ","),
 		parentRunParallel,
 		strings.Join(childTaskIds, ","),
@@ -203,8 +203,9 @@ func GetTaskByID(ctx context.Context, id string) (*define.GetTask, error) {
 		return nil, err
 	}
 	if len(tasks) != 1 {
-		err := fmt.Errorf("can find task %s, map be it has deleted", id)
-		return nil, errors.Errorf("getTasks id failed: %v", err)
+		err = define.ErrNotExist{Value: id}
+		log.Error("get taskid failed", zap.Error(err))
+		return nil, err
 	}
 	return &tasks[0], nil
 }
@@ -216,8 +217,9 @@ func GetTaskByName(ctx context.Context, name string) (*define.GetTask, error) {
 		return nil, err
 	}
 	if len(tasks) != 1 {
-		err := fmt.Errorf("can find task %s, map be it has deleted", name)
-		return nil, errors.Errorf("getTasks id failed: %v", err)
+		err = define.ErrNotExist{Value: name}
+		log.Error("get taskname failed", zap.Error(err))
+		return nil, err
 	}
 	return &tasks[0], nil
 }
@@ -406,39 +408,4 @@ func getTasks(ctx context.Context,
 		tasks = append(tasks, t)
 	}
 	return tasks, count, nil
-}
-
-// CloneTask copy old task
-func CloneTask(ctx context.Context, newname, cloneid, createbyid string) error {
-	task, err := GetTaskByID(ctx, cloneid)
-	if err != nil {
-		return errors.Wrap(err, "GetTaskByID")
-	}
-	id := utils.GetID()
-	if id == "" {
-		return errors.Wrap(err, "utils.GetID return empty")
-	}
-	err = CreateTask(ctx,
-		id,
-		newname,
-		task.TaskType,
-		task.TaskData,
-		task.ParentTaskIds,
-		task.ParentRunParallel,
-		task.ChildTaskIds,
-		task.ChildRunParallel,
-		task.Cronexpr,
-		task.Timeout,
-		task.AlarmUserIds,
-		task.RoutePolicy,
-		task.ExpectCode,
-		task.ExpectContent,
-		task.AlarmStatus,
-		createbyid,
-		task.HostGroupID,
-		fmt.Sprintf("从任务%s克隆", task.Name))
-	if err != nil {
-		return errors.Wrap(err, "CreateTask")
-	}
-	return nil
 }

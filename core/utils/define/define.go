@@ -98,7 +98,7 @@ type GetID struct {
 
 // GetName get task name in post
 type GetName struct {
-	Name string `json:"name" form:"name"`
+	Name string `json:"name" form:"name"  binding:"required"`
 }
 
 // Common struct
@@ -200,7 +200,7 @@ type Host struct {
 type Task struct {
 	TaskType          TaskType    `json:"task_type" binding:"required"`     // 任务类型
 	TaskData          interface{} `json:"task_data" binding:"required"`     // 任务数据
-	Run               bool        `json:"run" `                             // -1 为不能运行 1 为可以运行 如果这个任务作为别的任务父任务或者子任务会忽略这个字段
+	Run               bool        `json:"run" `                             // 是否可以自动调度  如果为false则只能手动或者被其他任务依赖运行
 	ParentTaskIds     []string    `json:"parent_taskids"`                   // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
 	ParentRunParallel bool        `json:"parent_runparallel"`               // 是否以并行运行父任务 0否 1是
 	ChildTaskIds      []string    `json:"child_taskids"`                    // 子任务 运行结束后运行子任务
@@ -389,7 +389,7 @@ type Log struct {
 // Cleanlog data
 type Cleanlog struct {
 	GetName
-	PreDay int64 `json:"preday"` // preday几天前的日志
+	PreDay int64 `json:"preday"  binding:"required"` // preday几天前的日志
 }
 
 // Query recv url query params

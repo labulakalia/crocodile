@@ -292,35 +292,33 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 		g              *errgroup.Group
 	)
 	log.Info("start run task", zap.String("taskid", taskid))
-	masterlogcache = cachepool.Get().(LogCacher) // this log cache is main
-	masterlogcache.SetTaskStatus(define.TsWait)
+
 	t, exist := s.gettask(taskid)
 	if !exist {
 		log.Error("this is bug, taskid not exist", zap.String("taskid", taskid), zap.Any("sch", s.sch))
-		// logcache.WriteStringf("taskid %s not exist", taskid)
-		cachepool.Put(masterlogcache)
 		return
 	}
+	// if master task is running,will do not run this time
+	if t.running {
+		log.Warn("task is running,so not run now", zap.String("task", t.name))
+		return
+	}
+
+	masterlogcache = cachepool.Get().(LogCacher) // this log cache is main
+	masterlogcache.SetTaskStatus(define.TsWait)
+	masterlogcache.Clean()
 
 	t.errTaskID = ""
 	t.errTask = ""
 	t.errCode = 0
 	t.errMsg = ""
 	t.errTasktype = 0
-
 	t.Trigger = trigger
-	masterlogcache.Clean()
 	mastername := generatename(taskid, define.MasterTask)
 	t.Lock()
 	t.logcaches[mastername] = masterlogcache
 	t.Unlock()
 
-	// if master task is running,will do not run this time
-	if t.running {
-		log.Warn("task is running,so not run now", zap.String("task", t.name))
-		cachepool.Put(masterlogcache)
-		return
-	}
 	t.running = true
 	t.starttime = time.Now().UnixNano() / 1e6
 
@@ -334,9 +332,9 @@ func (s *cacheSchedule) RunTask(taskid string, trigger define.Trigger) {
 		cachepool.Put(masterlogcache)
 		return
 	}
-
-	if !task.Run {
-		log.Error("main task is forbid run", zap.String("task", task.Name))
+	// 只能手动调用运行
+	if !task.Run && trigger == define.Auto {
+		log.Error("task is forbid auto trigger run by schedule", zap.String("task", task.Name))
 		cachepool.Put(masterlogcache)
 		return
 	}

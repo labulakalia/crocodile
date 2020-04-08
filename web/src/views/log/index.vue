@@ -150,7 +150,7 @@
 
     <el-dialog :title="diatasktitle" :visible.sync="diaogVisible" center width="70%">
       <el-container>
-        <el-aside width="200px">
+        <el-aside width="140px">
           <el-tree
             :data="treetaskdata"
             highlight-current
@@ -170,7 +170,11 @@
               height="500"
               width="100%"
               @init="initEditor"
-              :options="{ readOnly: true,wrap: 'free', indentedSoftWrap: false}"
+              :options="{ 
+                readOnly: true,
+                      wrap: 'free',
+                      indentedSoftWrap: false,
+                 }"
             ></editor>
           </el-card>
         </el-main>
@@ -186,7 +190,7 @@ import router from "@/router";
 
 export default {
   components: {
-    editor: require("vue2-ace-editor")
+    editor: require("vue2-ace-editor"),
   },
   watch: {
     "logquery.name": {
@@ -292,6 +296,9 @@ export default {
   },
   methods: {
     initEditor: function(editor) {
+      editor.setAutoScrollEditorIntoView(true);
+      editor.setShowPrintMargin(false);
+
       require("brace/ext/language_tools");
       require("brace/mode/text");
       require("brace/theme/solarized_dark");
@@ -341,6 +348,8 @@ export default {
       };
       gettaskLogTree(treelog).then(resp => {
         this.treetaskdata = resp.data;
+        this.tasklog = "";
+        this.tasklogtitle = "";
       });
     },
     startcleantask(formName) {
@@ -415,6 +424,9 @@ export default {
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
+}
+.CodeMirror-wrap pre {
+  word-break: break-word;
 }
 </style>
 

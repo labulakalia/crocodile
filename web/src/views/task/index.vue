@@ -50,10 +50,7 @@
                 ></el-option>
               </el-select>
               <span class="sub-title" v-if="savecode.lang === 2">所选主机组内的所有主机必须已经安装python3</span>
-              <span
-                class="sub-title"
-                v-if="savecode.lang === 3"
-              >所选主机组内的所有主机必须已经安装golang,支持并开启Go Module</span>
+              <span class="sub-title" v-if="savecode.lang === 3">所选主机组内的所有主机必须已经安装GoLang版本>=1.11</span>
               <div style="margin-top:5px;">
                 <el-card :body-style="{ padding: '0px' }">
                   <editor
@@ -61,7 +58,7 @@
                     theme="solarized_dark"
                     :lang="lang[savecode.lang]"
                     height="300"
-                    @init="initEditor"
+                    @init="codeinitEditor"
                     :options="{ 
                       readOnly: is_preview,
                       wrap: 'free',
@@ -72,6 +69,7 @@
                  }"
                   ></editor>
                 </el-card>
+                <span style="text-align: right;color: #909399;font-size: 13px;">编辑框太小? 鼠标双击试试🤔</span>
                 <br />
               </div>
             </ul>
@@ -232,7 +230,7 @@
                           theme="solarized_dark"
                           lang="json"
                           height="300"
-                          @init="initEditor"
+                          @init="rowreqbodyinitEditor"
                           :options="{ 
                             readOnly: is_preview,
                             wrap: 'free',
@@ -556,10 +554,12 @@
                   v-model="realtasklog"
                   theme="solarized_dark"
                   lang="text"
-                  height="400"
+                  height="500"
                   width="100%"
-                  @init="initEditor"
-                  :options="{ readOnly: true,wrap: 'free' }"
+                  @init="realloginitEditor"
+                  :options="{ readOnly: true, wrap: 'free' ,vScrollBarAlwaysVisible: true,
+    wrapBehavioursEnabled: true,
+    autoScrollEditorIntoView: true,}"
                 ></editor>
               </el-card>
             </el-main>
@@ -769,8 +769,9 @@ import { getselectuser } from "@/api/user";
 import store from "@/store";
 import { isNumber } from "@/utils/validate";
 import { Message } from "element-ui";
-
+ 
 import cron from "@/components/Cron/cron";
+
 export default {
   components: {
     editor: require("vue2-ace-editor"),
@@ -930,7 +931,7 @@ export default {
         }
       ],
       lang: {
-        1: "powershell",
+        1: "sh",
         2: "python",
         3: "golang"
       },
@@ -1162,14 +1163,47 @@ func main() {
     edit_header() {
       this.saveapi.header["Content-Type"] = this.content_type;
     },
-    initEditor: function(editor) {
+    codeinitEditor: function(editor) {
+      editor.setAutoScrollEditorIntoView(true)
+      editor.setShowPrintMargin(false);
+      editor.on("dblclick", function() {
+        editor.container.webkitRequestFullscreen();
+      });
       require("brace/ext/language_tools");
-      require("brace/mode/powershell");
+      require("brace/mode/sh");
       require("brace/mode/python");
       require("brace/mode/javascript");
-      require("brace/mode/text");
-      require("brace/mode/json");
+      // require("brace/mode/text");
+      // require("brace/mode/json");
       require("brace/mode/golang");
+      require("brace/theme/solarized_dark");
+    },
+    realloginitEditor: function(editor) {
+      editor.setAutoScrollEditorIntoView(true)
+      editor.setShowPrintMargin(false);
+      editor.on("change", function() {
+        editor.renderer.scrollToLine(Number.POSITIVE_INFINITY);
+      });
+      // require("brace/ext/language_tools");
+      // require("brace/mode/sh");
+      // require("brace/mode/python");
+      // require("brace/mode/javascript");
+      require("brace/mode/text");
+      // require("brace/mode/json");
+      // require("brace/mode/golang");
+      require("brace/theme/solarized_dark");
+    },
+    rowreqbodyinitEditor: function(editor) {
+      editor.setAutoScrollEditorIntoView(true)
+      editor.setShowPrintMargin(false);
+
+      // require("brace/ext/language_tools");
+      // require("brace/mode/sh");
+      // require("brace/mode/python");
+      // require("brace/mode/javascript");
+      // require("brace/mode/text");
+      require("brace/mode/json");
+      // require("brace/mode/golang");
       require("brace/theme/solarized_dark");
     },
     addheader() {
@@ -1446,6 +1480,10 @@ func main() {
         id: this.cloneid,
         name: this.clonenewname
       };
+      if (this.clonenewname === "") {
+        Message.warning('请输入新的任务名称');
+        return
+      }
       clonetask(reqdata).then(resp => {
         if (resp.code === 0) {
           Message.success(`克隆任务成功`);

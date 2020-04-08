@@ -65,7 +65,7 @@ func CreateTask(c *gin.Context) {
 	// task.CreateByUID = c.GetString("uid")
 	task.Run = true
 	id := utils.GetID()
-	err = model.CreateTask(ctx, id, task.Name, task.TaskType, task.TaskData, task.ParentTaskIds, task.ParentRunParallel,
+	err = model.CreateTask(ctx, id, task.Name, task.TaskType, task.TaskData, true, task.ParentTaskIds, task.ParentRunParallel,
 		task.ChildTaskIds, task.ChildRunParallel, task.Cronexpr, task.Timeout, task.AlarmUserIds, task.RoutePolicy,
 		task.ExpectCode, task.ExpectContent, task.AlarmStatus, c.GetString("uid"), task.HostGroupID, task.Remark,
 	)
@@ -317,12 +317,16 @@ func GetTask(c *gin.Context) {
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 	t, err := model.GetTaskByID(ctx, getid.ID)
-	if err != nil {
+
+	switch err.(type) {
+	case nil:
+		resp.JSON(c, resp.Success, t)
+	case define.ErrNotExist:
+		resp.JSON(c, resp.ErrTaskNotExist, nil)
+	default:
 		log.Error("GetTasks failed", zap.String("error", err.Error()))
 		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
 	}
-	resp.JSON(c, resp.Success, t)
 }
 
 // RunTask start run task now
@@ -552,6 +556,7 @@ func RealRunTaskLog(c *gin.Context) {
 		log.Error("Upgrade failed", zap.Error(err))
 		return
 	}
+
 	defer conn.Close()
 	getid := define.GetID{}
 	err = c.BindQuery(&getid)
@@ -586,6 +591,7 @@ func RealRunTaskLog(c *gin.Context) {
 					log.Error("WriteMessage failed", zap.Error(err))
 					return
 				}
+				// conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 				_, _, err := conn.ReadMessage()
 				if err != nil {
 					log.Error("ReadMessage failed", zap.Error(err))
@@ -746,13 +752,31 @@ func CloneTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
+	exist, err := model.Check(ctx, model.TBTask, model.Name, clonetask.Name)
+	if err != nil {
+		log.Error("IsExist failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	if exist {
+		resp.JSON(c, resp.ErrTaskExist, nil)
+		return
+	}
 
 	task, err := model.GetTaskByID(ctx, clonetask.ID)
-	if err != nil {
+	switch err.(type) {
+	case nil:
+		goto Next
+	case define.ErrNotExist:
+		log.Error("get task failed", zap.Error(err))
+		resp.JSON(c, resp.ErrTaskNotExist, nil)
+		return
+	default:
 		log.Error("model.GetTaskByID failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
+Next:
 	id := utils.GetID()
 	if id == "" {
 		log.Error("utils.GetID return empty", zap.Error(err))
@@ -764,6 +788,7 @@ func CloneTask(c *gin.Context) {
 		clonetask.Name,
 		task.TaskType,
 		task.TaskData,
+		task.Run,
 		task.ParentTaskIds,
 		task.ParentRunParallel,
 		task.ChildTaskIds,

@@ -165,14 +165,20 @@ func GetTreeLog(ctx context.Context, id string, startTime int64) ([]*define.Task
 	if err != nil {
 		return nil, err
 	}
-
+	retTasksStatus := define.GetTasksTreeStatus()
 	task, err := GetTaskByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-
-	retTasksStatus := define.GetTasksTreeStatus()
-
+	switch err.(type) {
+	case nil:
+		goto Next
+	case define.ErrNotExist:
+		return retTasksStatus, nil
+	default:
+		return nil, err
+	}
+Next:
 	if len(task.ParentTaskIds) != 0 {
 		var isSet bool
 		for _, taskid := range task.ParentTaskIds {
