@@ -9,11 +9,11 @@
         label-width="120px"
         size="mini"
       >
-        <el-form-item label="执行器名称" prop="name">
+        <el-form-item label="主机组名称" prop="name">
           <el-input
             :disabled="is_change"
             v-model="hostgroup.name"
-            placeholder="请输入执行器名称"
+            placeholder="请输入主机组名称"
             clearable
             style="width: 500px;"
           ></el-input>

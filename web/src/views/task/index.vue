@@ -50,7 +50,7 @@
                 ></el-option>
               </el-select>
               <span class="sub-title" v-if="savecode.lang === 2">所选主机组内的所有主机必须已经安装python3</span>
-              <span class="sub-title" v-if="savecode.lang === 3">所选主机组内的所有主机必须已经安装GoLang版本>=1.11</span>
+              <span class="sub-title" v-if="savecode.lang === 3">所选主机组内的所有主机必须已经安装GoLang且版本大于等于1.11</span>
               <div style="margin-top:5px;">
                 <el-card :body-style="{ padding: '0px' }">
                   <editor

@@ -81,12 +81,19 @@ func UpdateHostHearbeat(ctx context.Context, ip string, port int32, runningtasks
 		return errors.Wrap(err, "conn.PrepareContext")
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx,
+	result, err := stmt.ExecContext(ctx,
 		time.Now().Unix(),
 		strings.Join(runningtasks, ","),
 		fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
 		return errors.Wrap(err, "stmt.ExecContext")
+	}
+	line,err := result.RowsAffected() 
+	if err != nil {
+		return errors.Wrap(err, "stmt.ExecContext")
+	}
+	if line <= 0 {
+		return fmt.Errorf("host %s not registry, may be this host is delete",fmt.Sprintf("%s:%d", ip, port))
 	}
 	return nil
 }
