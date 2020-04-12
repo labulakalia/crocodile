@@ -66,7 +66,7 @@ const (
 )
 
 // TaskRespType task type (parent task,master task, child task)
-// TaskRunType
+// TODO Rename TaskRunType
 type TaskRespType uint8
 
 const (
@@ -87,7 +87,7 @@ func (tasktype TaskRespType) String() string {
 	case ParentTask:
 		return "parent"
 	default:
-		return ""
+		return "unknown"
 	}
 }
 
@@ -338,19 +338,20 @@ func (t Trigger) String() string {
 	case Manual:
 		return "手动触发"
 	default:
-		return "UnSupport"
+		return "UnKnown"
 	}
 }
 
 // RunTask running task message
 type RunTask struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Cronexpr     string `json:"cronexpr"`
-	StartTimeStr string `json:"start_timestr"`
-	StartTime    int64  `json:"start_time"`
-	RunTime      int    `json:"run_time"` // s
-	Trigger      string `json:"trigger"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Cronexpr     string  `json:"cronexpr"`
+	StartTimeStr string  `json:"start_timestr"`
+	StartTime    int64   `json:"start_time"` // use ms,
+	RunTime      int     `json:"run_time"`   // s
+	Trigger      Trigger `json:"-"`
+	TriggerStr   string  `json:"trigger"`
 }
 
 // TaskResp run task resp message
@@ -371,7 +372,7 @@ type Log struct {
 	RunByTaskID    string       `json:"runby_taskid"`         // run taskid
 	StartTime      int64        `json:"start_time"`           // ms
 	StartTimeStr   string       `json:"start_timestr"`        //
-	EndTime        int64        `json:"end_timeunix"`         // ms
+	EndTime        int64        `json:"end_time"`             // ms
 	EndTimeStr     string       `json:"end_timestr"`          //
 	TotalRunTime   int          `json:"total_runtime"`        // ms
 	Status         int          `json:"status"`               // 任务运行结果 -1 失败 1 成功
@@ -402,7 +403,7 @@ type Query struct {
 type KlOption struct {
 	Label  string `json:"label"`
 	Value  string `json:"value"`
-	Online int   `json:"online,omitempty"` // online: 1 offline: -1
+	Online int    `json:"online,omitempty"` // online: 1 offline: -1
 }
 
 // TaskStatusTree real task tree
@@ -428,7 +429,8 @@ func GetTasksTreeStatus() []*TaskStatusTree {
 	mainTaskStatus := &TaskStatusTree{
 		// Name:   task.name,
 		// ID:     taskid,
-		Status: TsNoData.String(),
+		TaskType: MasterTask,
+		Status:   TsNoData.String(),
 	}
 
 	childTasksStatus := &TaskStatusTree{

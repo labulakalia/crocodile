@@ -61,6 +61,7 @@ type cacheSchedule struct {
 
 // Init start run already exists task from db
 func Init() error {
+
 	Cron = &cacheSchedule{
 		sch: make(map[string]*task),
 	}
@@ -127,7 +128,6 @@ func (s *cacheSchedule) Del(id string) {
 		go s.Clean(task)
 
 	}
-
 }
 
 // Clean task
@@ -497,7 +497,6 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer querycancel()
 
-	// TODO cache task run data and hostgroup
 	taskdata, err = model.GetTaskByID(queryctx, id)
 	if err != nil {
 		log.Error("model.GetTaskByID failed", zap.String("taskid", id), zap.Error(err))
@@ -686,7 +685,7 @@ func (s *cacheSchedule) GetRunningtask() []*define.RunTask {
 			StartTimeStr: utils.UnixToStr(task.starttime / 1e3),
 			StartTime:    task.starttime,
 			RunTime:      int(time.Now().Unix() - task.starttime/1e3),
-			Trigger:      task.Trigger.String(),
+			TriggerStr:   task.Trigger.String(),
 			Cronexpr:     task.cronexpr,
 		}
 		runtasks = append(runtasks, &runtask)

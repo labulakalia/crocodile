@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"context"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/labulaka521/crocodile/core/utils/resp"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/version"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -160,7 +162,6 @@ func (a *Auth) RequireTransportSecurity() bool {
 }
 
 // try Get grpc client conn
-// TODO
 // Scheduling Algorithm
 // - random
 // - LeastTask
@@ -168,9 +169,6 @@ func (a *Auth) RequireTransportSecurity() bool {
 // - roundRobin
 // get rpc conn
 func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
-	// queryctx, querycancel := context.WithTimeout(ctx,
-	// 	config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	// defer querycancel()
 	var (
 		err  error
 		conn *grpc.ClientConn
@@ -197,8 +195,12 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 
 // RegistryClient registry client to server
 func RegistryClient(version string, port int) error {
-	conn, err := getgRPCConn(context.Background(), config.CoreConf.Client.ServerAddr)
+	rand.Seed(time.Now().UnixNano())
+	addrs := config.CoreConf.Client.ServerAddrs
+	randaddr := addrs[rand.Int()%len(addrs)]
+	conn, err := getgRPCConn(context.Background(), randaddr)
 	if err != nil {
+		log.Error("getgRPCConn failed", zap.Error(err))
 		return err
 	}
 	hbClient := pb.NewHeartbeatClient(conn)
@@ -229,6 +231,7 @@ func sendhb(client pb.HeartbeatClient, port int) {
 	log.Info("start send hearbeat to server")
 	timer := time.NewTimer(time.Millisecond)
 
+	cannotconn := 0
 	for {
 		select {
 		case <-timer.C:
@@ -241,10 +244,24 @@ func sendhb(client pb.HeartbeatClient, port int) {
 			if err != nil {
 				cancel()
 				err := DealRPCErr(err)
+				if err == resp.GetMsgErr(resp.ErrRPCUnavailable) {
+					if cannotconn > 2 {
+						// 断开超过两次
+						// 重新在别的调度中心注册
+						if len(config.CoreConf.Client.ServerAddrs) >= 2 {
+							log.Debug("can not conn server,change other server")
+							go RegistryClient(version.Version, config.CoreConf.Client.Port)
+							return
+						}
+					} else {
+						cannotconn++
+					}
+				}
 				log.Error("client.SendHb failed", zap.Error(err))
 				timer.Reset(defaultLastFailHearBeatInterval)
 				continue
 			}
+			cannotconn = 0
 			cancel()
 			log.Debug("Send HearBeat Success")
 			timer.Reset(defaultHearbeatInterval)

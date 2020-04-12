@@ -201,7 +201,7 @@ func (l *LogCache) ReadAll() (p string) {
 
 // GetCode return task return code
 func (l *LogCache) GetCode() int {
-	if l.count >= 3 {
+	if l.count >= 5 {
 		codebyte := l.buffer[l.count-3:]
 		code, err := strconv.Atoi(strings.TrimLeft(string(codebyte), " "))
 		if err != nil {

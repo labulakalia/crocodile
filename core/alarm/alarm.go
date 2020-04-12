@@ -210,7 +210,6 @@ func sendalarm(notifyuids []string, taskname, taskid, starttime, endtime, status
 		ErrTaskID:      errtaskid,
 	}
 
-	// TODO problem
 	// send webhook
 
 	if config.CoreConf.Notify.WebHook.Enable {

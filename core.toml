@@ -88,8 +88,8 @@ webhookurl = "http://127.0.0.1:8088"
 [client]
 # client port
 port = 23232        # 默认随机端口
-# 调度中心地址
-serveraddr = "127.0.0.1:8080"
+# 调度中心地址，可以设置多个防止单点故障
+serveraddrs = ["127.0.0.1:8080"]
 # 将保存只此主机组，如果不存在或者选项为空将忽略
 hostgroup = "crocodile_hostgroup"
 # 权重

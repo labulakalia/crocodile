@@ -66,12 +66,12 @@ type db struct {
 
 // Client crocodile client config
 type Client struct {
-	Port       int
-	ServerAddr string
-	ServerPort int
-	HostGroup  string
-	Weight     int
-	Remark     string
+	Port        int
+	ServerAddrs []string
+	ServerPort  int
+	HostGroup   string
+	Weight      int
+	Remark      string
 }
 
 type duration struct {
