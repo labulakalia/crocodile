@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,7 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 			(?,?,?,?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
+		return fmt.Errorf("db.GetConn failed: %w",err)
 		return errors.Wrap(err, "db.GetConn")
 	}
 	defer conn.Close()
@@ -176,6 +178,7 @@ func GetTreeLog(ctx context.Context, id string, startTime int64) ([]*define.Task
 		return nil, err
 	}
 Next:
+	// TODO 优化 只循环taskresps就可以取出
 	if len(task.ParentTaskIds) != 0 {
 		var isSet bool
 		for _, taskid := range task.ParentTaskIds {

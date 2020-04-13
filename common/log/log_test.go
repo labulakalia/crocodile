@@ -1,12 +1,14 @@
 package log
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"runtime/debug"
-	"testing"
-
 	"go.uber.org/zap"
+	"runtime/debug"
+
+	"io"
+	"os"
+	"testing"
 )
 
 func TestNewLogger(t *testing.T) {
@@ -42,4 +44,10 @@ func TestNewLogger(t *testing.T) {
 	Error("error", zap.String("error", "error"))
 	Panic("panic", zap.String("panic", "panic"))
 	Fatal("fatal", zap.String("fatal", "fatal"))
+
+	err = io.EOF
+
+	err1 := fmt.Errorf("this is err: %w",err)
+	Info("111",zap.Error(err1))
+	fmt.Println(errors.Unwrap(err1),err1)
 }

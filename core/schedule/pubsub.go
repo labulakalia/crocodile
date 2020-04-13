@@ -3,6 +3,7 @@ package schedule
 import (
 	"context"
 	"encoding/json"
+	"github.com/labulaka521/crocodile/core/utils/define"
 
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
@@ -20,6 +21,8 @@ const (
 	ChangeEvent
 	// DeleteEvent recv delete task
 	DeleteEvent
+	// RunEvent run a task
+	RunEvent
 	// KillEvent recv stop task
 	KillEvent
 )
@@ -65,6 +68,14 @@ func dealEvent(data []byte) {
 		Cron2.addtask(task.ID, task.Name, task.Cronexpr, GetRoutePolicy(task.HostGroupID, task.RoutePolicy),task.Run)
 	case DeleteEvent:
 		Cron2.deletetask(subdata.TaskID)
+	case RunEvent:
+		task,ok := Cron2.GetTask(subdata.TaskID)
+		if !ok {
+			log.Error("Can not get Task",zap.String("taskid",subdata.TaskID))
+			return
+		}
+		go task.StartRun(define.Manual)
+
 	case KillEvent:
 		Cron2.killtask(subdata.TaskID)
 	default:

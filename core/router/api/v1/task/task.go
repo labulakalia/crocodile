@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -74,9 +75,20 @@ func CreateTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	log.Debug("start Add Schedule Cron", zap.String("taskid", id))
-	schedule.Cron.Add(id, task.Name, task.Cronexpr,
-		schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
+	event := schedule.EventData{
+		TaskID: id,
+		TE: schedule.AddEvent,
+	}
+	res, err := json.Marshal(event)
+	if err != nil {
+		log.Error("json.Marshal failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	schedule.Cron2.PubTaskEvent(res)
+	//log.Debug("start Add Schedule Cron", zap.String("taskid", id))
+	//schedule.Cron.Add(id, task.Name, task.Cronexpr,
+	//	schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
 	resp.JSON(c, resp.Success, nil)
 }
 
@@ -153,8 +165,19 @@ func ChangeTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Add(task.ID, task.Name, task.Cronexpr,
-		schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
+	event := schedule.EventData{
+		TaskID: task.ID,
+		TE: schedule.AddEvent,
+	}
+	res, err := json.Marshal(event)
+	if err != nil {
+		log.Error("json.Marshal failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	schedule.Cron2.PubTaskEvent(res)
+	//schedule.Cron.Add(task.ID, task.Name, task.Cronexpr,
+	//	schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
 
 	resp.JSON(c, resp.Success, nil)
 }
@@ -236,13 +259,24 @@ func DeleteTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Del(deletetask.ID)
-	_, err = model.CleanTaskLog(ctx, "", deletetask.ID, time.Now().UnixNano()/1e6)
+	//schedule.Cron.Del(deletetask.ID)
+	//_, err = model.	CleanTaskLog(ctx, "", deletetask.ID, time.Now().UnixNano()/1e6)
+	//if err != nil {
+	//	log.Error("model.CleanTaskLog failed", zap.Error(err))
+	//	resp.JSON(c, resp.ErrInternalServer, nil)
+	//	return
+	//}
+	event := schedule.EventData{
+		TaskID: deletetask.ID,
+		TE: schedule.DeleteEvent,
+	}
+	res, err := json.Marshal(event)
 	if err != nil {
-		log.Error("model.CleanTaskLog failed", zap.Error(err))
+		log.Error("json.Marshal failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
+	schedule.Cron2.PubTaskEvent(res)
 	resp.JSON(c, resp.Success, nil)
 
 }
@@ -330,7 +364,6 @@ func GetTask(c *gin.Context) {
 }
 
 // RunTask start run task now
-// GetTask get task info
 // @Summary get tasks
 // @Tags Task
 // @Param Task query define.GetID true "id"
@@ -376,12 +409,23 @@ func RunTask(c *gin.Context) {
 			return
 		}
 	}
-	go schedule.Cron.RunTask(runtask.ID, define.Manual)
+	//go schedule.Cron.RunTask(runtask.ID, define.Manual)
+
+	event := schedule.EventData{
+		TaskID: runtask.ID,
+		TE: schedule.RunEvent,
+	}
+	res, err := json.Marshal(event)
+	if err != nil {
+		log.Error("json.Marshal failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	schedule.Cron2.PubTaskEvent(res)
 	resp.JSON(c, resp.Success, nil)
 }
 
 // KillTask kill running task
-// GetTask kill running task
 // @Summary kill running task
 // @Tags Task
 // @Param Task query define.GetID true "id"
@@ -400,7 +444,18 @@ func KillTask(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	schedule.Cron.KillTask(runtask.ID)
+	event := schedule.EventData{
+		TaskID: runtask.ID,
+		TE: schedule.KillEvent,
+	}
+	res, err := json.Marshal(event)
+	if err != nil {
+		log.Error("json.Marshal failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	schedule.Cron2.PubTaskEvent(res)
+	//schedule.Cron.KillTask(runtask.ID)
 	resp.JSON(c, resp.Success, nil)
 }
 
@@ -417,6 +472,7 @@ func GetRunningTask(c *gin.Context) {
 	var (
 		q   define.Query
 		err error
+		runningtasks []*define.RunTask
 	)
 
 	err = c.BindQuery(&q)
@@ -427,13 +483,16 @@ func GetRunningTask(c *gin.Context) {
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	runningtasks := schedule.Cron.GetRunningtask()
+	allrunningtasks, err := schedule.Cron2.GetRunningTask()
+	if err != nil {
+		resp.JSON(c, resp.ErrInternalServer, nil)
+	}
 	if len(runningtasks) < q.Offset {
 		runningtasks = []*define.RunTask{}
-	} else if len(runningtasks) >= q.Offset && len(runningtasks) < q.Offset+q.Limit {
-		runningtasks = runningtasks[q.Offset:len(runningtasks)]
+	} else if len(allrunningtasks) >= q.Offset && len(allrunningtasks) < q.Offset+q.Limit {
+		runningtasks = allrunningtasks[q.Offset:]
 	} else {
-		runningtasks = runningtasks[q.Offset : q.Offset+q.Limit]
+		runningtasks = allrunningtasks[q.Offset : q.Offset+q.Limit]
 	}
 
 	resp.JSON(c, resp.Success, runningtasks, len(runningtasks))
@@ -539,7 +598,6 @@ var upgrade = websocket.Upgrader{
 
 var (
 	defaultSendTTL = 2 * time.Second
-	timeout        = 5 * time.Second
 )
 
 // RealRunTaskLog return real time log

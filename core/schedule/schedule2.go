@@ -46,7 +46,7 @@ type task2 struct {
 	close     chan struct{}      // stop schedule
 	ctxcancel context.CancelFunc // store cancelfunc could cancel all task by this cancel
 	next      Next               // it save a func Next by route policy
-	run       bool               // task status
+	canrun       bool               // task status
 
 	sync.RWMutex               // lock
 	redis        *redis.Client // redis client
@@ -138,156 +138,6 @@ func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 	return nil
 }
 
-// cacheSchedule2 save task status
-type cacheSchedule2 struct {
-	sync.RWMutex
-	redis *redis.Client
-	ts    map[string]*task2
-}
-
-// Init2 start run already exists task from db
-func Init2() error {
-	Cron2 = &cacheSchedule2{
-		ts: make(map[string]*task2),
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(),
-		config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	defer cancel()
-	isinstalll, err := model.QueryIsInstall(ctx)
-	if err != nil {
-		log.Error("model.QueryIsInstall failed", zap.Error(err))
-		return errors.Wrap(err, "model.QueryIsInstall")
-	}
-	if !isinstalll {
-		log.Debug("Crocodile is Not Install")
-		return nil
-	}
-	eps, _, err := model.GetTasks(ctx, 0, 0, "", "", "")
-	if err != nil {
-		log.Error("GetTasks failed", zap.Error(err))
-		return err
-	}
-
-	for _, t := range eps {
-		Cron2.addtask(t.ID, t.Name, t.Cronexpr, GetRoutePolicy(t.HostGroupID, t.RoutePolicy), t.Run)
-	}
-	log.Info("init task success", zap.Int("Total", len(eps)))
-	return nil
-}
-
-// GetTask return task2
-func (s *cacheSchedule2) GetTask(taskid string) (*task2, bool) {
-	return s.gettask(taskid)
-}
-
-func (s *cacheSchedule2) gettask(taskid string) (*task2, bool) {
-	s.RLock()
-	t, ok := s.ts[taskid]
-	s.RUnlock()
-	return t, ok
-}
-
-// Add task to schedule
-func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next Next, run bool) {
-	log.Debug("start add task", zap.String("taskid", taskid), zap.String("taskname", taskname))
-	s.Lock()
-	t := task2{
-		id:       taskid,
-		name:     taskname,
-		cronexpr: cronExpr,
-		close:    make(chan struct{}),
-		next:     next,
-		run:      run,
-		redis:    s.redis,
-	}
-	oldtask, exist := s.ts[taskid]
-	if exist {
-		close(oldtask.close)
-		if oldtask.ctxcancel != nil {
-			oldtask.ctxcancel()
-		}
-		delete(s.ts, taskname)
-	}
-	s.ts[taskname] = &t
-	go s.runSchedule(taskname)
-	s.Unlock()
-}
-
-// Del schedule task
-// if delete taskid,this taskid must be remove from other task's child or parent
-func (s *cacheSchedule2) deletetask(taskid string) {
-	log.Info("start delete task", zap.String("taskid", taskid))
-
-	task, exist := s.gettask(taskid)
-
-	if exist {
-		log.Debug("start clean ", zap.String("id", taskid))
-		s.Lock()
-		delete(s.ts, taskid)
-		s.Unlock()
-		if task.ctxcancel != nil {
-			task.ctxcancel()
-		}
-		defer func() {
-			recover()
-		}()
-		close(task.close)
-	}
-}
-
-// killTask will stop running task
-func (s *cacheSchedule2) killtask(taskid string) {
-	task, exist := s.gettask(taskid)
-	if !exist {
-		log.Warn("stoptask failed,task is not exist", zap.String("taskid", taskid))
-		return
-	}
-	if task.ctxcancel != nil {
-		task.ctxcancel()
-	}
-}
-
-func (s *cacheSchedule2) runSchedule(taskid string) {
-	task, exist := s.gettask(taskid)
-	if !exist {
-		log.Error("task is not exist in ts", zap.String("taskid", taskid))
-		return
-	}
-	log.Info("start run cronexpr", zap.Any("task", task.name), zap.String("id", taskid))
-
-	expr, err := cronexpr.Parse(task.cronexpr)
-	if err != nil {
-		log.Error("cronexpr parse failed", zap.Error(err))
-		return
-	}
-
-	var (
-		last time.Time
-		next time.Time
-	)
-	last = time.Now()
-
-	// 计算出锁的续约时间
-	task.cronsub = expr.Next(last).Sub(last) / 4
-	if task.cronsub > time.Second*30 {
-		task.cronsub = time.Second * 30
-	}
-
-	for {
-		next = expr.Next(last)
-		select {
-		case <-task.close:
-			log.Info("close task Schedule", zap.String("ID", taskid), zap.Any("Name", task.name))
-			return
-		case <-time.After(next.Sub(last)):
-			last = next
-			if task.run {
-				go task.StartRun(define.Auto)
-			}
-		}
-	}
-}
 
 // GetTaskTreeStatatus return task tree status data
 func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
@@ -438,103 +288,6 @@ func (t *task2) addtaskinfo(taskruntype define.TaskRespType, realid string) erro
 func (t *task2) resettasklog(tasrunktype define.TaskRespType, realid string) error {
 	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, tasrunktype, realid, taskrealtasklog)
 	return t.redis.Del(keyname).Err()
-}
-
-// GetRunningTask return running task
-func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
-	// task:running
-	rtasks := "task:running"
-	var rtkeys []string
-	err := s.redis.SMembers(rtasks).ScanSlice(&rtkeys)
-	if err != nil {
-		return nil, err
-	}
-	var runtasks = runningTask{}
-	for _, runningtaskkey := range rtkeys {
-		var runtask define.RunTask
-		err = s.redis.Get(runningtaskkey).Scan(&runtask)
-		if err != nil {
-			log.Error("Scan runtask failed", zap.Error(err))
-			continue
-		}
-		ok, err := s.isrunning(runtask.ID)
-		if err != nil {
-			log.Error("s.isrunning failed", zap.Error(err))
-			continue
-		}
-		if !ok {
-			log.Warn("task lock is not exists", zap.String("taskname", runtask.Name))
-			continue
-		}
-		runtasks = append(runtasks, &runtask)
-	}
-	sort.Sort(runtasks)
-	return runtasks, nil
-}
-
-// isrunning check task lock
-func (s *cacheSchedule2) isrunning(taskid string) (bool, error) {
-	lockid := "task:runlock:" + taskid
-	res, err := s.redis.Exists(lockid).Result()
-	if err != nil {
-		return false, errors.Wrap(err, "s.redis.Exists")
-	}
-	return res == 1, nil
-}
-
-// saverunningtask save running task
-func (s *cacheSchedule2) saverunningtask(runningtask *define.RunTask) error {
-	// 首先存储到运行中任务集合，然后再保存运行的数据
-
-	// task:running
-	rtasks := "task:running"
-
-	// task:running:id
-	rtask := rtasks + ":" + runningtask.ID
-
-	res, err := json.Marshal(runningtask)
-	if err != nil {
-		return errors.Wrap(err, "json.Marshal")
-	}
-
-	pipeline := s.redis.Pipeline()
-	err = pipeline.SAdd(rtasks, rtask).Err()
-	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
-	}
-	err = pipeline.Set(rtask, res, 0).Err()
-	if err != nil {
-		return errors.Wrap(err, "pipeline.Set")
-	}
-	_, err = pipeline.Exec()
-	if err != nil {
-		return errors.Wrap(err, "pipeline.Exec")
-	}
-	return nil
-}
-
-// removerunningtask remove running task
-func (s *cacheSchedule2) removerunningtask(runningtask *define.RunTask) error {
-	// task:running
-	rtasks := "task:running"
-
-	// task:running:id
-	rtask := rtasks + ":" + runningtask.ID
-
-	pipeline := s.redis.Pipeline()
-	err := pipeline.SRem(rtasks, rtask).Err()
-	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
-	}
-	err = pipeline.Del(rtask).Err()
-	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
-	}
-	_, err = pipeline.Exec()
-	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
-	}
-	return nil
 }
 
 // getruntaskdata get runningtask
@@ -1085,4 +838,258 @@ Check:
 		// 如有任务失败，那么还未运行的任务可以标记为取消
 	}
 	return alarmerr
+}
+
+
+// cacheSchedule2 save task status
+type cacheSchedule2 struct {
+	sync.RWMutex
+	redis *redis.Client
+	ts    map[string]*task2
+}
+
+// Init2 start run already exists task from db
+func Init2() error {
+	Cron2 = &cacheSchedule2{
+		ts: make(map[string]*task2),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+	isinstalll, err := model.QueryIsInstall(ctx)
+	if err != nil {
+		log.Error("model.QueryIsInstall failed", zap.Error(err))
+		return errors.Wrap(err, "model.QueryIsInstall")
+	}
+	if !isinstalll {
+		log.Debug("Crocodile is Not Install")
+		return nil
+	}
+	eps, _, err := model.GetTasks(ctx, 0, 0, "", "", "")
+	if err != nil {
+		log.Error("GetTasks failed", zap.Error(err))
+		return err
+	}
+
+	for _, t := range eps {
+		Cron2.addtask(t.ID, t.Name, t.Cronexpr, GetRoutePolicy(t.HostGroupID, t.RoutePolicy), t.Run)
+	}
+	log.Info("init task success", zap.Int("Total", len(eps)))
+	return nil
+}
+
+// Add task to schedule
+func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next Next, canrun bool) {
+	log.Debug("start add task", zap.String("taskid", taskid), zap.String("taskname", taskname))
+	s.Lock()
+	t := task2{
+		id:       taskid,
+		name:     taskname,
+		cronexpr: cronExpr,
+		close:    make(chan struct{}),
+		next:     next,
+		canrun:      canrun,
+		redis:    s.redis,
+	}
+	oldtask, exist := s.ts[taskid]
+	if exist {
+		close(oldtask.close)
+		if oldtask.ctxcancel != nil {
+			oldtask.ctxcancel()
+		}
+		delete(s.ts, taskname)
+	}
+	s.ts[taskname] = &t
+	go s.runSchedule(taskname)
+	s.Unlock()
+}
+
+// Del schedule task
+// if delete taskid,this taskid must be remove from other task's child or parent
+func (s *cacheSchedule2) deletetask(taskid string) {
+	log.Info("start delete task", zap.String("taskid", taskid))
+
+	task, exist := s.gettask(taskid)
+
+	if exist {
+		log.Debug("start clean ", zap.String("id", taskid))
+		s.Lock()
+		delete(s.ts, taskid)
+		s.Unlock()
+		if task.ctxcancel != nil {
+			task.ctxcancel()
+		}
+		defer func() {
+			recover()
+		}()
+		close(task.close)
+	}
+}
+
+// killTask will stop running task
+func (s *cacheSchedule2) killtask(taskid string) {
+	task, exist := s.gettask(taskid)
+	if !exist {
+		log.Warn("stoptask failed,task is not exist", zap.String("taskid", taskid))
+		return
+	}
+	if task.ctxcancel != nil {
+		task.ctxcancel()
+	}
+}
+
+func (s *cacheSchedule2) runSchedule(taskid string) {
+	task, exist := s.gettask(taskid)
+	if !exist {
+		log.Error("task is not exist in ts", zap.String("taskid", taskid))
+		return
+	}
+	log.Info("start run cronexpr", zap.Any("task", task.name), zap.String("id", taskid))
+
+	expr, err := cronexpr.Parse(task.cronexpr)
+	if err != nil {
+		log.Error("cronexpr parse failed", zap.Error(err))
+		return
+	}
+
+	var (
+		last time.Time
+		next time.Time
+	)
+	last = time.Now()
+
+	// 计算出锁的续约时间
+	task.cronsub = expr.Next(last).Sub(last) / 4
+	if task.cronsub > time.Second*30 {
+		task.cronsub = time.Second * 30
+	}
+
+	for {
+		next = expr.Next(last)
+		select {
+		case <-task.close:
+			log.Info("close task Schedule", zap.String("ID", taskid), zap.Any("Name", task.name))
+			return
+		case <-time.After(next.Sub(last)):
+			last = next
+			if task.canrun {
+				go task.StartRun(define.Auto)
+			}
+		}
+	}
+}
+
+// GetRunningTask return running task
+func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
+	// task:running
+	rtasks := "task:running"
+	var rtkeys []string
+	err := s.redis.SMembers(rtasks).ScanSlice(&rtkeys)
+	if err != nil {
+		return nil, err
+	}
+	var runtasks = runningTask{}
+	for _, runningtaskkey := range rtkeys {
+		var runtask define.RunTask
+		err = s.redis.Get(runningtaskkey).Scan(&runtask)
+		if err != nil {
+			log.Error("Scan runtask failed", zap.Error(err))
+			continue
+		}
+		ok, err := s.isrunning(runtask.ID)
+		if err != nil {
+			log.Error("s.isrunning failed", zap.Error(err))
+			continue
+		}
+		if !ok {
+			log.Warn("task lock is not exists", zap.String("taskname", runtask.Name))
+			continue
+		}
+		runtasks = append(runtasks, &runtask)
+	}
+	sort.Sort(runtasks)
+	return runtasks, nil
+}
+
+// isrunning check task lock
+func (s *cacheSchedule2) isrunning(taskid string) (bool, error) {
+	lockid := "task:runlock:" + taskid
+	res, err := s.redis.Exists(lockid).Result()
+	if err != nil {
+		return false, errors.Wrap(err, "s.redis.Exists")
+	}
+	return res == 1, nil
+}
+
+// saverunningtask save running task
+func (s *cacheSchedule2) saverunningtask(runningtask *define.RunTask) error {
+	// 首先存储到运行中任务集合，然后再保存运行的数据
+
+	// task:running
+	rtasks := "task:running"
+
+	// task:running:id
+	rtask := rtasks + ":" + runningtask.ID
+
+	res, err := json.Marshal(runningtask)
+	if err != nil {
+		return errors.Wrap(err, "json.Marshal")
+	}
+
+	pipeline := s.redis.Pipeline()
+	err = pipeline.SAdd(rtasks, rtask).Err()
+	if err != nil {
+		return errors.Wrap(err, "pipeline.SAdd")
+	}
+	err = pipeline.Set(rtask, res, 0).Err()
+	if err != nil {
+		return errors.Wrap(err, "pipeline.Set")
+	}
+	_, err = pipeline.Exec()
+	if err != nil {
+		return errors.Wrap(err, "pipeline.Exec")
+	}
+	return nil
+}
+
+// removerunningtask remove running task
+func (s *cacheSchedule2) removerunningtask(runningtask *define.RunTask) error {
+	// task:running
+	rtasks := "task:running"
+
+	// task:running:id
+	rtask := rtasks + ":" + runningtask.ID
+
+	pipeline := s.redis.Pipeline()
+	err := pipeline.SRem(rtasks, rtask).Err()
+	if err != nil {
+		return errors.Wrap(err, "pipeline.SAdd")
+	}
+	err = pipeline.Del(rtask).Err()
+	if err != nil {
+		return errors.Wrap(err, "pipeline.SAdd")
+	}
+	_, err = pipeline.Exec()
+	if err != nil {
+		return errors.Wrap(err, "pipeline.SAdd")
+	}
+	return nil
+}
+
+
+// GetTask return task2
+func (s *cacheSchedule2) GetTask(taskid string) (*task2, bool) {
+	return s.gettask(taskid)
+}
+
+func (s *cacheSchedule2) gettask(taskid string) (*task2, bool) {
+	s.RLock()
+	t, ok := s.ts[taskid]
+	s.RUnlock()
+	return t, ok
+}
+
+func (s *cacheSchedule2)PubTaskEvent(eventdata []byte) {
+	s.redis.Publish(pubsubChannel,eventdata)
 }
