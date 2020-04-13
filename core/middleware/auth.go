@@ -80,7 +80,7 @@ func checkAuth(c *gin.Context) (pass bool, err error) {
 	return enforcer.Enforce(uid, requrl, method)
 }
 
-var excludepath = []string{"login","logout", "install", "websocket"}
+var excludepath = []string{"login", "logout", "install", "websocket"}
 
 // PermissionControl 权限控制middle
 func PermissionControl() func(c *gin.Context) {
@@ -105,7 +105,7 @@ func PermissionControl() func(c *gin.Context) {
 
 		pass, err := checkAuth(c)
 		if err != nil {
-			log.Error("checkAuth failed", zap.String("error", err.Error()))
+			log.Error("checkAuth failed", zap.Error(err))
 			code = resp.ErrUnauthorized
 			goto ERR
 		}

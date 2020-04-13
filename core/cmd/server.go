@@ -42,12 +42,12 @@ func Server() *cobra.Command {
 		PostRunE: func(cmd *cobra.Command, args []string) error {
 			lis, err := router.GetListen(define.Server)
 			if err != nil {
-				log.Fatal("listen failed", zap.String("error", err.Error()))
+				log.Fatal("listen failed", zap.Error(err))
 			}
 			// init alarm
 			err = schedule.Init()
 			if err != nil {
-				log.Fatal("init schedule failed", zap.String("error", err.Error()))
+				log.Fatal("init schedule failed", zap.Error(err))
 			}
 
 			err = router.Run(define.Server, lis)

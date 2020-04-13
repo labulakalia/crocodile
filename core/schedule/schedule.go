@@ -21,7 +21,6 @@ import (
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -71,7 +70,7 @@ func Init() error {
 	isinstalll, err := model.QueryIsInstall(ctx)
 	if err != nil {
 		log.Error("model.QueryIsInstall failed", zap.Error(err))
-		return errors.Wrap(err, "model.QueryIsInstall")
+		return fmt.Errorf("model.QueryIsInstall failed: %w", err)
 	}
 	if !isinstalll {
 		log.Debug("Crocodile is Not Install")
@@ -508,7 +507,7 @@ func (s *cacheSchedule) runTask(ctx context.Context, id, /*real run task id*/
 
 	conn, err = tryGetRCCConn(ctx, realtask.next)
 	if err != nil {
-		log.Error("tryGetRpcConn failed", zap.String("error", err.Error()))
+		log.Error("tryGetRpcConn failed", zap.Error(err))
 		err = fmt.Errorf("Get Rpc Conn Failed From Hostgroup %s[%s] Err: %v",
 			taskdata.HostGroup, taskdata.HostGroupID, err)
 		logcache.WriteStringf(err.Error())

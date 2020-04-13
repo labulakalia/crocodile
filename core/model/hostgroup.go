@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -19,12 +20,12 @@ func CreateHostgroup(ctx context.Context, name, remark, createByID string, hosti
 	createsql := `INSERT INTO crocodile_hostgroup (id,name,remark,createByID,hostIDs,createTime,updateTime) VALUES(?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.Db.GetConn")
+		return fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, createsql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	createTime := time.Now().Unix()
@@ -37,7 +38,7 @@ func CreateHostgroup(ctx context.Context, name, remark, createByID string, hosti
 		createTime,
 		createTime)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -47,12 +48,12 @@ func ChangeHostGroup(ctx context.Context, hostids []string, id, remark string) e
 	changesql := `UPDATE crocodile_hostgroup SET hostIDs=?,remark=?,updateTime=? WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.Db.GetConn")
+		return fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, changesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx,
@@ -62,7 +63,7 @@ func ChangeHostGroup(ctx context.Context, hostids []string, id, remark string) e
 		id,
 	)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -72,17 +73,17 @@ func DeleteHostGroup(ctx context.Context, id string) error {
 	sqldelete := `DELETE FROM crocodile_hostgroup WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.Db.GetConn")
+		return fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, sqldelete)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, id)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -117,7 +118,7 @@ func getHostGroups(ctx context.Context, id, hgname string, limit, offset int) ([
 		var err error
 		count, err = countColums(ctx, getsql, args...)
 		if err != nil {
-			return hgs, 0, errors.Wrap(err, "countColums")
+			return hgs, 0, fmt.Errorf("countColums failed: %w", err)
 		}
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
@@ -125,17 +126,17 @@ func getHostGroups(ctx context.Context, id, hgname string, limit, offset int) ([
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return hgs, 0, errors.Wrap(err, "db.Db.GetConn")
+		return hgs, 0, fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return hgs, 0, errors.Wrap(err, "conn.PrepareContext")
+		return hgs, 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return hgs, 0, errors.Wrap(err, "stmt.QueryContext")
+		return hgs, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 	for rows.Next() {
 		var (

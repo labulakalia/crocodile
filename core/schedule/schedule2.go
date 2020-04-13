@@ -46,7 +46,7 @@ type task2 struct {
 	close     chan struct{}      // stop schedule
 	ctxcancel context.CancelFunc // store cancelfunc could cancel all task by this cancel
 	next      Next               // it save a func Next by route policy
-	canrun       bool               // task status
+	canrun    bool               // task status
 
 	sync.RWMutex               // lock
 	redis        *redis.Client // redis client
@@ -114,21 +114,21 @@ func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 	case taskstatus:
 		err := t.redis.Set(keyname, define.TsWait, 0).Err()
 		if err != nil {
-			return errors.Wrap(err, "t.redis.SAdd")
+			return fmt.Errorf("t.redis.SAdd failed: %w", err)
 		}
 	case taskresp:
 		content, err := json.Marshal(value)
 		if err != nil {
-			return errors.Wrap(err, "json.Marshal")
+			return fmt.Errorf("json.Marshal failed: %w", err)
 		}
 		err = t.redis.Set(keyname, content, 0).Err()
 		if err != nil {
-			return errors.Wrap(err, "t.redis.SAdd")
+			return fmt.Errorf("t.redis.SAdd failed: %w", err)
 		}
 	case taskrealtasklog:
 		err := t.redis.RPush(keyname, value).Err()
 		if err != nil {
-			return errors.Wrap(err, "t.redis.RPush")
+			return fmt.Errorf("t.redis.RPush failed: %w", err)
 		}
 
 	default:
@@ -138,13 +138,12 @@ func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 	return nil
 }
 
-
 // GetTaskTreeStatatus return task tree status data
 func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
 	dependtasks, err := t.gettaskinfos()
 
 	if err != nil {
-		return nil, errors.Wrap(err, "t.gettaskinfos")
+		return nil, fmt.Errorf("t.gettaskinfos failed: %w", err)
 	}
 
 	retTasksStatus := define.GetTasksTreeStatus()
@@ -267,19 +266,19 @@ func (t *task2) addtaskinfo(taskruntype define.TaskRespType, realid string) erro
 	})
 	err := t.redis.RPush(taskinfos, keyname).Err()
 	if err != nil {
-		return errors.Wrap(err, "t.redis.SAdd")
+		return fmt.Errorf("t.redis.SAdd failed: %w", err)
 	}
 
 	// 初始化任务状态
 	err = t.setdata(taskruntype, realid, define.TsWait, taskstatus)
 	if err != nil {
-		return errors.Wrap(err, "t.setdata")
+		return fmt.Errorf("t.setdata failed: %w", err)
 	}
 
 	// 清空存储日志list
 	err = t.resettasklog(taskruntype, realid)
 	if err != nil {
-		return errors.Wrap(err, "t.resettasklog")
+		return fmt.Errorf("t.resettasklog failed: %w", err)
 	}
 	return err
 }
@@ -299,12 +298,12 @@ func (t *task2) getruntaskdata() (*define.RunTask, error) {
 	rtask := rtasks + ":" + t.id
 	res, err := t.redis.Get(rtask).Bytes()
 	if err != nil {
-		return nil, errors.Wrap(err, "t.redis.Get")
+		return nil, fmt.Errorf("t.redis.Get failed: %w", err)
 	}
 	runtask := define.RunTask{}
 	err = json.Unmarshal(res, &runtask)
 	if err != nil {
-		return nil, errors.Wrap(err, "json.Unmarshal")
+		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
 	return &runtask, nil
 }
@@ -314,7 +313,7 @@ func (t *task2) savetasklog() error {
 	runtask, err := t.getruntaskdata()
 	if err != nil {
 		log.Error("get task info failed", zap.Error(err))
-		return errors.Wrap(err, "t.gettaskinfo")
+		return fmt.Errorf("t.gettaskinfo failed: %w", err)
 	}
 
 	tasklogres := &define.Log{
@@ -709,7 +708,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 
 	conn, err = tryGetRCCConn(ctx, realtask.next)
 	if err != nil {
-		log.Error("tryGetRpcConn failed", zap.String("hostgroup", taskdata.HostGroup), zap.String("error", err.Error()))
+		log.Error("tryGetRpcConn failed", zap.String("hostgroup", taskdata.HostGroup), zap.Error(err))
 		t.writelogt(taskruntype, id, "Get Rpc Conn Failed From Hostgroup %s[%s] Err: %v",
 			taskdata.HostGroup, taskdata.HostGroupID, err)
 		goto Check
@@ -840,7 +839,6 @@ Check:
 	return alarmerr
 }
 
-
 // cacheSchedule2 save task status
 type cacheSchedule2 struct {
 	sync.RWMutex
@@ -860,7 +858,7 @@ func Init2() error {
 	isinstalll, err := model.QueryIsInstall(ctx)
 	if err != nil {
 		log.Error("model.QueryIsInstall failed", zap.Error(err))
-		return errors.Wrap(err, "model.QueryIsInstall")
+		return fmt.Errorf("model.QueryIsInstall failed: %w", err)
 	}
 	if !isinstalll {
 		log.Debug("Crocodile is Not Install")
@@ -889,7 +887,7 @@ func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next 
 		cronexpr: cronExpr,
 		close:    make(chan struct{}),
 		next:     next,
-		canrun:      canrun,
+		canrun:   canrun,
 		redis:    s.redis,
 	}
 	oldtask, exist := s.ts[taskid]
@@ -1017,7 +1015,7 @@ func (s *cacheSchedule2) isrunning(taskid string) (bool, error) {
 	lockid := "task:runlock:" + taskid
 	res, err := s.redis.Exists(lockid).Result()
 	if err != nil {
-		return false, errors.Wrap(err, "s.redis.Exists")
+		return false, fmt.Errorf("s.redis.Exists failed: %w", err)
 	}
 	return res == 1, nil
 }
@@ -1034,21 +1032,21 @@ func (s *cacheSchedule2) saverunningtask(runningtask *define.RunTask) error {
 
 	res, err := json.Marshal(runningtask)
 	if err != nil {
-		return errors.Wrap(err, "json.Marshal")
+		return fmt.Errorf("json.Marshal failed: %w", err)
 	}
 
 	pipeline := s.redis.Pipeline()
 	err = pipeline.SAdd(rtasks, rtask).Err()
 	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
+		return fmt.Errorf("pipeline.SAdd failed: %w", err)
 	}
 	err = pipeline.Set(rtask, res, 0).Err()
 	if err != nil {
-		return errors.Wrap(err, "pipeline.Set")
+		return fmt.Errorf("pipeline.Set failed: %w", err)
 	}
 	_, err = pipeline.Exec()
 	if err != nil {
-		return errors.Wrap(err, "pipeline.Exec")
+		return fmt.Errorf("pipeline.Exec failed: %w", err)
 	}
 	return nil
 }
@@ -1064,19 +1062,18 @@ func (s *cacheSchedule2) removerunningtask(runningtask *define.RunTask) error {
 	pipeline := s.redis.Pipeline()
 	err := pipeline.SRem(rtasks, rtask).Err()
 	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
+		return fmt.Errorf("pipeline.SAdd failed: %w", err)
 	}
 	err = pipeline.Del(rtask).Err()
 	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
+		return fmt.Errorf("pipeline.SAdd failed: %w", err)
 	}
 	_, err = pipeline.Exec()
 	if err != nil {
-		return errors.Wrap(err, "pipeline.SAdd")
+		return fmt.Errorf("pipeline.SAdd failed: %w", err)
 	}
 	return nil
 }
-
 
 // GetTask return task2
 func (s *cacheSchedule2) GetTask(taskid string) (*task2, bool) {
@@ -1090,6 +1087,6 @@ func (s *cacheSchedule2) gettask(taskid string) (*task2, bool) {
 	return t, ok
 }
 
-func (s *cacheSchedule2)PubTaskEvent(eventdata []byte) {
-	s.redis.Publish(pubsubChannel,eventdata)
+func (s *cacheSchedule2) PubTaskEvent(eventdata []byte) {
+	s.redis.Publish(pubsubChannel, eventdata)
 }

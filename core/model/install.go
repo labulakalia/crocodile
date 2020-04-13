@@ -14,10 +14,8 @@ import (
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/utils/asset"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
-
 
 var crcocodileTables = []string{
 	TBHost,
@@ -60,13 +58,13 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 	var count int
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, "db.GetConn")
+		return false, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	err = conn.QueryRowContext(ctx, querytable, needtables...).Scan(&count)
 	if err != nil {
 		log.Error("msg string", zap.Error(err))
-		return false, errors.Wrap(err, "Scan")
+		return false, fmt.Errorf("Scan failed: %w", err)
 	}
 
 	if count != len(crcocodileTables) {
@@ -75,13 +73,12 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-
 // StartInstall start install system
 func StartInstall(ctx context.Context, username, password string) error {
 	// create table
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 
 	fs := &assetfs.AssetFS{
@@ -120,21 +117,20 @@ func StartInstall(ctx context.Context, username, password string) error {
 		}
 
 		if tbname == TBCasbin {
-			for _,sql := range strings.Split(execsql, "\n") {
+			for _, sql := range strings.Split(execsql, "\n") {
 				_, err = conn.ExecContext(context.Background(), sql)
 				if err != nil {
 					log.Error("conn.ExecContext failed", zap.Error(err))
-					return errors.Wrap(err, "conn.ExecContext")
+					return fmt.Errorf("conn.ExecContext failed: %w", err)
 				}
 			}
 		} else {
 			_, err = conn.ExecContext(ctx, execsql)
 			if err != nil {
 				log.Error("conn.ExecContext failed", zap.Error(err), zap.String("tbname", tbname))
-				return errors.Wrap(err, "conn.ExecContext")
+				return fmt.Errorf("conn.ExecContext failed: %w", err)
 			}
 		}
-
 
 		// wait second
 		time.Sleep(time.Second / 2)
@@ -144,16 +140,16 @@ func StartInstall(ctx context.Context, username, password string) error {
 	// create admin user
 	hashpassword, err := utils.GenerateHashPass(password)
 	if err != nil {
-		return errors.Wrap(err, "utils.GenerateHashPass")
+		return fmt.Errorf("utils.GenerateHashPass failed: %w", err)
 	}
 	err = AddUser(ctx, username, hashpassword, define.AdminUser)
 	if err != nil {
-		return errors.Wrap(err, "AddUser")
+		return fmt.Errorf("AddUser failed: %w", err)
 	}
 	err = enforcer.LoadPolicy()
 	if err != nil {
 		log.Error("enforcer.LoadPolicy failed", zap.Error(err))
-		return errors.Wrap(err, "enforcer.LoadPolicy")
+		return fmt.Errorf("enforcer.LoadPolicy failed: %w", err)
 	}
 
 	log.Debug("Success Install Crocodile")

@@ -181,7 +181,7 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 		}
 		conn, err = getgRPCConn(ctx, host.Addr)
 		if err != nil {
-			log.Error("GetRpcConn failed", zap.String("error", err.Error()))
+			log.Error("GetRpcConn failed", zap.Error(err))
 			continue
 		}
 		// when only conn is Ready, direct return this conn,otherse

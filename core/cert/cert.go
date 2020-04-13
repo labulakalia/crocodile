@@ -7,7 +7,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/pkg/errors"
 	"math/big"
 	"os"
 	"strings"
@@ -48,27 +47,27 @@ func GenerateCert(pemkeydir string) error {
 	derBytes, _ := x509.CreateCertificate(rand.Reader, &template, &template, &pk.PublicKey, pk) //DER 格式
 	certOut, err := os.Create(fmt.Sprintf("%s/cert.pem", pemkeydir))
 	if err != nil {
-		return errors.Wrap(err, "os.Create ")
+		return fmt.Errorf("os.Create  failed: %w", err)
 	}
 	err = pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	if err != nil {
-		return errors.Wrap(err, "pem.Encode")
+		return fmt.Errorf("pem.Encode failed: %w", err)
 	}
 	err = certOut.Close()
 	if err != nil {
-		return errors.Wrap(err, "certOut.Close")
+		return fmt.Errorf("certOut.Close failed: %w", err)
 	}
 	keyOut, err := os.Create(fmt.Sprintf("%s/key.pem", pemkeydir))
 	if err != nil {
-		return errors.Wrap(err, "os.Create ")
+		return fmt.Errorf("os.Create  failed: %w", err)
 	}
 	err = pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pk)})
 	if err != nil {
-		return errors.Wrap(err, "pem.Encode")
+		return fmt.Errorf("pem.Encode failed: %w", err)
 	}
 	err = keyOut.Close()
 	if err != nil {
-		return errors.Wrap(err, "certOut.Close")
+		return fmt.Errorf("certOut.Close failed: %w", err)
 	}
 	return nil
 }

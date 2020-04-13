@@ -38,24 +38,24 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 			(?,?,?,?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return fmt.Errorf("db.GetConn failed: %w",err)
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, savesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	taskresps, err := json.Marshal(l.TaskResps)
 	if err != nil {
-		return errors.Wrap(err, "json.Marshal")
+		return fmt.Errorf("json.Marshal failed: %w", err)
 	}
 	_, err = stmt.ExecContext(ctx, l.Name, l.RunByTaskID,
 		l.StartTime, l.EndTime, l.TotalRunTime,
 		l.Status, taskresps, l.Trigger, l.ErrCode, l.ErrMsg,
 		l.ErrTasktype, l.ErrTaskID, l.ErrTask)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -90,25 +90,25 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 	}
 	count, err := countColums(ctx, getsql, args...)
 	if err != nil {
-		return logs, 0, errors.Wrap(err, "countColums")
+		return logs, 0, fmt.Errorf("countColums failed: %w", err)
 	}
 	getsql += ` ORDER BY id DESC LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return logs, 0, errors.Wrap(err, "db.GetConn")
+		return logs, 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return logs, 0, errors.Wrap(err, "conn.PrepareContext")
+		return logs, 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return logs, 0, errors.Wrap(err, "stmt.QueryContext")
+		return logs, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 	for rows.Next() {
 		getlog := define.Log{}
@@ -146,7 +146,7 @@ func GetTreeLog(ctx context.Context, id string, startTime int64) ([]*define.Task
 	sqlget := `SELECT taskresps FROM crocodile_log WHERE taskid=? AND starttime=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "db.GetConn")
+		return nil, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, sqlget)
@@ -281,18 +281,18 @@ func CleanTaskLog(ctx context.Context, name, taskid string, deletetime int64) (i
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return 0, errors.Wrap(err, "db.GetConn")
+		return 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, delsql)
 	if err != nil {
-		return 0, errors.Wrap(err, "conn.PrepareContext")
+		return 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
 	res, err := stmt.ExecContext(ctx, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "stmt.ExecContext")
+		return 0, fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 
 	delcount, _ := res.RowsAffected()
@@ -327,18 +327,18 @@ func SaveOperateLog(ctx context.Context,
 		`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, operatesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	columnsdata, err := json.Marshal(columns)
 	_, err = stmt.ExecContext(ctx, uid, username, role, method, module, modulename, operatetime, desc, columnsdata)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -380,7 +380,7 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 		var err error
 		count, err = countColums(ctx, getsql, args...)
 		if err != nil {
-			return oplogs, 0, errors.Wrap(err, "countColums")
+			return oplogs, 0, fmt.Errorf("countColums failed: %w", err)
 		}
 		getsql += ` ORDER BY id DESC LIMIT ? OFFSET ?`
 		args = append(args, limit, offset)
@@ -388,18 +388,18 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return oplogs, 0, errors.Wrap(err, "db.GetConn")
+		return oplogs, 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	log.Debug("sql", zap.String("sql", getsql))
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return oplogs, 0, errors.Wrap(err, "conn.PrepareContext")
+		return oplogs, 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return oplogs, 0, errors.Wrap(err, "stmt.QueryContext")
+		return oplogs, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 
 	for rows.Next() {
@@ -458,13 +458,13 @@ func SaveNewNotify(ctx context.Context, notify define.Notify) error {
 	log.Debug("start save new notify", zap.Any("notify", notify))
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, savesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 
 	_, err = stmt.ExecContext(ctx,
@@ -476,7 +476,7 @@ func SaveNewNotify(ctx context.Context, notify define.Notify) error {
 		notify.NotifyTime,
 	)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 
 	return nil
@@ -493,18 +493,18 @@ func GetNotifyByUID(ctx context.Context, uid string) ([]define.Notify, error) {
 	notifys := []define.Notify{}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return notifys, errors.Wrap(err, "db.GetConn")
+		return notifys, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return notifys, errors.Wrap(err, "conn.PrepareContext")
+		return notifys, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 
 	rows, err := stmt.QueryContext(ctx, false, uid)
 	if err != nil {
-		return notifys, errors.Wrap(err, "stmt.QueryContext")
+		return notifys, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 
 	for rows.Next() {
@@ -526,17 +526,17 @@ func NotifyRead(ctx context.Context, id int, uid string) error {
 	updatesql := `UPDATE crocodile_notify SET is_read=? WHERE id=? AND notifyuid=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, updatesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	_, err = stmt.ExecContext(ctx, true, id, uid)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }

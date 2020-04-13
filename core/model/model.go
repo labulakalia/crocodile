@@ -97,20 +97,20 @@ func Check(ctx context.Context, table string, checkType checkType, args ...inter
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return false, errors.Wrap(err, "sqlDb.GetConn")
+		return false, fmt.Errorf("sqlDb.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, check)
 	if err != nil {
-		return false, errors.Wrap(err, "conn.PrepareContext")
+		return false, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
 	res := 0
 	err = stmt.QueryRowContext(ctx, args...).Scan(&res)
 	if err != nil && err != sql.ErrNoRows {
-		return false, errors.Wrap(err, "stmt.QueryRowContext")
+		return false, fmt.Errorf("stmt.QueryRowContext failed: %w", err)
 	}
 	if err == sql.ErrNoRows || res == 0 {
 		return false, nil
@@ -122,7 +122,7 @@ func Check(ctx context.Context, table string, checkType checkType, args ...inter
 func QueryUserRule(ctx context.Context, uid string) (define.Role, error) {
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return 0, errors.Wrap(err, "sqlDb.GetConn")
+		return 0, fmt.Errorf("sqlDb.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	var role define.Role
@@ -130,13 +130,13 @@ func QueryUserRule(ctx context.Context, uid string) (define.Role, error) {
 	rolesql := `SELECT role FROM crocodile_user WHERE id=?`
 	stmt, err := conn.PrepareContext(ctx, rolesql)
 	if err != nil {
-		return 0, errors.Wrap(err, "conn.PrepareContext")
+		return 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
 	err = stmt.QueryRowContext(ctx, uid).Scan(&role)
 	if err != nil {
-		return 0, errors.Wrap(err, "stmt.QueryRowContext")
+		return 0, fmt.Errorf("stmt.QueryRowContext failed: %w", err)
 	}
 	return role, nil
 }
@@ -149,19 +149,19 @@ func GetNameID(ctx context.Context, t string) ([]define.KlOption, error) {
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "sqlDb.GetConn")
+		return nil, fmt.Errorf("sqlDb.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return nil, errors.Wrap(err, "conn.PrepareContext")
+		return nil, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "stmt.QueryContext")
+		return nil, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 	kloptions := []define.KlOption{}
 	for rows.Next() {
@@ -200,18 +200,18 @@ func countColums(ctx context.Context, querysql string, args ...interface{}) (int
 	querysql2 := gencountsql(querysql)
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return 0, errors.Wrap(err, "db.GetConn")
+		return 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, querysql2)
 	if err != nil {
-		return 0, errors.Wrap(err, "conn.PrepareContext")
+		return 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	var count int
 	err = stmt.QueryRowContext(ctx, args...).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "stmt.QueryRowContext Scan")
+		return 0, fmt.Errorf("stmt.QueryRowContext Scan failed: %w", err)
 	}
 	return count, nil
 }

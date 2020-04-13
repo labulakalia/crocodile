@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"
@@ -11,7 +12,6 @@ import (
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/labulaka521/crocodile/core/utils/resp"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -41,14 +41,14 @@ func RegistryUser(c *gin.Context) {
 
 	hashpassword, err = utils.GenerateHashPass(ruser.Password)
 	if err != nil {
-		log.Error("GenerateHashPass failed", zap.String("error", err.Error()))
+		log.Error("GenerateHashPass failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 
 	exist, err := model.Check(ctx, model.TBUser, model.Name, ruser.Name)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -59,7 +59,7 @@ func RegistryUser(c *gin.Context) {
 
 	err = model.AddUser(ctx, ruser.Name, hashpassword, ruser.Role)
 	if err != nil {
-		log.Error("AddUser failed", zap.String("error", err.Error()))
+		log.Error("AddUser failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -84,7 +84,7 @@ func GetUser(c *gin.Context) {
 	// check uid exist
 	exist, err := model.Check(ctx, model.TBUser, model.ID, uid)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -95,7 +95,7 @@ func GetUser(c *gin.Context) {
 
 	user, err := model.GetUserByID(ctx, uid)
 	if err != nil {
-		log.Error("GetUserByID failed", zap.String("error", err.Error()))
+		log.Error("GetUserByID failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -137,7 +137,7 @@ func GetUsers(c *gin.Context) {
 	}
 	users, count, err := model.GetUsers(ctx, nil, q.Offset, q.Limit)
 	if err != nil {
-		log.Error("GetUsers failed", zap.String("error", err.Error()))
+		log.Error("GetUsers failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -186,7 +186,7 @@ func ChangeUserInfo(c *gin.Context) {
 		newinfo.Password,
 		newinfo.Remark)
 	if err != nil {
-		log.Error("ChangeUserInfo failed", zap.String("error", err.Error()))
+		log.Error("ChangeUserInfo failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -218,7 +218,7 @@ func AdminChangeUser(c *gin.Context) {
 	// TODO only admin
 	exist, err := model.Check(ctx, model.TBUser, model.ID, user.ID)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 	}
 	if !exist {
@@ -236,7 +236,7 @@ func AdminChangeUser(c *gin.Context) {
 
 	err = model.AdminChangeUser(ctx, user.ID, user.Role, user.Forbid, user.Password, user.Remark)
 	if err != nil {
-		log.Error("AdminChangeUser failed", zap.String("error", err.Error()))
+		log.Error("AdminChangeUser failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -262,9 +262,9 @@ func LoginUser(c *gin.Context) {
 	}
 	token, err := model.LoginUser(ctx, username, password)
 	if err != nil {
-		log.Error("model.LoginUser", zap.Error(err))
+		log.Error("model.LoginUser failed", zap.Error(err))
 	}
-	switch err := errors.Cause(err).(type) {
+	switch err := errors.Unwrap(err); err.(type) {
 	case nil:
 		resp.JSON(c, resp.Success, token)
 	case define.ErrUserPass:
@@ -273,7 +273,6 @@ func LoginUser(c *gin.Context) {
 		resp.JSON(c, resp.ErrUserForbid, nil)
 	default:
 		resp.JSON(c, resp.ErrInternalServer, nil)
-		log.Info("LoginUser", zap.String("error", err.Error()))
 	}
 }
 
@@ -300,7 +299,7 @@ func GetSelect(c *gin.Context) {
 	defer cancel()
 	data, err := model.GetNameID(ctx, model.TBUser)
 	if err != nil {
-		log.Error("model.GetNameID", zap.String("error", err.Error()))
+		log.Error("model.GetNameID failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}

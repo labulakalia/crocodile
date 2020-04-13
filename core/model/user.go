@@ -27,31 +27,31 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "db.Db.GetConn")
+		return "", fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, loguser)
 	if err != nil {
-		return "", errors.Wrap(err, "conn.PrepareContext")
+		return "", fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
 	err = stmt.QueryRowContext(ctx, name).Scan(&uid, &hashpassword, &forbid)
 	if err != nil && err != sql.ErrNoRows {
-		return "", errors.Wrap(err, "stmt.QueryRowContext Scan")
+		return "", fmt.Errorf("stmt.QueryRowContext Scan failed: %w", err)
 	}
 	if forbid {
-		return "", errors.Wrap(define.ErrForbid{Name: name}, "")
+		return "", fmt.Errorf(" failed: %w", define.ErrForbid{Name: name})
 	}
 
 	err = utils.CheckHashPass(hashpassword, password)
 	if err != nil {
-		return "", errors.Wrap(define.ErrUserPass{Err: err}, "utils.CheckHashPass")
+		return "", fmt.Errorf("utils.CheckHashPass failed: %w", define.ErrUserPass{Err: err})
 	}
 	token, err := jwt.GenerateToken(uid, name)
 	if err != nil {
-		return "", errors.Wrap(err, "jwt.GenerateToken")
+		return "", fmt.Errorf("jwt.GenerateToken failed: %w", err)
 	}
 
 	return token, nil
@@ -72,13 +72,13 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 				(?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.Db.GetConn")
+		return fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, adduser)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -86,7 +86,7 @@ func AddUser(ctx context.Context, name, hashpassword string, role define.Role) e
 	id := utils.GetID()
 	_, err = stmt.ExecContext(ctx, id, name, hashpassword, role, false, now, now)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 
 	ok, err := enforcer.AddRoleForUser(id, role.String())
@@ -138,7 +138,7 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 	if limit > 0 {
 		count, err = countColums(ctx, getsql, args...)
 		if err != nil {
-			return users, 0, errors.Wrap(err, "countColums")
+			return users, 0, fmt.Errorf("countColums failed: %w", err)
 		}
 
 		getsql += " LIMIT ? OFFSET ?"
@@ -147,18 +147,18 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return users, 0, errors.Wrap(err, "db.Db.GetConn")
+		return users, 0, fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return users, 0, errors.Wrap(err, "conn.PrepareContext")
+		return users, 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return users, 0, errors.Wrap(err, "stmt.QueryContext")
+		return users, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 	for rows.Next() {
 		var (
@@ -200,7 +200,7 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 func GetUserByID(ctx context.Context, uid string) (*define.User, error) {
 	userinfos, _, err := getusers(ctx, []string{uid}, "", 0, 0)
 	if err != nil {
-		return nil, errors.Wrap(err, "GerUser")
+		return nil, fmt.Errorf("GerUser failed: %w", err)
 	}
 	if len(userinfos) != 1 {
 		return nil, fmt.Errorf("Should get one user,but get total: %d", len(userinfos))
@@ -212,7 +212,7 @@ func GetUserByID(ctx context.Context, uid string) (*define.User, error) {
 func GetUserByName(ctx context.Context, name string) (*define.User, error) {
 	userinfos, _, err := getusers(ctx, nil, name, 0, 0)
 	if err != nil {
-		return nil, errors.Wrap(err, "GerUser")
+		return nil, fmt.Errorf("GerUser failed: %w", err)
 	}
 	if len(userinfos) != 1 {
 		return nil, fmt.Errorf("Should get one user,but get total: %d", len(userinfos))
@@ -235,7 +235,7 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid bo
 	)
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.Db.GetConn")
+		return fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	updateTime := time.Now().Unix()
@@ -243,13 +243,13 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid bo
 	if password != "" {
 		hashpassword, err = utils.GenerateHashPass(password)
 		if err != nil {
-			return errors.Wrap(err, "GenerateHashPass")
+			return fmt.Errorf("GenerateHashPass failed: %w", err)
 		}
 	} else {
 		// get old user rolw
 		userinfo, err := GetUserByID(ctx, id)
 		if err != nil {
-			return errors.Wrap(err, "GerUser")
+			return fmt.Errorf("GerUser failed: %w", err)
 		}
 		hashpassword = userinfo.Password
 		if userinfo.Role != role {
@@ -284,12 +284,12 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid bo
 		}
 		err = enforcer.LoadPolicy()
 		if err != nil {
-			return errors.Wrap(err, "enforcer.LoadPolicy")
+			return fmt.Errorf("enforcer.LoadPolicy failed: %w", err)
 		}
 	}
 	stmt, err := conn.PrepareContext(ctx, changeuser)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -301,7 +301,7 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid bo
 		id,
 	)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -315,19 +315,19 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, tel
 	)
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.Db.GetConn")
+		return fmt.Errorf("db.Db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	updateTime := time.Now().Unix()
 	if password != "" {
 		hashpassword, err = utils.GenerateHashPass(password)
 		if err != nil {
-			return errors.Wrap(err, "GenerateHashPass")
+			return fmt.Errorf("GenerateHashPass failed: %w", err)
 		}
 	} else {
 		userinfo, err := GetUserByID(ctx, id)
 		if err != nil {
-			return errors.Wrap(err, "GerUser")
+			return fmt.Errorf("GerUser failed: %w", err)
 		}
 		hashpassword = userinfo.Password
 	}
@@ -344,7 +344,7 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, tel
 
 	stmt, err := conn.PrepareContext(ctx, changeuser)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
@@ -358,7 +358,7 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, tel
 		id,
 	)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }

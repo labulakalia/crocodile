@@ -13,7 +13,6 @@ import (
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -47,12 +46,12 @@ func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, 
 				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, createsql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	createTime := time.Now().Unix()
@@ -81,7 +80,7 @@ func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, 
 		createTime,
 	)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 
 	return nil
@@ -113,12 +112,12 @@ func ChangeTask(ctx context.Context, id string, run bool, tasktype define.TaskTy
 					WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, changesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	updateTime := time.Now().Unix()
@@ -144,7 +143,7 @@ func ChangeTask(ctx context.Context, id string, run bool, tasktype define.TaskTy
 		id,
 	)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -154,17 +153,17 @@ func DeleteTask(ctx context.Context, id string) error {
 	deletesql := `DELETE FROM crocodile_task WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, deletesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, id)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -174,19 +173,19 @@ func TaskIsUse(ctx context.Context, taskid string) (int, error) {
 	querysql := `select count() from crocodile_task WHERE id!=? AND (parentTaskIds LIKE ? OR childTaskIds LIKE ?) `
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return 0, errors.Wrap(err, "db.GetConn")
+		return 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, querysql)
 	if err != nil {
-		return 0, errors.Wrap(err, "conn.PrepareContext")
+		return 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	var count int
 	likequery := "%" + taskid + "%"
 	err = stmt.QueryRowContext(ctx, taskid, likequery, likequery).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "stmt.QueryRowContext")
+		return 0, fmt.Errorf("stmt.QueryRowContext failed: %w", err)
 	}
 	return count, nil
 }
@@ -289,7 +288,7 @@ func getTasks(ctx context.Context,
 		var err error
 		count, err = countColums(ctx, getsql, args...)
 		if err != nil {
-			return tasks, 0, errors.Wrap(err, "countColums")
+			return tasks, 0, fmt.Errorf("countColums failed: %w", err)
 		}
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
@@ -297,18 +296,18 @@ func getTasks(ctx context.Context,
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return tasks, 0, errors.Wrap(err, "db.GetConn")
+		return tasks, 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return tasks, 0, errors.Wrap(err, "conn.PrepareContext")
+		return tasks, 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return tasks, 0, errors.Wrap(err, "stmt.QueryContext")
+		return tasks, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 	for rows.Next() {
 		t := define.GetTask{}

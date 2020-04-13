@@ -44,7 +44,7 @@ func GetHost(c *gin.Context) {
 	hosts, count, err := model.GetHosts(ctx, q.Offset, q.Limit)
 
 	if err != nil {
-		log.Error("GetHost failed", zap.String("error", err.Error()))
+		log.Error("GetHost failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -85,7 +85,7 @@ func ChangeHostState(c *gin.Context) {
 		resp.JSON(c, resp.ErrHostNotExist, nil)
 		return
 	default:
-		
+
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -139,7 +139,7 @@ func DeleteHost(c *gin.Context) {
 
 	err = model.DeleteHost(ctx, gethost.ID)
 	if err != nil {
-		log.Error("model.DeleteHost", zap.String("error", err.Error()))
+		log.Error("model.DeleteHost failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -159,7 +159,7 @@ func GetSelect(c *gin.Context) {
 	defer cancel()
 	data, err := model.GetNameID(ctx, model.TBHost)
 	if err != nil {
-		log.Error("model.GetNameID", zap.String("error", err.Error()))
+		log.Error("model.GetNameID failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}

@@ -77,7 +77,7 @@ func CreateTask(c *gin.Context) {
 	}
 	event := schedule.EventData{
 		TaskID: id,
-		TE: schedule.AddEvent,
+		TE:     schedule.AddEvent,
 	}
 	res, err := json.Marshal(event)
 	if err != nil {
@@ -145,7 +145,7 @@ func ChangeTask(c *gin.Context) {
 		// 判断ID的创建人是否为uid
 		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, task.ID, uid)
 		if err != nil {
-			log.Error("IsExist failed", zap.String("error", err.Error()))
+			log.Error("IsExist failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
 			return
 		}
@@ -161,13 +161,13 @@ func ChangeTask(c *gin.Context) {
 		task.ExpectCode, task.ExpectContent, task.AlarmStatus, task.HostGroupID, task.Remark,
 	)
 	if err != nil {
-		log.Error("ChangeTask failed", zap.String("error", err.Error()))
+		log.Error("ChangeTask failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
 	event := schedule.EventData{
 		TaskID: task.ID,
-		TE: schedule.AddEvent,
+		TE:     schedule.AddEvent,
 	}
 	res, err := json.Marshal(event)
 	if err != nil {
@@ -206,7 +206,7 @@ func DeleteTask(c *gin.Context) {
 	}
 	exist, err := model.Check(ctx, model.TBTask, model.ID, deletetask.ID)
 	if err != nil {
-		log.Error("model.Check failed", zap.String("error", err.Error()))
+		log.Error("model.Check failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -268,7 +268,7 @@ func DeleteTask(c *gin.Context) {
 	//}
 	event := schedule.EventData{
 		TaskID: deletetask.ID,
-		TE: schedule.DeleteEvent,
+		TE:     schedule.DeleteEvent,
 	}
 	res, err := json.Marshal(event)
 	if err != nil {
@@ -320,7 +320,7 @@ func GetTasks(c *gin.Context) {
 	}
 	hgs, count, err := model.GetTasks(ctx, q.Offset, q.Limit, "", q.PSName, createby)
 	if err != nil {
-		log.Error("GetTasks failed", zap.String("error", err.Error()))
+		log.Error("GetTasks failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -358,7 +358,7 @@ func GetTask(c *gin.Context) {
 	case define.ErrNotExist:
 		resp.JSON(c, resp.ErrTaskNotExist, nil)
 	default:
-		log.Error("GetTasks failed", zap.String("error", err.Error()))
+		log.Error("GetTasks failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 	}
 }
@@ -413,7 +413,7 @@ func RunTask(c *gin.Context) {
 
 	event := schedule.EventData{
 		TaskID: runtask.ID,
-		TE: schedule.RunEvent,
+		TE:     schedule.RunEvent,
 	}
 	res, err := json.Marshal(event)
 	if err != nil {
@@ -446,7 +446,7 @@ func KillTask(c *gin.Context) {
 	}
 	event := schedule.EventData{
 		TaskID: runtask.ID,
-		TE: schedule.KillEvent,
+		TE:     schedule.KillEvent,
 	}
 	res, err := json.Marshal(event)
 	if err != nil {
@@ -470,8 +470,8 @@ func KillTask(c *gin.Context) {
 // @Security ApiKeyAuth
 func GetRunningTask(c *gin.Context) {
 	var (
-		q   define.Query
-		err error
+		q            define.Query
+		err          error
 		runningtasks []*define.RunTask
 	)
 
@@ -814,7 +814,7 @@ func GetSelect(c *gin.Context) {
 	defer cancel()
 	data, err := model.GetNameID(ctx, model.TBTask)
 	if err != nil {
-		log.Error("model.GetNameID", zap.String("error", err.Error()))
+		log.Error("model.GetNameID failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -948,7 +948,7 @@ func CleanTaskLog(c *gin.Context) {
 		// 判断任务的创建人是否为当前用户
 		exist, err = model.Check(ctx, model.TBTask, model.NameCreateByUID, cleanlog.Name, c.GetString("uid"))
 		if err != nil {
-			log.Error("IsExist failed", zap.String("error", err.Error()))
+			log.Error("IsExist failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
 			return
 		}

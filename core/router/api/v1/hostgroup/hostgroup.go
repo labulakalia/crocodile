@@ -38,7 +38,7 @@ func CreateHostGroup(c *gin.Context) {
 
 	exist, err := model.Check(ctx, model.TBHostgroup, model.Name, hg.Name)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -49,7 +49,7 @@ func CreateHostGroup(c *gin.Context) {
 
 	err = model.CreateHostgroup(ctx, hg.Name, hg.Remark, c.GetString("uid"), hg.HostsID)
 	if err != nil {
-		log.Error("CreateHostgroup failed", zap.String("error", err.Error()))
+		log.Error("CreateHostgroup failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -81,7 +81,7 @@ func ChangeHostGroup(c *gin.Context) {
 	// 判断ID是否存在
 	exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hg.ID)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -103,7 +103,7 @@ func ChangeHostGroup(c *gin.Context) {
 		// 判断ID的创建人是否为uid
 		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hg.ID, uid)
 		if err != nil {
-			log.Error("IsExist failed", zap.String("error", err.Error()))
+			log.Error("IsExist failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
 			return
 		}
@@ -116,7 +116,7 @@ func ChangeHostGroup(c *gin.Context) {
 
 	err = model.ChangeHostGroup(ctx, hg.HostsID, hg.ID, hg.Remark)
 	if err != nil {
-		log.Error("ChangeHostGroup failed", zap.String("error", err.Error()))
+		log.Error("ChangeHostGroup failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -153,7 +153,7 @@ func DeleteHostGroup(c *gin.Context) {
 	// 判断ID是否存在
 	exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hostgroup.ID)
 	if err != nil {
-		log.Error("IsExist failed", zap.String("error", err.Error()))
+		log.Error("IsExist failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -174,7 +174,7 @@ func DeleteHostGroup(c *gin.Context) {
 		// 判断ID的创建人是否为uid
 		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hostgroup.ID, uid)
 		if err != nil {
-			log.Error("IsExist failed", zap.String("error", err.Error()))
+			log.Error("IsExist failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
 			return
 		}
@@ -187,7 +187,7 @@ func DeleteHostGroup(c *gin.Context) {
 
 	err = model.DeleteHostGroup(ctx, hostgroup.ID)
 	if err != nil {
-		log.Error("DeleteHostGroup failed", zap.String("error", err.Error()))
+		log.Error("DeleteHostGroup failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -226,7 +226,7 @@ func GetHostGroups(c *gin.Context) {
 
 	hgs, count, err := model.GetHostGroups(ctx, q.Limit, q.Offset)
 	if err != nil {
-		log.Error("GetHostGroup failed", zap.String("error", err.Error()))
+		log.Error("GetHostGroup failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
@@ -247,7 +247,7 @@ func GetSelect(c *gin.Context) {
 	defer cancel()
 	data, err := model.GetNameID(ctx, model.TBHostgroup)
 	if err != nil {
-		log.Error("model.GetNameID", zap.String("error", err.Error()))
+		log.Error("model.GetNameID failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}

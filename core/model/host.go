@@ -43,12 +43,12 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "db.GetConn")
+		return "", fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, hostsql)
 	if err != nil {
-		return "", errors.Wrap(err, "conn.PrepareContext")
+		return "", fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	id := utils.GetID()
@@ -62,7 +62,7 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 		req.Remark,
 	)
 	if err != nil {
-		return "", errors.Wrap(err, "stmt.ExecContext")
+		return "", fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	log.Info("New Client Registry ", zap.String("addr", addr))
 	return id, nil
@@ -73,12 +73,12 @@ func UpdateHostHearbeat(ctx context.Context, ip string, port int32, runningtasks
 	updatesql := `UPDATE crocodile_host set lastUpdateTimeUnix=?,runningTasks=? WHERE addr=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, updatesql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	result, err := stmt.ExecContext(ctx,
@@ -86,14 +86,14 @@ func UpdateHostHearbeat(ctx context.Context, ip string, port int32, runningtasks
 		strings.Join(runningtasks, ","),
 		fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
-	line,err := result.RowsAffected() 
+	line, err := result.RowsAffected()
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	if line <= 0 {
-		return fmt.Errorf("host %s not registry, may be this host is delete",fmt.Sprintf("%s:%d", ip, port))
+		return fmt.Errorf("host %s not registry, may be this host is delete", fmt.Sprintf("%s:%d", ip, port))
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 		var err error
 		count, err = countColums(ctx, getsql, args...)
 		if err != nil {
-			return nil, 0, errors.Wrap(err, "countColums")
+			return nil, 0, fmt.Errorf("countColums failed: %w", err)
 		}
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
@@ -145,17 +145,17 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "db.GetConn")
+		return nil, 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "conn.PrepareContext")
+		return nil, 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "stmt.QueryContext")
+		return nil, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 
 	hosts := []*define.Host{}
@@ -240,16 +240,16 @@ func StopHost(ctx context.Context, hostid string, stop bool) error {
 	stopsql := `UPDATE crocodile_host SET stop=? WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, stopsql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	_, err = stmt.ExecContext(ctx, stop, hostid)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
@@ -258,21 +258,21 @@ func StopHost(ctx context.Context, hostid string, stop bool) error {
 func DeleteHost(ctx context.Context, hostid string) error {
 	err := StopHost(ctx, hostid, true)
 	if err != nil {
-		return errors.Wrap(err, "StopHost")
+		return fmt.Errorf("StopHost failed: %w", err)
 	}
 	deletehostsql := `DELETE FROM crocodile_host WHERE id=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
-		return errors.Wrap(err, "db.GetConn")
+		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, deletehostsql)
 	if err != nil {
-		return errors.Wrap(err, "conn.PrepareContext")
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	_, err = stmt.ExecContext(ctx, hostid)
 	if err != nil {
-		return errors.Wrap(err, "stmt.ExecContext")
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}
 	return nil
 }
