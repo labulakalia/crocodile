@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/go-redis/redis/v7"
 )
@@ -16,5 +17,12 @@ func main() {
 	// client.RPush("test1112", 444)
 	// client.RPush("test1112", 555)
 	// client.RPush("test1112", 666)
-	client.SMembers(key string)
+	var output []byte
+	err := client.LIndex("test", 10).Scan(output)
+	if err != nil {
+		fmt.Println(err == redis.Nil)
+		os.Exit(0)
+	}
+	
+
 }

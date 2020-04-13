@@ -559,47 +559,42 @@ func RealRunTaskLog(c *gin.Context) {
 		return
 	}
 	realid := c.Query("realid")
-	tasktype, err := strconv.Atoi(c.Query("type"))
+	taskruntype, err := strconv.Atoi(c.Query("type"))
 	if err != nil {
 		log.Error("can get valid task type", zap.Error(err))
 		conn.WriteMessage(websocket.TextMessage, []byte("can get task type"))
 		return
 	}
 
-	logcache, err := schedule.Cron.GetRunTaskLogCache(getid.ID, realid, define.TaskRespType(tasktype))
-	if err != nil {
-		log.Error("GetRunTaskLogCache failed", zap.Error(err))
-		err = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
+	task, ok := schedule.Cron2.GetTask(getid.ID)
+	if !ok {
+		log.Error("can get taskid", zap.String("taskid", getid.ID))
+		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("can get taskid %s", getid.ID)))
 		return
 	}
-	offset := 0
-
-	var out = make([]byte, 1024)
+	var offset int64
 	for {
-		n, err := logcache.ReadOnly(out, offset)
+		output, err := task.GetTaskRealLog(define.TaskRespType(taskruntype), realid, offset)
 		if err == nil {
-			if n > 0 {
-				offset += n
-				err = conn.WriteMessage(websocket.TextMessage, out[:n])
-				if err != nil {
-					log.Error("WriteMessage failed", zap.Error(err))
-					return
-				}
-				// conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-				_, _, err := conn.ReadMessage()
-				if err != nil {
-					log.Error("ReadMessage failed", zap.Error(err))
-					return
-				}
+			offset++
+			err = conn.WriteMessage(websocket.TextMessage, output)
+			if err != nil {
+				log.Error("WriteMessage failed", zap.Error(err))
+				return
 			}
-			time.Sleep(time.Second)
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				log.Error("ReadMessage failed", zap.Error(err))
+				return
+			}
+			time.Sleep(time.Millisecond * 10)
 			continue
 		}
 		if err == io.EOF {
 			log.Debug("read task log over")
 			// conn.WriteMessage(websocket.TextMessage, []byte("task run finished"))
 			return
-		} else if err == schedule.ErrNoReadData {
+		} else if err == schedule.ErrNoGetLog {
 			log.Debug("can not get new data, please wait some time")
 			time.Sleep(time.Second)
 		} else {
@@ -607,6 +602,49 @@ func RealRunTaskLog(c *gin.Context) {
 			return
 		}
 	}
+	// task.GetTaskRealLog(taskruntype define.TaskRespType, realid string, offset int64)
+
+	// logcache, err := schedule.Cron.GetRunTaskLogCache(getid.ID, realid, define.TaskRespType(tasktype))
+	// if err != nil {
+	// 	log.Error("GetRunTaskLogCache failed", zap.Error(err))
+	// 	err = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
+	// 	return
+	// }
+	// offset := 0
+
+	// var out = make([]byte, 1024)
+	// for {
+	// 	n, err := logcache.ReadOnly(out, offset)
+	// 	if err == nil {
+	// 		if n > 0 {
+	// 			offset += n
+	// 			err = conn.WriteMessage(websocket.TextMessage, out[:n])
+	// 			if err != nil {
+	// 				log.Error("WriteMessage failed", zap.Error(err))
+	// 				return
+	// 			}
+	// 			// conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	// 			_, _, err := conn.ReadMessage()
+	// 			if err != nil {
+	// 				log.Error("ReadMessage failed", zap.Error(err))
+	// 				return
+	// 			}
+	// 		}
+	// 		time.Sleep(time.Second)
+	// 		continue
+	// 	}
+	// 	if err == io.EOF {
+	// 		log.Debug("read task log over")
+	// 		// conn.WriteMessage(websocket.TextMessage, []byte("task run finished"))
+	// 		return
+	// 	} else if err == schedule.ErrNoReadData {
+	// 		log.Debug("can not get new data, please wait some time")
+	// 		time.Sleep(time.Second)
+	// 	} else {
+	// 		log.Error("read task log failed", zap.Error(err))
+	// 		return
+	// 	}
+	// }
 }
 
 // RealRunTaskStatus  Get Task Status

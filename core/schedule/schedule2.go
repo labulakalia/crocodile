@@ -32,6 +32,10 @@ var (
 	Cron2 *cacheSchedule2
 )
 
+var (
+	ErrNoGetLog = errors.New("no read data from cache")
+)
+
 // task running status
 // redis key name:
 type task2 struct {
@@ -63,14 +67,14 @@ const (
 	taskrealtasklog string = "reallog"
 )
 
-func (t *task2) getdata(tasrunktype define.TaskRespType, realid string, setdata string) (interface{}, error) {
-	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, tasrunktype, realid, setdata)
-	defer func() {
-		err := t.redis.Del(keyname).Err()
-		if err != nil {
-			log.Error("once.Do t.redis.Del failed", zap.Error(err))
-		}
-	}()
+func (t *task2) getdata(taskruntype define.TaskRespType, realid string, setdata string) (interface{}, error) {
+	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, taskruntype, realid, setdata)
+	// defer func() {
+	// 	err := t.redis.Del(keyname).Err()
+	// 	if err != nil {
+	// 		log.Error("once.Do t.redis.Del failed", zap.Error(err))
+	// 	}
+	// }()
 	switch setdata {
 	case taskstatus:
 		// 任务状态
@@ -170,6 +174,11 @@ func Init2() error {
 	}
 	log.Info("init task success", zap.Int("Total", len(eps)))
 	return nil
+}
+
+// GetTask return task2
+func (s *cacheSchedule2) GetTask(taskid string) (*task2, bool) {
+	return s.gettask(taskid)
 }
 
 func (s *cacheSchedule2) gettask(taskid string) (*task2, bool) {
@@ -340,12 +349,46 @@ func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
 }
 
 // GetTaskRealLog return a channel task real log
-func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string) chan []byte {
+func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, offset int64) ([]byte, error) {
 	// 返回一个日志的channel
 	// 循环读取记录任务日志的列表然后将日志写到channel中
-	reallog := make(chan []byte, 10)
+	// offset 为日志的偏移量每次取日志的offset,offset+1
+	// 如果取到了日志就直接返回，如果取出的日志为空并且任务还未运行结束(完成、失败、取消）则返回io.EOF
 
-	return reallog
+	// 判断主任务锁是否存在
+	ok, err := t.islock()
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("task %s[%s] is not n running", t.name, t.id)
+	}
+
+	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, taskruntype, realid, taskrealtasklog)
+	var output []byte
+	err = t.redis.LIndex(keyname, offset).Scan(&output)
+	if err != nil {
+		// 如果不为nil则直接返回错误
+		if err != redis.Nil {
+			return nil, err
+		}
+		// 此时未取到新的日志，接下来判断任务的状态
+		// 如果任务状态不是运行状态则此次取日志结束，返回io.EOF
+		// 获取任务状态
+		tsret, tserr := t.getdata(taskruntype, realid, taskstatus)
+		if tserr != nil {
+			return nil, errors.Wrap(err, tserr.Error())
+		}
+
+		switch tsret.(define.TaskStatus) {
+		case define.TsFinish, define.TsCancel, define.TsFail:
+			// 任务已经运行结束，返回结束标志EOF
+			return nil, io.EOF
+		default:
+			return nil, ErrNoGetLog
+		}
+	}
+	return output, nil
 }
 
 // gettaskinfos return task's parent child id
@@ -1042,15 +1085,4 @@ Check:
 		// 如有任务失败，那么还未运行的任务可以标记为取消
 	}
 	return alarmerr
-}
-
-// GetRunningtask return all running task
-func (s *cacheSchedule2) GetRunningtask() []*define.RunTask {
-
-	tasks, err := t.gettaskinfos()
-	if err != nil {
-		log.Error("t.getttaskinfos failed", zap.Error(err))
-		return err
-	}
-
 }
