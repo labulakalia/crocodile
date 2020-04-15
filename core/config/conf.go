@@ -54,6 +54,7 @@ type Server struct {
 	Port        int
 	MaxHTTPTime duration
 	DB          db
+	Redis       redis
 }
 
 type db struct {
@@ -62,6 +63,10 @@ type db struct {
 	MaxIdle      int
 	MaxConn      int
 	MaxQueryTime duration
+}
+
+type redis struct {
+	Addr string
 }
 
 // Client crocodile client config

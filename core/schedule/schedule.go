@@ -60,7 +60,6 @@ type cacheSchedule struct {
 
 // Init start run already exists task from db
 func Init() error {
-
 	Cron = &cacheSchedule{
 		sch: make(map[string]*task),
 	}

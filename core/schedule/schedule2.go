@@ -12,17 +12,19 @@ import (
 	"sync"
 	"time"
 
+	"errors"
+
 	"github.com/go-redis/redis"
 	"github.com/gorhill/cronexpr"
 	"github.com/labulaka521/crocodile/common/errgroup"
 	"github.com/labulaka521/crocodile/common/log"
+	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/alarm"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -33,6 +35,7 @@ var (
 )
 
 var (
+	// ErrNoGetLog get real log from redis where no data
 	ErrNoGetLog = errors.New("no read data from cache")
 )
 
@@ -52,7 +55,6 @@ type task2 struct {
 	redis        *redis.Client // redis client
 	once         sync.Once     //
 
-	// Trigger     define.Trigger      // how to trigger task
 	errTaskID   string              // run fail task's id
 	errTask     string              // run fail task's id
 	errCode     int                 // failed task return code
@@ -69,12 +71,7 @@ const (
 
 func (t *task2) getdata(taskruntype define.TaskRespType, realid string, setdata string) (interface{}, error) {
 	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, taskruntype, realid, setdata)
-	// defer func() {
-	// 	err := t.redis.Del(keyname).Err()
-	// 	if err != nil {
-	// 		log.Error("once.Do t.redis.Del failed", zap.Error(err))
-	// 	}
-	// }()
+
 	switch setdata {
 	case taskstatus:
 		// 任务状态
@@ -107,14 +104,27 @@ func (t *task2) getdata(taskruntype define.TaskRespType, realid string, setdata 
 
 }
 
+func (t *task2) SetData(tasrunktype define.TaskRespType, realid string,
+	value interface{}, setdata string) error {
+
+	return t.setdata(tasrunktype, realid, value, setdata)
+}
+
 func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 	value interface{}, setdata string) error {
 	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, tasrunktype, realid, setdata)
 	switch setdata {
 	case taskstatus:
-		err := t.redis.Set(keyname, define.TsWait, 0).Err()
+
+		// status, ok := value.(int)
+		// if !ok {
+		// 	log.Error("value not can change int", zap.Any("data", taskstatus))
+		// 	return errors.New("value type error")
+		// }
+		err := t.redis.Set(keyname, int(value.(define.TaskStatus)), 0).Err()
 		if err != nil {
-			return fmt.Errorf("t.redis.SAdd failed: %w", err)
+			log.Error("t.redis.Set", zap.Error(err))
+			return fmt.Errorf("t.redis.Set failed: %w", err)
 		}
 	case taskresp:
 		content, err := json.Marshal(value)
@@ -123,7 +133,7 @@ func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 		}
 		err = t.redis.Set(keyname, content, 0).Err()
 		if err != nil {
-			return fmt.Errorf("t.redis.SAdd failed: %w", err)
+			return fmt.Errorf("t.redis.Set failed: %w", err)
 		}
 	case taskrealtasklog:
 		err := t.redis.RPush(keyname, value).Err()
@@ -132,8 +142,8 @@ func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 		}
 
 	default:
-		log.Error("unknow setdata")
-		return errors.New("unknow setdata")
+		log.Error("unknow setdata", zap.String("setdata", setdata))
+		return fmt.Errorf("unknow setdata %s", setdata)
 	}
 	return nil
 }
@@ -226,7 +236,7 @@ func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, o
 		// 获取任务状态
 		tsret, tserr := t.getdata(taskruntype, realid, taskstatus)
 		if tserr != nil {
-			return nil, errors.Wrap(err, tserr.Error())
+			return nil, fmt.Errorf("getdata failed: %w", tserr)
 		}
 
 		switch tsret.(define.TaskStatus) {
@@ -245,6 +255,9 @@ func (t *task2) gettaskinfos() ([]string, error) {
 	taskinfos := "task:" + t.id
 	var res []string
 	err := t.redis.LRange(taskinfos, 0, 1).ScanSlice(&res)
+	if err != nil {
+		return nil, fmt.Errorf("t.redis.LRange failed: %w", err)
+	}
 	return res, err
 }
 
@@ -319,9 +332,10 @@ func (t *task2) savetasklog() error {
 	tasklogres := &define.Log{
 		Name:        t.name,
 		RunByTaskID: t.id,
-		StartTime:   runtask.StartTime / 1e3,
-		EndTime:     time.Now().UnixNano() / 1e3,
+		StartTime:   runtask.StartTime,
+		EndTime:     time.Now().UnixNano() / 1e6,
 		Trigger:     runtask.Trigger,
+		Triggerstr:  runtask.Trigger.String(),
 		ErrCode:     t.errCode,
 		ErrMsg:      t.errMsg,
 		ErrTasktype: t.errTasktype,
@@ -380,6 +394,7 @@ func (t *task2) savetasklog() error {
 
 		tr := taskresp.(define.TaskResp)
 		tr.LogData = tasklog.(string)
+
 		if taskstatus.(define.TaskStatus) == define.TsWait {
 			tr.Status = define.TsCancel.String()
 		} else {
@@ -392,11 +407,11 @@ func (t *task2) savetasklog() error {
 	// save log
 	err = model.SaveLog(context.Background(), tasklogres)
 
-	return nil
+	return err
 }
 
-func (t *task2) writelog(tasrunktype define.TaskRespType, realid, value string) {
-	err := t.setdata(tasrunktype, realid, taskrealtasklog, value)
+func (t *task2) writelog(tasrunktype define.TaskRespType, realid string, value []byte) {
+	err := t.setdata(tasrunktype, realid, value, taskrealtasklog)
 	if err != nil {
 		log.Error("t.setdata failed", zap.Error(err))
 	}
@@ -405,7 +420,7 @@ func (t *task2) writelog(tasrunktype define.TaskRespType, realid, value string) 
 // writelogt save log with time
 func (t *task2) writelogt(tasrunktype define.TaskRespType, realid, tmpl string, args ...interface{}) {
 	value := time.Now().Local().Format("2006-01-02 15:04:05: ") + fmt.Sprintf(tmpl, args...) + "\n"
-	err := t.setdata(tasrunktype, realid, taskrealtasklog, value)
+	err := t.setdata(tasrunktype, realid, value, taskrealtasklog)
 	if err != nil {
 		log.Error("t.setdata failed", zap.Error(err))
 	}
@@ -415,31 +430,29 @@ func (t *task2) writelogt(tasrunktype define.TaskRespType, realid, tmpl string, 
 func (t *task2) getreturncode(tasrunktype define.TaskRespType, realid string) (int, error) {
 	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, tasrunktype, realid, taskrealtasklog)
 	// 返回最右的值取后5位，然后放入
-	res, err := t.redis.RPop(keyname).Bytes()
+	res, err := t.redis.LIndex(keyname, -1).Bytes()
 	if err != nil {
 		return tasktype.DefaultExitCode, err
 	}
 
 	if len(res) >= 5 {
 		codebyte := res[len(res)-5:]
-		code, err := strconv.Atoi(strings.TrimLeft(string(codebyte), " "))
+		code, err := strconv.Atoi(strings.TrimSpace(string(codebyte)))
 		if err != nil {
 			// if err != nil ,it is bug
 			log.Error("Change str to int failed", zap.Error(err))
-			t.redis.RPush(keyname, res)
 			return tasktype.DefaultExitCode, err
 		}
-		t.redis.RPush(keyname, res[:len(res)-5])
 		return code, nil
 	}
-	t.redis.RPush(keyname, res)
 	// if code run there,this is bug
-	log.Error("thia is bug,recv buf is nether than 3, get code failed")
+	log.Error("thia is bug,recv buf is nether than 5, get code failed")
 	return tasktype.DefaultExitCode, err
 }
 
 // getlock
 func (t *task2) getlock(randstr string) (bool, error) {
+	log.Debug("start get lock", zap.String("taskid", t.id))
 	lockid := "task:runlock:" + t.id
 	set, err := t.redis.SetNX(lockid, randstr, t.cronsub).Result()
 	if err != nil {
@@ -454,6 +467,7 @@ func (t *task2) getlock(randstr string) (bool, error) {
 }
 
 func (t *task2) releaselock(randid string) {
+	log.Debug("start release lock", zap.String("taskid", t.id))
 	lockid := "task:runlock:" + t.id
 	script := redis.NewScript(`
 		if redis.call("get",KEYS[1]) == ARGV[1] then
@@ -508,7 +522,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 		return
 	}
 	if !ok {
-		log.Warn("can get lock", zap.String("taskname", t.name))
+		log.Warn("can not get lock", zap.String("taskname", t.name))
 		return
 	}
 
@@ -522,7 +536,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 		for {
 			select {
 			case <-stopexpire:
-				log.Debug("start stop expire lock", zap.String("lockid", lockid))
+				log.Debug("stop expire lock", zap.String("lockid", lockid))
 				return
 			case <-ticker.C:
 				t.redis.Expire(lockid, t.cronsub)
@@ -542,9 +556,11 @@ func (t *task2) StartRun(trigger define.Trigger) {
 	runningtask := define.RunTask{
 		ID:        t.id,
 		Name:      t.name,
-		StartTime: time.Now().UnixNano(),
+		Cronexpr:  t.cronexpr,
+		StartTime: time.Now().UnixNano() / 1e6,
 		Trigger:   trigger,
 	}
+
 	Cron2.saverunningtask(&runningtask)
 	defer func() {
 		Cron2.removerunningtask(&runningtask)
@@ -698,9 +714,9 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 	}
 	// 如果异步执行那么任务的状态，控制并发等问题就需要重新设计
 	// 双向故障转移，如果Worker节点挂掉，则重新
-
 	realtask, ok = Cron2.gettask(id)
 	if !ok {
+		log.Error("can not get task", zap.String("taskid", id))
 		t.writelogt(taskruntype, id, "Get %s Task id %s from cacheSchedule failed: %v",
 			taskruntype.String(), id, err)
 		goto Check
@@ -766,7 +782,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 			// err = resp.GetMsgErr(taskrespcode)
 			goto Check
 		}
-		t.writelogt(taskruntype, id, string(pbtaskresp.GetResp()))
+		t.writelog(taskruntype, id, pbtaskresp.GetResp())
 		output = append(output, pbtaskresp.GetResp()...)
 	}
 Check:
@@ -848,8 +864,13 @@ type cacheSchedule2 struct {
 
 // Init2 start run already exists task from db
 func Init2() error {
+	client := redis.NewClient(&redis.Options{
+		Addr: config.CoreConf.Server.Redis.Addr,
+	})
+
 	Cron2 = &cacheSchedule2{
-		ts: make(map[string]*task2),
+		ts:    make(map[string]*task2),
+		redis: client,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(),
@@ -869,10 +890,12 @@ func Init2() error {
 		log.Error("GetTasks failed", zap.Error(err))
 		return err
 	}
-
+	log.Debug("start init task", zap.Any("task", eps))
 	for _, t := range eps {
 		Cron2.addtask(t.ID, t.Name, t.Cronexpr, GetRoutePolicy(t.HostGroupID, t.RoutePolicy), t.Run)
 	}
+
+	go RecvEvent()
 	log.Info("init task success", zap.Int("Total", len(eps)))
 	return nil
 }
@@ -898,8 +921,8 @@ func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next 
 		}
 		delete(s.ts, taskname)
 	}
-	s.ts[taskname] = &t
-	go s.runSchedule(taskname)
+	s.ts[taskid] = &t
+	go s.runSchedule(taskid)
 	s.Unlock()
 }
 
@@ -990,11 +1013,22 @@ func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
 	var runtasks = runningTask{}
 	for _, runningtaskkey := range rtkeys {
 		var runtask define.RunTask
-		err = s.redis.Get(runningtaskkey).Scan(&runtask)
+		var res []byte
+		err = s.redis.Get(runningtaskkey).Scan(&res)
 		if err != nil {
 			log.Error("Scan runtask failed", zap.Error(err))
 			continue
 		}
+		err = json.Unmarshal(res, &runtask)
+		if err != nil {
+			log.Error("json.Unmarshal runtask failed", zap.Error(err))
+			continue
+		}
+
+		runtask.StartTimeStr = utils.UnixToStr(runtask.StartTime / 1e3)
+		runtask.RunTime = int(time.Now().UnixNano()/1e6 - runtask.StartTime)
+		runtask.TriggerStr = runtask.Trigger.String()
+
 		ok, err := s.isrunning(runtask.ID)
 		if err != nil {
 			log.Error("s.isrunning failed", zap.Error(err))
@@ -1012,12 +1046,11 @@ func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
 
 // isrunning check task lock
 func (s *cacheSchedule2) isrunning(taskid string) (bool, error) {
-	lockid := "task:runlock:" + taskid
-	res, err := s.redis.Exists(lockid).Result()
-	if err != nil {
-		return false, fmt.Errorf("s.redis.Exists failed: %w", err)
+	t, ok := s.gettask(taskid)
+	if !ok {
+		return false, fmt.Errorf("can not get taskid %s", taskid)
 	}
-	return res == 1, nil
+	return t.islock()
 }
 
 // saverunningtask save running task
@@ -1062,11 +1095,11 @@ func (s *cacheSchedule2) removerunningtask(runningtask *define.RunTask) error {
 	pipeline := s.redis.Pipeline()
 	err := pipeline.SRem(rtasks, rtask).Err()
 	if err != nil {
-		return fmt.Errorf("pipeline.SAdd failed: %w", err)
+		return fmt.Errorf("pipeline.SRem failed: %w", err)
 	}
 	err = pipeline.Del(rtask).Err()
 	if err != nil {
-		return fmt.Errorf("pipeline.SAdd failed: %w", err)
+		return fmt.Errorf("pipeline.Del failed: %w", err)
 	}
 	_, err = pipeline.Exec()
 	if err != nil {

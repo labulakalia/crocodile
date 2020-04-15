@@ -45,7 +45,7 @@ func Server() *cobra.Command {
 				log.Fatal("listen failed", zap.Error(err))
 			}
 			// init alarm
-			err = schedule.Init()
+			err = schedule.Init2()
 			if err != nil {
 				log.Fatal("init schedule failed", zap.Error(err))
 			}

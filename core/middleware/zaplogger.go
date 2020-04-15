@@ -36,7 +36,7 @@ func ZapLogger() func(c *gin.Context) {
 
 		switch {
 		case statuscode < resp.ErrBadRequest:
-			log.Info("Gin", fields...)
+			log.Debug("Gin", fields...)
 		case statuscode < resp.ErrInternalServer:
 			log.Warn("Gin", fields...)
 		case statuscode >= resp.ErrInternalServer:

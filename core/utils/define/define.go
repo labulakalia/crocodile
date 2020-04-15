@@ -350,8 +350,8 @@ type RunTask struct {
 	StartTimeStr string  `json:"start_timestr"`
 	StartTime    int64   `json:"start_time"` // use ms,
 	RunTime      int     `json:"run_time"`   // s
-	Trigger      Trigger `json:"-"`
-	TriggerStr   string  `json:"trigger"`
+	Trigger      Trigger `json:"trigger"`
+	TriggerStr   string  `json:"triggerstr"`
 }
 
 // TaskResp run task resp message

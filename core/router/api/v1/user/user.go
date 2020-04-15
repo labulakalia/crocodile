@@ -2,9 +2,9 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/common/utils"

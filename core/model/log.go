@@ -39,7 +39,6 @@ func SaveLog(ctx context.Context, l *define.Log) error {
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return fmt.Errorf("db.GetConn failed: %w", err)
-		return fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
 	stmt, err := conn.PrepareContext(ctx, savesql)

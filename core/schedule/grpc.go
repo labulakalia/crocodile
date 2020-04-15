@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"errors"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/cert"
@@ -15,7 +17,6 @@ import (
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/labulaka521/crocodile/core/utils/resp"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/version"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -30,7 +31,7 @@ const (
 	defaultRPCTimeout = time.Second * 3
 	// worker send hearbeat ttl
 	defaultHearbeatInterval         = time.Second * 15 // maxWorkerTTL int64 = 20
-	defaultLastFailHearBeatInterval = time.Second * 3
+	defaultLastFailHearBeatInterval = time.Second * 2
 	// max retry get host time for func Next
 	defaultMaxRetryGetWorkerHost = 3
 )
@@ -106,6 +107,7 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 
 	rpcctx, cancel := context.WithTimeout(ctx, defaultRPCTimeout)
 	defer cancel()
+	//
 	conn, err = grpc.DialContext(rpcctx, addr, dialoptions...)
 	if err != nil {
 		return nil, err
@@ -194,6 +196,7 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 }
 
 // RegistryClient registry client to server
+// TODO 心跳服务不能自定恢复连接
 func RegistryClient(version string, port int) error {
 	rand.Seed(time.Now().UnixNano())
 	addrs := config.CoreConf.Client.ServerAddrs
@@ -295,11 +298,11 @@ func DealRPCErr(err error) error {
 // DoStopConn will cancel all running task and close grpc conn
 func DoStopConn(mode define.RunMode) {
 	if mode == define.Server {
-		for id, sch := range Cron.sch {
-			sch.running = false
-			Cron.Del(id)
-			if sch.ctxcancel != nil {
-				sch.ctxcancel()
+		for id, t := range Cron2.ts {
+			// sch.running = false
+			Cron2.deletetask(id)
+			if t.ctxcancel != nil {
+				t.ctxcancel()
 			}
 		}
 	}

@@ -34,7 +34,8 @@ maxhttptime = "10s" # 秒
   maxidle = 10
   maxconn = 20
   maxquerytime = "10s"
-
+  [server.redis]
+  addr = "127.0.0.1:6379"
 # crocodile client
 [client]
 port = 8081        # default rand port
@@ -86,6 +87,6 @@ func TestInit(t *testing.T) {
 	testfile := "/tmp/crocodile.toml"
 	ioutil.WriteFile(testfile, []byte(conf), 0644)
 	Init(testfile)
-	t.Logf("%+v", CoreConf.Notify.WebHook)
+	t.Logf("%+v", CoreConf.Server.Redis)
 	os.Remove(testfile)
 }

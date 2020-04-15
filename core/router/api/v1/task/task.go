@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -648,11 +649,11 @@ func RealRunTaskLog(c *gin.Context) {
 			time.Sleep(time.Millisecond * 10)
 			continue
 		}
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			log.Debug("read task log over")
 			// conn.WriteMessage(websocket.TextMessage, []byte("task run finished"))
 			return
-		} else if err == schedule.ErrNoGetLog {
+		} else if errors.Is(err, schedule.ErrNoGetLog) {
 			log.Debug("can not get new data, please wait some time")
 			time.Sleep(time.Second)
 		} else {

@@ -27,18 +27,21 @@ keyfile="key.pem"
 
 # crocodile server
 [server]
-port = 8080
+port = 8081
 maxhttptime = "10s" # 秒
 [server.db]
 # mysql: [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
 #        root:123456@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local
 #        mysql需要提前建好数据库
 # sqlite3: crocodile.db
-drivename = "sqlite3"
-dsn = "crocodile.db"
+drivename = "mysql"
+dsn = "root:wang109097@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local"
 maxidle = 10
 maxconn = 20
 maxquerytime = "10s"
+
+[server.redis]
+addr = "127.0.0.1:6379"
 
 # 消息通知配置
 [notify]
@@ -81,7 +84,7 @@ cropid = "" # wwb2f31bd2bad4dce9
 agentid = 1000002
 agentsecret = ""
 [notify.webhook]
-enable = true
+enable = false
 webhookurl = "http://127.0.0.1:8088"
 
 # 执行器设置
@@ -89,7 +92,7 @@ webhookurl = "http://127.0.0.1:8088"
 # client port
 port = 23232        # 默认随机端口
 # 调度中心地址，可以设置多个防止单点故障
-serveraddrs = ["127.0.0.1:8080"]
+serveraddrs = ["127.0.0.1:8080","127.0.0.1:8081"]
 # 将保存只此主机组，如果不存在或者选项为空将忽略
 hostgroup = "crocodile_hostgroup"
 # 权重
