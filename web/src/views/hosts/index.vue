@@ -18,6 +18,7 @@
             <el-tag v-else size="mini" type="success">Normal</el-tag>
           </template>
         </el-table-column>
+        <el-table-column align="center" property="remark" label="备注" min-width="60"></el-table-column>
         <el-table-column align="center" label="操作" min-width="60">
           <template slot-scope="scope">
             <el-button-group>

@@ -194,6 +194,7 @@ type Host struct {
 	Stop               bool     `json:"stop" comment:"暂停"`
 	LastUpdateTimeUnix int64    `json:"last_updatetimeunix"`
 	LastUpdateTime     string   `json:"last_updatetime" comment:"更新时间"`
+	Remark             string   `json:"remark"`
 }
 
 // Task define Task

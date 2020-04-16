@@ -198,7 +198,6 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 }
 
 // RegistryClient registry client to server
-// TODO 心跳服务不能自定恢复连接
 func RegistryClient(version string, port int) error {
 	rand.Seed(time.Now().UnixNano())
 	addrs := config.CoreConf.Client.ServerAddrs
@@ -256,6 +255,7 @@ func sendhb(client pb.HeartbeatClient, port int) {
 						// 重新在别的调度中心注册
 						if len(config.CoreConf.Client.ServerAddrs) >= 2 {
 							log.Debug("can not conn server,change other server")
+							// TODO 如果注册失败应该重新注册
 							go RegistryClient(version.Version, config.CoreConf.Client.Port)
 							return
 						}

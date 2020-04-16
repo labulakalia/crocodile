@@ -33,7 +33,7 @@ func RegistryToUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
 	}
 	defer stmt.Close()
 	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
-	_, err = stmt.ExecContext(ctx, req.Weight,req.Version,time.Now().Unix(),req.Remark,addr)
+	_, err = stmt.ExecContext(ctx, req.Weight, req.Version, time.Now().Unix(), req.Remark, addr)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext faled: %w", err)
 	}
@@ -129,7 +129,8 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 					weight,
 					stop,
 					version,
-					lastUpdateTimeUnix 
+					lastUpdateTimeUnix,
+					remark
 			   FROM 
 					crocodile_host`
 	var (
@@ -185,8 +186,15 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 			h     define.Host
 			rtask string
 		)
-
-		err := rows.Scan(&h.ID, &h.Addr, &h.HostName, &rtask, &h.Weight, &h.Stop, &h.Version, &h.LastUpdateTimeUnix)
+		err := rows.Scan(&h.ID,
+			&h.Addr,
+			&h.HostName,
+			&rtask,
+			&h.Weight,
+			&h.Stop,
+			&h.Version,
+			&h.LastUpdateTimeUnix,
+			&h.Remark)
 		if err != nil {
 			log.Error("Scan failed", zap.Error(err))
 			continue

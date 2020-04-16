@@ -30,10 +30,11 @@ keyfile="key.pem"
 port = 8081
 maxhttptime = "10s" # 秒
 [server.db]
+# only support mysql
 # mysql: [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
 #        root:123456@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local
 #        mysql需要提前建好数据库
-# sqlite3: crocodile.db
+
 drivename = "mysql"
 dsn = "root:wang109097@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local"
 maxidle = 10
@@ -90,7 +91,7 @@ webhookurl = "http://127.0.0.1:8088"
 # 执行器设置
 [client]
 # client port
-port = 23231        # 默认随机端口
+port = 23234        # 默认随机端口
 # 调度中心地址，可以设置多个防止单点故障
 serveraddrs = ["127.0.0.1:8080","127.0.0.1:8081"]
 # 将保存只此主机组，如果不存在或者选项为空将忽略
