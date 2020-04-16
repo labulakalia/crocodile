@@ -2,7 +2,6 @@ package schedule
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"os"
 	"sync"
@@ -250,7 +249,7 @@ func sendhb(client pb.HeartbeatClient, port int) {
 			if err != nil {
 				cancel()
 				err := DealRPCErr(err)
-				fmt.Println("---------------------", err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error())
+
 				if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
 					if cannotconn > 2 {
 						// 断开超过两次

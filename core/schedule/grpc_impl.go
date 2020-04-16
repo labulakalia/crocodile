@@ -174,6 +174,10 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 
 	} else {
 		id = host.ID
+		err := model.RegistryToUpdateHost(ctx, req)
+		if err != nil {
+			return &pb.Empty{}, err
+		}
 	}
 
 	if req.Hostgroup != "" {

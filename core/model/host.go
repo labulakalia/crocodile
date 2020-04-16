@@ -19,6 +19,27 @@ const (
 	maxWorkerTTL int64 = 20 // defaultHearbeatInterval = 15
 )
 
+// RegistryToUpdateHost refistry new host
+func RegistryToUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
+	updatesql := `UPDATE crocodile_host set weight=?,version=?,lastUpdateTimeUnix=?,remark=? WHERE addr=?`
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return fmt.Errorf("db.GetConn failed: %w", err)
+	}
+	defer conn.Close()
+	stmt, err := conn.PrepareContext(ctx, updatesql)
+	if err != nil {
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
+	}
+	defer stmt.Close()
+	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
+	_, err = stmt.ExecContext(ctx, req.Weight,req.Version,time.Now().Unix(),req.Remark,addr)
+	if err != nil {
+		return fmt.Errorf("stmt.ExecContext faled: %w", err)
+	}
+	return nil
+}
+
 // RegistryNewHost refistry new host
 func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 	hostsql := `INSERT INTO crocodile_host 
