@@ -1,4 +1,5 @@
 import { login, logout, getInfo } from '@/api/user'
+import { queryversion } from "@/api/install"
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { resetRouter } from '@/router'
 
@@ -25,6 +26,9 @@ const mutations = {
   },
   SET_EMAIL: (state, email) => {
     state.email = email
+  },
+  SET_VERSION: (state, version) => {
+    state.version = version
   }
 }
 
@@ -66,6 +70,12 @@ const actions = {
         // commit('SET_AVATAR', avatar)
         commit("SET_EMAIL", email)
         resolve(data)
+      }).catch(error => {
+        reject(error)
+      })
+      // 查询版本号
+      queryversion().then(response => {
+        commit('SET_VERSION', response.data)
       }).catch(error => {
         reject(error)
       })

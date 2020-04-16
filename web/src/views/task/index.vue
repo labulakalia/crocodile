@@ -306,27 +306,24 @@
         </el-row>
         <el-form-item label="CronExpr" prop="cronexpr">
           <div>
-            <el-popover v-model="cronPopover" transition="fade-in-linear" width="700">
-              <cron v-model="cronExpression"></cron>
-              <el-input
-                :disabled="is_preview"
-                clearable
-                slot="reference"
-                @click="cronPopover=true"
-                v-model="task.cronexpr"
-                placeholder="请输入Cron表达式"
-                style="width: 500px;"
-              ></el-input>
-              <div style="text-align: center;">
-                <el-button
-                  v-if="is_preview === false"
-                  size="small"
-                  type="primary"
-                  @click="changeCron"
-                >确 定</el-button>
-                <el-button v-if="is_preview === false" size="small" @click="cronPopover = false">取 消</el-button>
-              </div>
-            </el-popover>
+            <el-input
+              :disabled="is_preview"
+              clearable
+              v-model="task.cronexpr"
+              placeholder="请输入Cron表达式"
+              style="width: 300px;"
+            >
+              <template slot="append">
+                <el-popover placement="top" width="650" v-model="cronPopover">
+                  <cron v-show="cronPopover" v-model="cronExpression"></cron>
+                  <div style="text-align: center; margin: 0">
+                    <el-button type="primary" size="medium" @click="changeCron">确定</el-button>
+                    <el-button type="warning" size="medium" @click="cronPopover = false">取消</el-button>
+                  </div>
+                  <el-button :disabled="is_preview" slot="reference">编辑</el-button>
+                </el-popover>
+              </template>
+            </el-input>
           </div>
         </el-form-item>
         <el-form-item v-if="is_change" label="调度状态" prop="run">
@@ -491,12 +488,12 @@
           </el-table-column>
           <el-table-column align="center" label="运行时长">
             <template slot-scope="scope">
-              <span>{{ scope.row.run_time }}</span>
+              <span>{{ scope.row.run_time / 1000 }}秒</span>
             </template>
           </el-table-column>
           <el-table-column align="center" label="触发方式">
             <template slot-scope="scope">
-              <span>{{ scope.row.trigger }}</span>
+              <span>{{ scope.row.triggerstr }}</span>
             </template>
           </el-table-column>
           <el-table-column fixed="right" align="center" label="操作">
@@ -527,7 +524,7 @@
           :title="diarealtasktitle"
           :visible.sync="diarealogVisible"
           center
-          width="70%"
+          width="80%"
           @close="startclose"
         >
           <el-container>
@@ -769,7 +766,7 @@ import { getselectuser } from "@/api/user";
 import store from "@/store";
 import { isNumber } from "@/utils/validate";
 import { Message } from "element-ui";
- 
+
 import cron from "@/components/Cron/cron";
 
 export default {
@@ -792,6 +789,14 @@ export default {
       },
       deep: true,
       immediate: true
+    },
+    diarealogVisible: {
+      handler(newv, oldv) {
+        if (newv === false && this.tlsocket != null) {
+          console.log("start close socket");
+          this.tlsocket.close();
+        }
+      }
     }
   },
   data() {
@@ -1164,7 +1169,7 @@ func main() {
       this.saveapi.header["Content-Type"] = this.content_type;
     },
     codeinitEditor: function(editor) {
-      editor.setAutoScrollEditorIntoView(true)
+      editor.setAutoScrollEditorIntoView(true);
       editor.setShowPrintMargin(false);
       editor.on("dblclick", function() {
         editor.container.webkitRequestFullscreen();
@@ -1179,7 +1184,7 @@ func main() {
       require("brace/theme/solarized_dark");
     },
     realloginitEditor: function(editor) {
-      editor.setAutoScrollEditorIntoView(true)
+      editor.setAutoScrollEditorIntoView(true);
       editor.setShowPrintMargin(false);
       editor.on("change", function() {
         editor.renderer.scrollToLine(Number.POSITIVE_INFINITY);
@@ -1194,7 +1199,7 @@ func main() {
       require("brace/theme/solarized_dark");
     },
     rowreqbodyinitEditor: function(editor) {
-      editor.setAutoScrollEditorIntoView(true)
+      editor.setAutoScrollEditorIntoView(true);
       editor.setShowPrintMargin(false);
 
       // require("brace/ext/language_tools");
@@ -1426,6 +1431,7 @@ func main() {
         return;
       }
       if (this.tlsocket !== null) {
+        console.log("start close websocket");
         this.tlsocket.close();
       }
       var tasktype = {
@@ -1452,7 +1458,7 @@ func main() {
       }&realid=${data.id}&type=${data.tasktype}`;
       console.log(`start conn websocket ${wsurl}`);
       this.tlsocket = new WebSocket(wsurl);
-
+      console.log(this.tlsocket);
       this.tlsocket.onopen = event => {
         this.tlsocket.send(token);
       };
@@ -1481,8 +1487,8 @@ func main() {
         name: this.clonenewname
       };
       if (this.clonenewname === "") {
-        Message.warning('请输入新的任务名称');
-        return
+        Message.warning("请输入新的任务名称");
+        return;
       }
       clonetask(reqdata).then(resp => {
         if (resp.code === 0) {

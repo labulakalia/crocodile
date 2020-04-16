@@ -155,9 +155,13 @@ func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
 	if err != nil {
 		return nil, fmt.Errorf("t.gettaskinfos failed: %w", err)
 	}
+	log.Debug("alltaskinfos", zap.Strings("tasks", dependtasks))
 
 	retTasksStatus := define.GetTasksTreeStatus()
-
+	var (
+		setStatus bool
+		// childset  bool
+	)
 	for _, keyname := range dependtasks {
 		// keyname
 		// task:masterid:taskruntype:realid
@@ -193,18 +197,42 @@ func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
 		}
 		switch define.TaskRespType(taskruntype) {
 		case define.ParentTask:
+			// 如果有任务是run或者fail或者取消状态就设置任务的状态为这
+			// 否则任务就会相同
+			if !setStatus {
+				if taskTree.Status == define.TsCancel.String() ||
+					taskTree.Status == define.TsRun.String() ||
+					taskTree.Status == define.TsFail.String() {
+					retTasksStatus[0].Status = taskTree.Status
+					setStatus = true
+				} else {
+					retTasksStatus[0].Status = taskTree.Status
+				}
+			}
+
 			retTasksStatus[0].Children = append(retTasksStatus[0].Children, &taskTree)
 		case define.MasterTask:
 			retTasksStatus[1].Status = taskTree.Status
 			retTasksStatus[1].ID = taskTree.ID
 			retTasksStatus[1].Name = taskTree.Name
+			setStatus = false
 		case define.ChildTask:
+			if !setStatus {
+				if taskTree.Status == define.TsCancel.String() ||
+					taskTree.Status == define.TsRun.String() ||
+					taskTree.Status == define.TsFail.String() {
+					retTasksStatus[2].Status = taskTree.Status
+					setStatus = true
+				} else {
+					retTasksStatus[2].Status = taskTree.Status
+				}
+			}
 			retTasksStatus[2].Children = append(retTasksStatus[2].Children, &taskTree)
 		default:
 			log.Error("unsupport task run type", zap.Any("taskruntype", taskruntype))
 		}
 	}
-	return nil, nil
+	return retTasksStatus, nil
 }
 
 // GetTaskRealLog return a channel task real log
@@ -215,17 +243,17 @@ func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, o
 	// 如果取到了日志就直接返回，如果取出的日志为空并且任务还未运行结束(完成、失败、取消）则返回io.EOF
 
 	// 判断主任务锁是否存在
-	ok, err := t.islock()
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("task %s[%s] is not n running", t.name, t.id)
-	}
+	// ok, err := t.islock()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if !ok {
+	// 	return nil, fmt.Errorf("task %s[%s] is not n running", t.name, t.id)
+	// }
 
 	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, taskruntype, realid, taskrealtasklog)
 	var output []byte
-	err = t.redis.LIndex(keyname, offset).Scan(&output)
+	err := t.redis.LIndex(keyname, offset).Scan(&output)
 	if err != nil {
 		// 如果不为nil则直接返回错误
 		if err != redis.Nil {
@@ -250,11 +278,28 @@ func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, o
 	return output, nil
 }
 
+// cleantaskinfos return task's parent child id
+func (t *task2) cleantaskinfos() error {
+	taskinfos := "task:" + t.id
+	// var res []string
+	// err := t.redis.LRange(taskinfos, 0, 1).ScanSlice(&res)
+	// if err != nil {
+	// 	return fmt.Errorf("t.redis.LRange failed: %w", err)
+	// }
+	// for _, key := range res {
+	// 	t.redis.Del(key + ":" + taskrealtasklog)
+	// 	t.redis.Del(key + ":" + taskresp)
+	// 	t.redis.Del(key + ":" + taskstatus)
+	// }
+	t.redis.Del(taskinfos)
+	return nil
+}
+
 // gettaskinfos return task's parent child id
 func (t *task2) gettaskinfos() ([]string, error) {
 	taskinfos := "task:" + t.id
 	var res []string
-	err := t.redis.LRange(taskinfos, 0, 1).ScanSlice(&res)
+	err := t.redis.LRange(taskinfos, 0, -1).ScanSlice(&res)
 	if err != nil {
 		return nil, fmt.Errorf("t.redis.LRange failed: %w", err)
 	}
@@ -272,6 +317,7 @@ func (t *task2) addtaskinfo(taskruntype define.TaskRespType, realid string) erro
 	taskinfos := "task:" + t.id
 	keyname := fmt.Sprintf("task:%s:%d:%s", t.id, taskruntype, realid)
 	t.once.Do(func() {
+		// 清除运行的任务
 		err := t.redis.Del(taskinfos).Err()
 		if err != nil {
 			log.Error("once.Do t.redis.Del failed", zap.Error(err))
@@ -403,6 +449,10 @@ func (t *task2) savetasklog() error {
 
 		tasklogres.TaskResps = append(tasklogres.TaskResps, &tr)
 	}
+	// err = t.cleantaskinfos()
+	// if err != nil {
+	// 	log.Error("t.cleantaskinfos failed", zap.Error(err))
+	// }
 	go alarm.JudgeNotify(tasklogres)
 	// save log
 	err = model.SaveLog(context.Background(), tasklogres)
@@ -498,6 +548,7 @@ func (t *task2) islock() (bool, error) {
 
 // RunTask start run task
 func (t *task2) StartRun(trigger define.Trigger) {
+	// log.Debug("start ", fields ...zap.Field)
 	lockid := "task:runlock:" + t.id
 	ok, err := t.islock()
 
@@ -515,7 +566,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 
 	// 开始抢锁，如果抢到就继续运行任务
 	// 为了减少时间差带来获取锁的问题，在获取锁前随机停止0-10毫秒毫秒
-	time.Sleep(time.Millisecond * time.Duration(rand.Int()%10))
+	time.Sleep(time.Microsecond * time.Duration(rand.Int()%100))
 	ok, err = t.getlock(randstr)
 	if err != nil {
 		log.Error("t.getlock failed", zap.Error(err))
@@ -865,7 +916,8 @@ type cacheSchedule2 struct {
 // Init2 start run already exists task from db
 func Init2() error {
 	client := redis.NewClient(&redis.Options{
-		Addr: config.CoreConf.Server.Redis.Addr,
+		Addr:     config.CoreConf.Server.Redis.Addr,
+		Password: config.CoreConf.Server.Redis.PassWord,
 	})
 
 	Cron2 = &cacheSchedule2{
@@ -1035,7 +1087,7 @@ func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
 			continue
 		}
 		if !ok {
-			log.Warn("task lock is not exists", zap.String("taskname", runtask.Name))
+			// log.Warn("task lock is not exists", zap.String("taskname", runtask.Name))
 			continue
 		}
 		runtasks = append(runtasks, &runtask)

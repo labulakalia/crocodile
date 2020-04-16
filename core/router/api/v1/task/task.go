@@ -735,20 +735,23 @@ func RealRunTaskStatus(c *gin.Context) {
 		conn.WriteMessage(websocket.TextMessage, []byte("check token auth fail"))
 		return
 	}
-
+	task, ok := schedule.Cron2.GetTask(getid.ID)
+	if !ok {
+		log.Error("can not get task", zap.String("taskid", getid.ID))
+		return
+	}
 	timer := time.NewTimer(time.Millisecond)
 	defer timer.Stop()
 	for {
 		select {
 		case <-timer.C:
-			taskrunstatus := schedule.Cron.GetRunTaskStaus(getid.ID)
-			if taskrunstatus == nil {
-				// conn.WriteMessage(websocket.TextMessage, []byte("task run finish"))
-				log.Error("GetRunTaskStaus failed")
+			taskrunstatus, err := task.GetTaskTreeStatatus()
+			if err != nil {
+				log.Error("task.GetTaskTreeStatatus failed", zap.Error(err))
 				return
 			}
 
-			err := conn.WriteJSON(taskrunstatus)
+			err = conn.WriteJSON(taskrunstatus)
 			if err != nil {
 				log.Error("WriteJSON failed", zap.Error(err))
 				return
@@ -899,8 +902,17 @@ Next:
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	schedule.Cron.Add(id, clonetask.Name, task.Cronexpr,
-		schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
+	event := schedule.EventData{
+		TaskID: id,
+		TE:     schedule.AddEvent,
+	}
+	res, err := json.Marshal(event)
+	if err != nil {
+		log.Error("json.Marshal failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	schedule.Cron2.PubTaskEvent(res)
 	resp.JSON(c, resp.Success, nil)
 }
 

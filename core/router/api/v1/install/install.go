@@ -9,6 +9,7 @@ import (
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/labulaka521/crocodile/core/utils/resp"
+	"github.com/labulaka521/crocodile/core/version"
 	"go.uber.org/zap"
 )
 
@@ -61,6 +62,10 @@ func StartInstall(c *gin.Context) {
 		resp.JSON(c, resp.ErrInstall, nil)
 		return
 	}
-	
-	resp.JSON(c, resp.Success, nil)
+}
+
+
+// QueryVersion query current version
+func QueryVersion(c *gin.Context) {
+	resp.JSON(c, resp.Success, version.Version)
 }

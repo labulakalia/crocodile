@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"os"
 	"sync"
@@ -20,6 +21,7 @@ import (
 	"github.com/prometheus/common/version"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -92,6 +94,7 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 			&Auth{SecretToken: config.CoreConf.SecretToken},
 		),
 		grpc.WithBlock(),
+		grpc.WithConnectParams(grpc.ConnectParams{Backoff: backoff.Config{MaxDelay: time.Second * 2}, MinConnectTimeout: time.Second * 2}),
 	}
 
 	if config.CoreConf.Cert.Enable {
@@ -247,7 +250,8 @@ func sendhb(client pb.HeartbeatClient, port int) {
 			if err != nil {
 				cancel()
 				err := DealRPCErr(err)
-				if err == resp.GetMsgErr(resp.ErrRPCUnavailable) {
+				fmt.Println("---------------------", err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error())
+				if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
 					if cannotconn > 2 {
 						// 断开超过两次
 						// 重新在别的调度中心注册

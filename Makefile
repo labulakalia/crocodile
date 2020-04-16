@@ -1,4 +1,4 @@
-VERSION=`git tag | head -1`
+VERSION=`git tag | tail -1`
 COMMIT=`git rev-parse --short HEAD`
 CFGPATH='core.toml'
 BUILDDATE=`date "+%Y-%m-%d"`

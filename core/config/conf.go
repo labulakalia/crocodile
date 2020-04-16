@@ -67,6 +67,7 @@ type db struct {
 
 type redis struct {
 	Addr string
+	PassWord string
 }
 
 // Client crocodile client config

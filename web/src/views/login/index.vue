@@ -15,7 +15,7 @@
       label-position="left"
     >
       <div class="title-container">
-        <h3 class="title">Crocodile 任务调度平台</h3>
+        <h3 class="title">Crocodile分布式任务调度平台</h3>
         <h6 v-show="needinstall" class="installtitle">首次运行请先创建默认管理员用户然后进行安装操作</h6>
       </div>
 

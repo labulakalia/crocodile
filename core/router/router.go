@@ -129,6 +129,7 @@ func NewHTTPRouter() *http.Server {
 	{
 		ri.GET("/status", install.QueryIsInstall)
 		ri.POST("", install.StartInstall)
+		ri.GET("/version", install.QueryVersion)
 	}
 	// if nor find router, will rediret to /crocodile/
 	router.NoRoute(func(c *gin.Context) {

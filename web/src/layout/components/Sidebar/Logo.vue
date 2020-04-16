@@ -2,12 +2,12 @@
   <div class="sidebar-logo-container" :class="{'collapse':collapse}">
     <transition name="sidebarLogoFade">
       <router-link v-if="collapse" key="collapse" class="sidebar-logo-link" to="/">
-        <img v-if="logo" src="@/assets/crocodile.png" class="sidebar-logo">
-        <h1 v-else class="sidebar-title">{{ title }} </h1>
+        <img v-if="logo" src="@/assets/crocodile.png" class="sidebar-logo" />
+        <h1 v-else class="sidebar-title">{{ title }}</h1>
       </router-link>
       <router-link v-else key="expand" class="sidebar-logo-link" to="/">
-        <img v-if="logo" src="@/assets/crocodile.png" class="sidebar-logo">
-        <h1 class="sidebar-title">{{ title }} </h1>
+        <img v-if="logo" src="@/assets/crocodile.png" class="sidebar-logo" />
+        <div class="sidebar-title">{{ title }} <span style="font-size: 12px;">{{ this.$store.state.user.version }}</span></div>
       </router-link>
     </transition>
   </div>
@@ -15,7 +15,7 @@
 
 <script>
 export default {
-  name: 'SidebarLogo',
+  name: "SidebarLogo",
   props: {
     collapse: {
       type: Boolean,
@@ -24,11 +24,11 @@ export default {
   },
   data() {
     return {
-      title: 'Crocodile任务调度',
-      logo: '@/assets/crocodile.jpg'
-    }
+      title: "Crocodile",
+      logo: "@/assets/crocodile.jpg"
+    };
   }
-}
+};
 </script>
 
 <style lang="scss" scoped>
@@ -68,7 +68,7 @@ export default {
       color: rgb(207, 205, 205);
       font-weight: bold;
       line-height: 50px;
-      font-size: 14px;
+      font-size: 20px;
       font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
       vertical-align: middle;
     }

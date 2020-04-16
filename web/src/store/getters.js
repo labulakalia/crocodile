@@ -1,4 +1,5 @@
 const getters = {
+  version: state => state.user.version,
   sidebar: state => state.app.sidebar,
   device: state => state.app.device,
   token: state => state.user.token,
@@ -6,6 +7,7 @@ const getters = {
   name: state => state.user.name,
   roles: state => state.user.roles,
   permission_routes: state => state.permission.routes,
-  email: state => state.user.email
+  email: state => state.user.email,
+
 }
 export default getters

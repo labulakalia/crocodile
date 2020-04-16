@@ -16,3 +16,10 @@ export function startinstall(data) {
         data: data
     })
 }
+
+export function queryversion() {
+    return request({
+        url: '/api/v1/install/version',
+        method: 'get',
+    })
+}

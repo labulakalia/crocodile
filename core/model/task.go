@@ -170,7 +170,7 @@ func DeleteTask(ctx context.Context, id string) error {
 
 // TaskIsUse check a task is other task's parent task ids or child task
 func TaskIsUse(ctx context.Context, taskid string) (int, error) {
-	querysql := `select count() from crocodile_task WHERE id!=? AND (parentTaskIds LIKE ? OR childTaskIds LIKE ?) `
+	querysql := `select count(*) from crocodile_task WHERE id!=? AND (parentTaskIds LIKE ? OR childTaskIds LIKE ?) `
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("db.GetConn failed: %w", err)
