@@ -780,7 +780,8 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 			taskdata.HostGroup, taskdata.HostGroupID, err)
 		goto Check
 	}
-
+	
+	t.writelogt(taskruntype, id,"start run task %s[%s] on host %s",taskdata.Name,taskdata.ID,conn.Target())
 	tdata, err = json.Marshal(taskdata.TaskData)
 	if err != nil {
 		log.Error("json.Marshal", zap.Error(err))
@@ -788,7 +789,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 		goto Check
 	}
 
-	// t.writelogt(taskruntype, id, "Start Run Task %s[%s] On Worker Host %s", realtask.name, id, conn.Target())
+	t.writelogt(taskruntype, id, "start run task %s[%s] on worker host %s", realtask.name, id, conn.Target())
 
 	// task run data
 	taskreq = &pb.TaskReq{
@@ -814,7 +815,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 		goto Check
 	}
 
-	t.writelogt(taskruntype, id, "Task %s[%s]  Output----------------", taskdata.Name, id)
+	t.writelogt(taskruntype, id, "task %s[%s]  output----------------", taskdata.Name, id)
 	for {
 		// Recv return err is nil or io.EOF
 		// the last lastrecv must be return code 3 byte
@@ -1086,6 +1087,12 @@ func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
 		ok, err := s.isrunning(runtask.ID)
 		if err != nil {
 			log.Error("s.isrunning failed", zap.Error(err))
+			if strings.HasPrefix(err.Error(), "can not get taskid") {
+				// removerunningtask未执行，调度节点挂掉，所以就一直保留
+				// 如果到这里就直接删掉
+				Cron2.removerunningtask(&define.RunTask{ID: runtask.ID})
+				
+			}
 			continue
 		}
 		if !ok {
