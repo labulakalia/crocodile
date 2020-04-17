@@ -13,12 +13,17 @@
 基于Golang开发的分布式任务调度系统，支持http请求、运行golang、python、shell等调度任务  
 
 ## Screenshot
-![](./screenshot/1.png)
+<details>
+<summary>点击我</summary>
+
 ![](./screenshot/2.png)
 ![](./screenshot/3.png)
 ![](./screenshot/4.png)
 ![](./screenshot/5.png)
 ![](./screenshot/6.png)
+![](./screenshot/7.png)
+![](./screenshot/1.png)
+</details>
 
 ## Features
 - 在Web节点对任务进行增加、修改、删除、克隆、运行任务等操作
@@ -55,9 +60,9 @@
     - 管理员  
         拥有所有操作权限，
     - 普通用户
-        可以创建新的任务、主机组,但是只可以自已创建的任务或主机组进行操作，但是不能查看审计记录、所有用户
+        可以创建新的任务、主机组,只可以自已创建的任务或主机组进行操作，但是不能查看审计记录、所有用户
     - 访客  
-        只有查看的权限、无任何操作修改权限，但是不能查看审计记录、所有用户
+        只有查看的权限、无任何操作修改权限，不能查看审计记录、所有用户
 
 
 ## Supported platforms

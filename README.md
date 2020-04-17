@@ -14,12 +14,21 @@ English | [中文](./README_ZH.md)
 A distributed task scheduling system based on Golang that supports http requests, run golang、python、 shell or other scheduled tasks
 
 ## Screenshot
-![](./screenshot/1.png)
+
+<details>
+<summary>Click Me</summary>
+
 ![](./screenshot/2.png)
 ![](./screenshot/3.png)
 ![](./screenshot/4.png)
 ![](./screenshot/5.png)
 ![](./screenshot/6.png)
+![](./screenshot/7.png)
+![](./screenshot/1.png)
+</details>
+
+
+
 
 ## Features
 - Add, modify, delete, clone and run tasks on the web node  
