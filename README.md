@@ -1,4 +1,4 @@
-# Crocodile Distributed Task Scheduling System
+# Crocodile Distributed Task Scheduling System 
 
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/labulaka521/crocodile/Build_release)
 [![Downloads](https://img.shields.io/github/downloads/labulaka521/crocodile/total.svg)](https://github.com/labulaka521/crocodile/releases)
@@ -7,6 +7,8 @@
 ![GitHub issues](https://img.shields.io/github/issues/labulaka521/crocodile)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/labulaka521/crocodile)
 
+
+English | [中文](./README_ZH.md) 
 
 ## Introduction
 A distributed task scheduling system based on Golang that supports http requests, run golang、python、 shell or other scheduled tasks

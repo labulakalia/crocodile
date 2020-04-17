@@ -6,6 +6,9 @@
 [![Release](https://img.shields.io/github/release/labulaka521/crocodile.svg?label=Release)](https://github.com/labulaka521/crocodile/releases)
 
 
+[English](./README.md) | 中文 
+
+
 ## Introduction
 基于Golang开发的分布式任务调度系统，支持http请求、运行golang、python、shell等调度任务  
 
