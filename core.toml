@@ -27,16 +27,19 @@ keyfile="key.pem"
 
 # crocodile server
 [server]
-port = 8081
+port = 8080
 maxhttptime = "10s" # 秒
 [server.db]
-# only support mysql
 # mysql: [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
 #        root:123456@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local
 #        mysql需要提前建好数据库
-
 drivename = "mysql"
 dsn = "root:wang109097@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local"
+
+# sqlite3执行失败失败，暂不支持
+# sqlite3: crocodile.db 
+# drivename = "sqlite3"
+# dsn = "crocodile.db"
 maxidle = 10
 maxconn = 20
 maxquerytime = "10s"
@@ -92,7 +95,7 @@ webhookurl = "http://127.0.0.1:8088"
 [client]
 # client port
 port = 23234        # 默认随机端口
-# 调度中心地址，可以设置多个防止单点故障
+# 调度中心集群地址，可以设置多个防止单点故障
 serveraddrs = ["127.0.0.1:8080","127.0.0.1:8081"]
 # 将保存只此主机组，如果不存在或者选项为空将忽略
 hostgroup = "crocodile_hostgroup"

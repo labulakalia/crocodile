@@ -111,7 +111,7 @@ func UpdateHostHearbeat(ctx context.Context, ip string, port int32, runningtasks
 	}
 	line, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("stmt.ExecContext failed: %w", err)
+		return fmt.Errorf("result.RowsAffected failed: %w", err)
 	}
 	if line <= 0 {
 		return fmt.Errorf("host %s not registry, may be this host is delete", fmt.Sprintf("%s:%d", ip, port))

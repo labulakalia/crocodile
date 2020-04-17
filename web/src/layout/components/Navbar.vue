@@ -9,6 +9,7 @@
     <breadcrumb class="breadcrumb-container" />
 
     <div class="right-menu">
+      <a target="_blank" href="https://github.com/labulaka521/crocodile/wiki" class="doc">帮助文档</a>
       <el-badge :value="notifycount" class="badge">
         <router-link to="/notify">
           <i style="font-size: 16px;height:32px;" class="el-icon-bell"></i>
@@ -63,7 +64,7 @@ export default {
     async logout() {
       await this.$store.dispatch("user/logout");
       window.clearInterval(this.interval);
-      location.reload()
+      location.reload();
       this.$router.push(`/login?redirect=${this.$route.fullPath}`);
     },
     startgetnotifys() {
@@ -107,6 +108,13 @@ export default {
   .badge {
     margin-right: 20px;
     margin-top: 13px;
+  }
+  .doc {
+    margin-right: 15px;
+    margin-top: 13px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #606266;
   }
   .name {
     margin-right: 10px;

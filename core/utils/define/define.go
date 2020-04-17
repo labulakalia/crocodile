@@ -93,12 +93,12 @@ func (tasktype TaskRespType) String() string {
 
 // GetID get task id in post
 type GetID struct {
-	ID string `json:"id" form:"id" binding:"required"`
+	ID string `json:"id" form:"id" binding:"required,len=18"`
 }
 
 // GetName get task name in post
 type GetName struct {
-	Name string `json:"name" form:"name"  binding:"required"`
+	Name string `json:"name" form:"name"  binding:"required,min=1,max=30"`
 }
 
 // Common struct
@@ -112,10 +112,10 @@ type Common struct {
 
 // User Struct
 type User struct {
-	Role      Role     `json:"role"`                               // 用户类型: 1 普通用户 2 管理员
+	Role      Role     `json:"role"`                               // 用户类型: 1 普通用户 2 管理员 3访客
 	Roles     []string `json:"roles"`                              // 管理员
 	RoleStr   string   `json:"rolestr,omitempty" comment:"用户类型"`   // 用户类型
-	Forbid    bool     `json:"forbid" comment:"禁止用户"`              // 禁止用户: 1 未禁止 2 禁止登陆
+	Forbid    bool     `json:"forbid" comment:"禁止用户"`              // 禁止用户登陆
 	Password  string   `json:"password,omitempty" comment:"密码"`    // 用户密码
 	Email     string   `json:"email" binding:"email" comment:"邮箱"` // 用户邮箱 日后任务的通知信息会发送给此邮件
 	WeChat    string   `json:"wechat" comment:"WeChat"`            // wechat id
@@ -127,26 +127,25 @@ type User struct {
 
 // RegistryUser data
 type RegistryUser struct {
-	Name     string `json:"name" binding:"required"`     // 用户名
-	Password string `json:"password" binding:"required"` // 用户密码
-	Role     Role   `json:"role" binding:"required"`     // 用户类型: 1 普通用户 2 管理员
-	Remark   string `json:"remark"`                      // 备注
+	Name     string `json:"name" binding:"required,max=30"`      // 用户名
+	Password string `json:"password" binding:"required,min=8"`   // 用户密码
+	Role     Role   `json:"role" binding:"required,min=1,max=3"` // 用户类型: 1 普通用户 2 管理员
+	Remark   string `json:"remark" binding:"max=100"`            // 备注
 }
 
 // CreateAdminUser first run must be create admin user
 type CreateAdminUser struct {
-	Name     string `json:"username" binding:"required"` // 用户名
-	Password string `json:"password" binding:"required"` // 用户密码
-
+	Name     string `json:"username" binding:"required,max=30"` // 用户名
+	Password string `json:"password" binding:"required,min=8"`  // 用户密码
 }
 
 // AdminChangeUser struct
 type AdminChangeUser struct {
-	ID       string `json:"id"  binding:"required"`  // user id
-	Role     Role   `json:"role" binding:"required"` // 用户类型: 1 普通用户 2 管理员
-	Forbid   bool   `json:"forbid"`                  // 禁止用户: 1 未禁止 2 禁止登陆
-	Password string `json:"password"`                // 用户密码 Common
-	Remark   string `json:"remark"`                  // 备注 Common
+	ID       string `json:"id"  binding:"required,len=18"`       // user id
+	Role     Role   `json:"role" binding:"required,min=1,max=3"` // 用户类型: 1 普通用户 2 管理员
+	Forbid   bool   `json:"forbid"`                              // 禁止用户: 1 未禁止 2 禁止登陆
+	Password string `json:"password"`                            // 用户密码 Common
+	Remark   string `json:"remark"`                              // 备注 Common
 }
 
 // ChangeUserSelf change self's config
@@ -170,16 +169,16 @@ type HostGroup struct {
 
 // CreateHostGroup new hostgroup
 type CreateHostGroup struct {
-	Name    string   `json:"name" binding:"required"`
+	Name    string   `json:"name" binding:"required,max=30"`
 	HostsID []string `json:"addrs"` // 主机host
-	Remark  string   `json:"remark"`
+	Remark  string   `json:"remark" binding:"max=100"`
 }
 
 // ChangeHostGroup new hostgroup
 type ChangeHostGroup struct {
 	ID      string   `json:"id" binding:"required"`
 	HostsID []string `json:"addrs"` // 主机host
-	Remark  string   `json:"remark"`
+	Remark  string   `json:"remark" binding:"max=100"`
 }
 
 // Host worker host
@@ -199,25 +198,25 @@ type Host struct {
 
 // Task define Task
 type Task struct {
-	TaskType          TaskType    `json:"task_type" binding:"required"`     // 任务类型
-	TaskData          interface{} `json:"task_data" binding:"required"`     // 任务数据
-	Run               bool        `json:"run" `                             // 是否可以自动调度  如果为false则只能手动或者被其他任务依赖运行
-	ParentTaskIds     []string    `json:"parent_taskids"`                   // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
-	ParentRunParallel bool        `json:"parent_runparallel"`               // 是否以并行运行父任务 0否 1是
-	ChildTaskIds      []string    `json:"child_taskids"`                    // 子任务 运行结束后运行子任务
-	ChildRunParallel  bool        `json:"child_runparallel"`                // 是否以并行运行子任务 否 1是
-	CreateBy          string      `json:"create_by"`                        // 创建人
-	CreateByUID       string      `json:"create_byuid"`                     // 创建人ID
-	HostGroup         string      `json:"host_group"`                       // 执行计划
-	HostGroupID       string      `json:"host_groupid" binding:"required"`  // 主机组ID
-	Cronexpr          string      `json:"cronexpr" binding:"required"`      // 执行任务表达式
-	Timeout           int         `json:"timeout" binding:"required"`       // 任务超时时间 (s) -1 no limit
-	AlarmUserIds      []string    `json:"alarm_userids" binding:"required"` // 报警用户 多个用户
-	RoutePolicy       RoutePolicy `json:"route_policy" binding:"required"`  // how to select a run worker from hostgroup
-	ExpectCode        int         `json:"expect_code"`                      // expect task return code. if not set 0 or 200
-	ExpectContent     string      `json:"expect_content"`                   // expect task return content. if not set do not check
-	AlarmStatus       AlarmStatus `json:"alarm_status" binding:"required"`  // alarm when task run success or fail or all all:-2 failed: -1 success: 1
-	Remark            string      `json:"remark"`
+	TaskType          TaskType    `json:"task_type" binding:"required"`                 // 任务类型
+	TaskData          interface{} `json:"task_data" binding:"required"`                 // 任务数据
+	Run               bool        `json:"run" `                                         // 是否可以自动调度  如果为false则只能手动或者被其他任务依赖运行
+	ParentTaskIds     []string    `json:"parent_taskids" binding:"max=20"`              // 父任务 运行任务前先运行父任务 以父或子任务运行时 任务不会执行自已的父子任务，防止循环依赖
+	ParentRunParallel bool        `json:"parent_runparallel"`                           // 是否以并行运行父任务 0否 1是
+	ChildTaskIds      []string    `json:"child_taskids" binding:"max=20"`               // 子任务 运行结束后运行子任务
+	ChildRunParallel  bool        `json:"child_runparallel"`                            // 是否以并行运行子任务 否 1是
+	CreateBy          string      `json:"create_by"`                                    // 创建人
+	CreateByUID       string      `json:"create_byuid"`                                 // 创建人ID
+	HostGroup         string      `json:"host_group" `                                  // 主机组
+	HostGroupID       string      `json:"host_groupid" binding:"required,len=18"`       // 主机组ID
+	Cronexpr          string      `json:"cronexpr" binding:"required,max=1000"`         // 执行任务表达式
+	Timeout           int         `json:"timeout" binding:"required,min=-1"`            // 任务超时时间 (s) -1 no limit
+	AlarmUserIds      []string    `json:"alarm_userids" binding:"required,max=10"`      // 报警用户 最多十个多个用户
+	RoutePolicy       RoutePolicy `json:"route_policy" binding:"required,min=1,max=4"`  // how to select a run worker from hostgroup
+	ExpectCode        int         `json:"expect_code"`                                  // expect task return code. if not set 0 or 200
+	ExpectContent     string      `json:"expect_content"`                               // expect task return content. if not set do not check
+	AlarmStatus       AlarmStatus `json:"alarm_status" binding:"required,min=-2,max=1"` // alarm when task run success or fail or all all:-2 failed: -1 success: 1
+	Remark            string      `json:"remark" binding:"max=100"`
 }
 
 // AlarmStatus task is alarm
@@ -391,7 +390,7 @@ type Log struct {
 // Cleanlog data
 type Cleanlog struct {
 	GetName
-	PreDay int64 `json:"preday"  binding:"required"` // preday几天前的日志
+	PreDay int64 `json:"preday"` // preday几天前的日志 0 为全部日志
 }
 
 // Query recv url query params

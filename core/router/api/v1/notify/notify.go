@@ -34,7 +34,7 @@ func ReadNotify(c *gin.Context) {
 	defer cancel()
 
 	type notifyid struct {
-		ID int `json:"id"`
+		ID int `json:"id" binding:"required"`
 	}
 	nuid := notifyid{}
 	err := c.ShouldBindJSON(&nuid)

@@ -31,6 +31,7 @@
           type="text"
           tabindex="1"
           auto-complete="on"
+          maxlength="30"
         />
       </el-form-item>
 
@@ -168,26 +169,35 @@ export default {
             Message.warning("用户名和密码只能使用字母、数字、符号");
             return;
           }
+          if (this.loginForm.password.length < 8) {
+            Message.warning("密码最少8位");
+            return;
+          }
           this.installloading = true;
-          startinstall(this.loginForm).then(resp => {
-            if (resp.code === 0) {
-              this.startqueryinstallstatus();
+          startinstall(this.loginForm)
+            .then(resp => {
+              if (resp.code === 0) {
+                this.startqueryinstallstatus();
+                this.installloading = false;
+                this.needinstall = false;
+                Message.success("恭喜你已经安装成功🎉");
+              } else {
+                Message.error(resp.msg);
+                this.installloading = false;
+                this.needinstall = false;
+              }
+            })
+            .catch(err => {
+              Message.error(err);
+              console.log(err);
               this.installloading = false;
-              this.needinstall = false;
-              Message.success("恭喜你已经安装成功🎉");
-            } else {
-              Message.error(resp.msg);
-              this.installloading = false;
-              this.needinstall = false;
-            }
-          });
+            });
         } else {
           return false;
         }
       });
     },
     handleLogin() {
-
       this.$refs.loginForm.validate(valid => {
         if (valid) {
           this.$store

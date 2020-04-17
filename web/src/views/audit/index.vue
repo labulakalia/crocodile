@@ -176,7 +176,6 @@ export default {
       detaildata: [],
       listLoading: false,
       operatequery: {
-        uid: "",
         username: "",
         method: "",
         module: "",

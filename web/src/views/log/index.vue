@@ -34,6 +34,8 @@
               size="mini"
               placeholder="请输入需要清理的任务名称"
               style="width: 70%;"
+              maxlength="30"
+              show-word-limit
             ></el-input>
           </el-form-item>
           <el-form-item label="清理时间" prop="cleanpredat">
@@ -190,7 +192,7 @@ import router from "@/router";
 
 export default {
   components: {
-    editor: require("vue2-ace-editor"),
+    editor: require("vue2-ace-editor")
   },
   watch: {
     "logquery.name": {

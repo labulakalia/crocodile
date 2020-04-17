@@ -511,7 +511,7 @@ func GetRunningTask(c *gin.Context) {
 // @Router /api/v1/task/log [get]
 // @Security ApiKeyAuth
 func LogTask(c *gin.Context) {
-
+	
 	name := c.Query("name")
 	statusstr := c.Query("status")
 
@@ -661,49 +661,6 @@ func RealRunTaskLog(c *gin.Context) {
 			return
 		}
 	}
-	// task.GetTaskRealLog(taskruntype define.TaskRespType, realid string, offset int64)
-
-	// logcache, err := schedule.Cron.GetRunTaskLogCache(getid.ID, realid, define.TaskRespType(tasktype))
-	// if err != nil {
-	// 	log.Error("GetRunTaskLogCache failed", zap.Error(err))
-	// 	err = conn.WriteMessage(websocket.TextMessage, []byte(err.Error()))
-	// 	return
-	// }
-	// offset := 0
-
-	// var out = make([]byte, 1024)
-	// for {
-	// 	n, err := logcache.ReadOnly(out, offset)
-	// 	if err == nil {
-	// 		if n > 0 {
-	// 			offset += n
-	// 			err = conn.WriteMessage(websocket.TextMessage, out[:n])
-	// 			if err != nil {
-	// 				log.Error("WriteMessage failed", zap.Error(err))
-	// 				return
-	// 			}
-	// 			// conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	// 			_, _, err := conn.ReadMessage()
-	// 			if err != nil {
-	// 				log.Error("ReadMessage failed", zap.Error(err))
-	// 				return
-	// 			}
-	// 		}
-	// 		time.Sleep(time.Second)
-	// 		continue
-	// 	}
-	// 	if err == io.EOF {
-	// 		log.Debug("read task log over")
-	// 		// conn.WriteMessage(websocket.TextMessage, []byte("task run finished"))
-	// 		return
-	// 	} else if err == schedule.ErrNoReadData {
-	// 		log.Debug("can not get new data, please wait some time")
-	// 		time.Sleep(time.Second)
-	// 	} else {
-	// 		log.Error("read task log failed", zap.Error(err))
-	// 		return
-	// 	}
-	// }
 }
 
 // RealRunTaskStatus  Get Task Status
@@ -776,8 +733,16 @@ func RealRunTaskStatus(c *gin.Context) {
 // @Router /api/v1/task/cron [get]
 // @Security ApiKeyAuth
 func ParseCron(c *gin.Context) {
-	cronbase64 := c.Query("expr")
-	cronbyte, err := base64.StdEncoding.DecodeString(cronbase64)
+	type reqexpr struct {
+		CronExpr string `form:"expr" binding:"required"`
+	}
+	reqep := reqexpr{}
+	err := c.ShouldBindJSON(&reqep)
+	if err != nil {
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	cronbyte, err := base64.StdEncoding.DecodeString(reqep.CronExpr)
 	if err != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
@@ -933,6 +898,7 @@ func CleanTaskLog(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&cleanlog)
 	if err != nil {
+		log.Error("c.ShouldBindJson failed", zap.Error(err))
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}

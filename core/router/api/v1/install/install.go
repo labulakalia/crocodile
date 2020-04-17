@@ -62,8 +62,8 @@ func StartInstall(c *gin.Context) {
 		resp.JSON(c, resp.ErrInstall, nil)
 		return
 	}
+	resp.JSON(c, resp.Success, nil)
 }
-
 
 // QueryVersion query current version
 func QueryVersion(c *gin.Context) {

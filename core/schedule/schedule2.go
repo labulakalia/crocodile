@@ -1046,9 +1046,11 @@ func (s *cacheSchedule2) runSchedule(taskid string) {
 			return
 		case <-time.After(next.Sub(last)):
 			last = next
-			if task.canrun {
-				go task.StartRun(define.Auto)
+			if !task.canrun {
+				log.Warn("task is stop run by auto schedule", zap.String("taskname", task.name), zap.String("taskid", task.id))
+				continue
 			}
+			go task.StartRun(define.Auto)
 		}
 	}
 }

@@ -16,6 +16,8 @@
             placeholder="请输入用户名"
             clearable
             style="width: 500px;"
+            maxlength="30"
+            show-word-limit
           ></el-input>
         </el-form-item>
         <el-form-item label="用户类型" prop="role">
@@ -152,9 +154,7 @@ export default {
       data: [],
       pagecount: 0,
       rules: {
-        name: [
-          { required: true, message: "请输入执行器名称", trigger: "blur" }
-        ],
+        name: [{ required: true, message: "请输入用户名称", trigger: "blur" }],
         role: [{ required: true, message: "请选择用户类型", trigger: "blur" }],
         password: [
           { required: true, message: "请输入用户密码", trigger: "blur" }
@@ -262,26 +262,33 @@ export default {
     },
 
     submituser(formName) {
+      if (this.changepasswd || this.is_create) {
+        if (this.password1 === "" || this.password2 === "") {
+          Message.warning("密码不能为空，请重新输入");
+          return;
+        }
+        if (this.password1 !== this.password2) {
+          Message.warning("两次输入密码不一致，请重新输入");
+          return;
+        }
+        try {
+          window.btoa(`${this.password1}`);
+        } catch (error) {
+          Message.warning("密码只能使用字母、数字、符号");
+          return;
+        }
+        if (this.password1.length < 8) {
+          Message.warning("密码最少8位");
+          return;
+        }
+        this.user.password = this.password1;
+      }
+
       if (this.is_change === true) {
         var name = this.user.name;
         delete this.user.name;
         if (this.changepasswd === false) {
           this.user.password = "";
-        } else {
-          if (this.password1 === "" || this.password2 === "") {
-            Message.warning("密码不能为空，请重新输入");
-            return;
-          }
-          if (this.password1 !== this.password2) {
-            Message.warning("两次输入密码不一致，请重新输入");
-            return;
-          }
-          try {
-            window.btoa(`${this.password1}`);
-          } catch (error) {
-            Message.warning("密码只能使用字母、数字、符号");
-            return;
-          }
         }
         adminchangeinfo(this.user).then(resp => {
           if (resp.code === 0) {
@@ -293,25 +300,40 @@ export default {
           }
         });
       } else {
+        if (this.password1 === "" || this.password2 === "") {
+          Message.warning("密码不能为空，请重新输入");
+          return;
+        }
+        if (this.password1 !== this.password2) {
+          Message.warning("两次输入密码不一致，请重新输入");
+          return;
+        }
+        try {
+          window.btoa(`${this.password1}`);
+        } catch (error) {
+          Message.warning("密码只能使用字母、数字、符号");
+          return;
+        }
+
         this.$refs[formName].validate(valid => {
           if (valid) {
             if (this.is_create === true) {
-              if (this.password1 === "" || this.password2 === "") {
-                Message.error("密码不能为空，请重新输入");
-                return;
-              }
-              if (this.password1 !== this.password2) {
-                Message.error("两次输入密码不一致，请重新输入");
-                return;
-              }
-              try {
-                window.btoa(`${this.user.name}:${this.password1}`);
-              } catch (error) {
-                Message.error("用户名和密码只能使用字母、数字、符号");
-                return;
-              }
+              // if (this.password1 === "" || this.password2 === "") {
+              //   Message.error("密码不能为空，请重新输入");
+              //   return;
+              // }
+              // if (this.password1 !== this.password2) {
+              //   Message.error("两次输入密码不一致，请重新输入");
+              //   return;
+              // }
+              // try {
+              //   window.btoa(`${this.user.name}:${this.password1}`);
+              // } catch (error) {
+              //   Message.error("用户名和密码只能使用字母、数字、符号");
+              //   return;
+              // }
 
-              this.user.password = this.password1;
+              // this.user.password = this.password1;
               delete this.user.id;
               delete this.user.forbid;
 

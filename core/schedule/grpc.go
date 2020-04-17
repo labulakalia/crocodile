@@ -17,7 +17,6 @@ import (
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/labulaka521/crocodile/core/utils/resp"
-	"github.com/prometheus/common/version"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -32,7 +31,7 @@ const (
 	defaultRPCTimeout = time.Second * 3
 	// worker send hearbeat ttl
 	defaultHearbeatInterval         = time.Second * 15 // maxWorkerTTL int64 = 20
-	defaultLastFailHearBeatInterval = time.Second * 2
+	defaultLastFailHearBeatInterval = time.Second * 3
 	// max retry get host time for func Next
 	defaultMaxRetryGetWorkerHost = 3
 )
@@ -92,6 +91,7 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 		grpc.WithPerRPCCredentials(
 			&Auth{SecretToken: config.CoreConf.SecretToken},
 		),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(16 * 1024 * 1024)), // 16M
 		grpc.WithBlock(),
 		grpc.WithConnectParams(grpc.ConnectParams{Backoff: backoff.Config{MaxDelay: time.Second * 2}, MinConnectTimeout: time.Second * 2}),
 	}
@@ -126,6 +126,7 @@ func NewgRPCServer(mode define.RunMode) (*grpc.Server, error) {
 			middleware.LoggerInterceptor,
 			middleware.CheckSecretInterceptor,
 		),
+		grpc.MaxRecvMsgSize(16 * 1024 * 1024),
 	}
 	if config.CoreConf.Cert.Enable {
 		c, err := credentials.NewServerTLSFromFile(config.CoreConf.Cert.CertFile, config.CoreConf.Cert.KeyFile)
@@ -198,87 +199,152 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 }
 
 // RegistryClient registry client to server
-func RegistryClient(version string, port int) error {
+func RegistryClient(version string, port int) {
 	rand.Seed(time.Now().UnixNano())
-	addrs := config.CoreConf.Client.ServerAddrs
-	randaddr := addrs[rand.Int()%len(addrs)]
-	conn, err := getgRPCConn(context.Background(), randaddr)
-	if err != nil {
-		log.Error("getgRPCConn failed", zap.Error(err))
-		return err
-	}
-	hbClient := pb.NewHeartbeatClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
-	defer cancel()
-	hostname, _ := os.Hostname()
-	regHost := pb.RegistryReq{
-		Port:      int32(port),
-		Hostname:  hostname,
-		Version:   version,
-		Hostgroup: config.CoreConf.Client.HostGroup,
-		Weight:    int32(config.CoreConf.Client.Weight),
-		Remark:    config.CoreConf.Client.Remark,
-	}
-	_, err = hbClient.RegistryHost(ctx, &regHost)
-	if err != nil {
-		log.Error("registry client failed", zap.Error(err))
-		return err
+	var (
+		cancel   context.CancelFunc
+		ctx      context.Context
+		lastaddr string
+	)
 
+	for {
+		ctx, cancel = context.WithTimeout(context.Background(), defaultRPCTimeout)
+		addrs := config.CoreConf.Client.ServerAddrs
+		if len(addrs) == 0 {
+			log.Error("server addrs is empty")
+			cancel()
+			return
+		}
+		// do not get last addr
+		for {
+			getaddr := addrs[rand.Int()%len(addrs)]
+			// do not get failed addr
+			if getaddr != lastaddr || len(addrs) == 1 {
+				lastaddr = getaddr
+				break
+			}
+		}
+
+		conn, err := getgRPCConn(ctx, lastaddr)
+		if err != nil {
+			log.Error("getgRPCConn failed", zap.Error(err))
+			time.Sleep(time.Second)
+			cancel()
+			continue
+		}
+		hbClient := pb.NewHeartbeatClient(conn)
+
+		hostname, _ := os.Hostname()
+		regHost := pb.RegistryReq{
+			Port:      int32(port),
+			Hostname:  hostname,
+			Version:   version,
+			Hostgroup: config.CoreConf.Client.HostGroup,
+			Weight:    int32(config.CoreConf.Client.Weight),
+			Remark:    config.CoreConf.Client.Remark,
+		}
+		_, err = hbClient.RegistryHost(ctx, &regHost)
+		if err != nil {
+			log.Error("registry client failed", zap.Error(err))
+			cancel()
+			time.Sleep(time.Second)
+			continue
+
+		}
+		cancel()
+		log.Info("host registry success", zap.String("server", lastaddr))
+		timer := time.NewTimer(defaultHearbeatInterval)
+		cannotconn := 0
+		for {
+			select {
+			case <-timer.C:
+				ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
+				hbreq := &pb.HeartbeatReq{
+					Port:        int32(port),
+					RunningTask: runningtask.GetRunningTasks(),
+				}
+
+				_, err := hbClient.SendHb(ctx, hbreq)
+				if err != nil {
+					cancel()
+					err := DealRPCErr(err)
+					if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
+						if cannotconn > 1 {
+							// 断开超过两次重新在别的调度中心注册
+							if len(config.CoreConf.Client.ServerAddrs) >= 2 {
+								log.Debug("can not conn server,change other server")
+								goto Next
+							}
+						} else {
+							cannotconn++
+						}
+					}
+					log.Error("client.SendHb failed", zap.Error(err))
+					timer.Reset(defaultLastFailHearBeatInterval)
+					continue
+				}
+				cannotconn = 0
+				cancel()
+				log.Debug("send hearbeat success", zap.String("server", lastaddr))
+				timer.Reset(defaultHearbeatInterval)
+			case <-clentstophb:
+				log.Info("Stop Send HearBeat")
+				timer.Stop()
+				return
+			}
+		}
+	Next:
+		time.Sleep(time.Second)
 	}
-	log.Info("host registry success")
-	go sendhb(hbClient, port)
-	return nil
 }
 
 // send client will send hearbt to server, let scheduler center know it is alive
-func sendhb(client pb.HeartbeatClient, port int) {
-	log.Info("start send hearbeat to server")
-	timer := time.NewTimer(time.Millisecond)
+// func sendhb(client pb.HeartbeatClient, port int) error {
+// 	log.Info("start send hearbeat to server")
+// 	timer := time.NewTimer(time.Millisecond)
 
-	cannotconn := 0
-	for {
-		select {
-		case <-timer.C:
-			ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
-			hbreq := &pb.HeartbeatReq{
-				Port:        int32(port),
-				RunningTask: runningtask.GetRunningTasks(),
-			}
-			_, err := client.SendHb(ctx, hbreq)
-			if err != nil {
-				cancel()
-				err := DealRPCErr(err)
+// 	cannotconn := 0
+// 	for {
+// 		select {
+// 		case <-timer.C:
+// 			ctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
+// 			hbreq := &pb.HeartbeatReq{
+// 				Port:        int32(port),
+// 				RunningTask: runningtask.GetRunningTasks(),
+// 			}
+// 			_, err := client.SendHb(ctx, hbreq)
+// 			if err != nil {
+// 				cancel()
+// 				err := DealRPCErr(err)
 
-				if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
-					if cannotconn > 2 {
-						// 断开超过两次
-						// 重新在别的调度中心注册
-						if len(config.CoreConf.Client.ServerAddrs) >= 2 {
-							log.Debug("can not conn server,change other server")
-							// TODO 如果注册失败应该重新注册
-							go RegistryClient(version.Version, config.CoreConf.Client.Port)
-							return
-						}
-					} else {
-						cannotconn++
-					}
-				}
-				log.Error("client.SendHb failed", zap.Error(err))
-				timer.Reset(defaultLastFailHearBeatInterval)
-				continue
-			}
-			cannotconn = 0
-			cancel()
-			log.Debug("Send HearBeat Success")
-			timer.Reset(defaultHearbeatInterval)
+// 				if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
+// 					if cannotconn > 2 {
+// 						// 断开超过两次
+// 						// 重新在别的调度中心注册
+// 						if len(config.CoreConf.Client.ServerAddrs) >= 2 {
+// 							log.Debug("can not conn server,change other server")
+// 							return err
+// 						}
+// 					} else {
+// 						cannotconn++
+// 					}
+// 				}
+// 				log.Error("client.SendHb failed", zap.Error(err))
+// 				timer.Reset(defaultLastFailHearBeatInterval)
+// 				continue
+// 			}
+// 			cannotconn = 0
+// 			cancel()
+// 			log.Debug("Send HearBeat Success")
+// 			timer.Reset(defaultHearbeatInterval)
 
-		case <-clentstophb:
-			log.Info("Stop Send HearBeat")
-			timer.Stop()
-			return
-		}
-	}
-}
+// 		case <-clentstophb:
+// 			log.Info("Stop Send HearBeat")
+// 			timer.Stop()
+// 			return errStopHearBeat
+// 		}
+// 	}
+// }
 
 // DealRPCErr change rpc error to err code
 func DealRPCErr(err error) error {

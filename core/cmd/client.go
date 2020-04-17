@@ -1,19 +1,16 @@
 package cmd
 
 import (
-	"context"
 	"net"
 	"os"
 	"strconv"
-	"time"
 
-	"github.com/labulaka521/crocodile/core/router"
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/config"
+	"github.com/labulaka521/crocodile/core/router"
 	"github.com/labulaka521/crocodile/core/schedule"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	mylog "github.com/labulaka521/crocodile/core/utils/log"
-	"github.com/labulaka521/crocodile/core/utils/resp"
 	"github.com/labulaka521/crocodile/core/version"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -43,25 +40,7 @@ func Client() *cobra.Command {
 			}
 			_, port, _ := net.SplitHostPort(lis.Addr().String())
 			intport, _ := strconv.Atoi(port)
-			//var maxretry = 30000
-			//for i := 0; i < maxretry; i++ {
-			for{
-				err = schedule.RegistryClient(version.Version, intport)
-				if err != nil {
-					if err == context.DeadlineExceeded {
-						err = resp.GetMsgErr(resp.ErrCtxDeadlineExceeded)
-					}
-					//log.Error("registryClient failed", zap.Int("trytime", i+1), zap.Error(err))
-					log.Error("registryClient failed", zap.Error(err))
-					time.Sleep(time.Second * 1)
-				/*	if i == maxretry-1 {
-						log.Fatal("registry client failed")
-					}*/
-				} else {
-					log.Info("registry success from server")
-					break
-				}
-			}
+			go schedule.RegistryClient(version.Version, intport)
 			err = router.Run(define.Client, lis)
 			if err != nil {
 				log.Error("router.Run error", zap.Error(err))

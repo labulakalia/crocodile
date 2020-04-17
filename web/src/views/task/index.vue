@@ -16,6 +16,8 @@
             placeholder="请输入任务名称(建议任务名称格式为:标签_名字,方便后续搜索查找)"
             clearable
             style="width: 500px;"
+            maxlength="30"
+            show-word-limit
           ></el-input>
         </el-form-item>
         <el-form-item label="任务类型" prop="task_type" placeholder="请选择任务类型">
@@ -247,7 +249,13 @@
         <el-row>
           <el-col :span="11">
             <el-form-item label="父任务" prop="parent_taskids">
-              <el-select :disabled="is_preview" multiple filterable v-model="task.parent_taskids">
+              <el-select
+                :disabled="is_preview"
+                multiple
+                filterable
+                v-model="task.parent_taskids"
+                multiple-limit="20"
+              >
                 <el-option
                   v-for="item in taskselect"
                   :key="item.label"
@@ -277,7 +285,13 @@
         <el-row>
           <el-col :span="11">
             <el-form-item label="子任务" prop="child_taskids">
-              <el-select :disabled="is_preview" multiple filterable v-model="task.child_taskids">
+              <el-select
+                :disabled="is_preview"
+                multiple
+                filterable
+                v-model="task.child_taskids"
+                multiple-limit="20"
+              >
                 <el-option
                   v-for="item in taskselect"
                   :key="item.label"
@@ -311,7 +325,7 @@
               clearable
               v-model="task.cronexpr"
               placeholder="请输入Cron表达式"
-              style="width: 300px;"
+              style="width: 500px;"
             >
               <template slot="append">
                 <el-popover placement="top" width="650" v-model="cronPopover">
@@ -364,7 +378,13 @@
           </el-select>
         </el-form-item>
         <el-form-item label="报警用户" prop="alarm_userids">
-          <el-select :disabled="is_preview" multiple filterable v-model="task.alarm_userids">
+          <el-select
+            :disabled="is_preview"
+            multiple
+            filterable
+            v-model="task.alarm_userids"
+            multiple-limit="10"
+          >
             <el-option
               v-for="item in userselect"
               :key="item.label"
@@ -421,6 +441,8 @@
             placeholder
             clearable
             style="width: 500px;"
+            maxlength="100"
+            show-word-limit
           ></el-input>
           <el-input
             v-else
@@ -429,6 +451,8 @@
             placeholder="请输入备注"
             clearable
             style="width: 500px;"
+            maxlength="100"
+            show-word-limit
           ></el-input>
         </el-form-item>
         <el-form-item v-if="is_preview" label="创建时间">
@@ -569,12 +593,12 @@
         <el-form :inline="true" label-width="80px">
           <el-form-item label="任务名称">
             <el-input
-              type="primary"
               v-model="query.psname"
               size="small"
               @keyup.enter.native="getalltask"
-              placeholder="请输入任务名称(前置匹配模糊搜索)"
-              style="width:240px;margin-right: 1px"
+              placeholder="前置匹配模糊搜索"
+              style="width:200px;margin-right: 1px"
+
             ></el-input>
           </el-form-item>
           <el-form-item>
@@ -733,7 +757,14 @@
         ></el-pagination>
       </div>
       <el-dialog :title="clonediatitle" center :visible.sync="clonevisible" width="20%">
-        <el-input v-model="clonenewname" size="mini" placeholder="请输入新的任务名称" style="width: 100%;"></el-input>
+        <el-input
+          v-model="clonenewname"
+          size="mini"
+          placeholder="请输入新的任务名称"
+          style="width: 100%;"
+          maxlength="30"
+          show-word-limit
+        ></el-input>
         <p></p>
         <div style="text-align: center;">
           <el-button type="primary" size="mini" @click="startclonetask">确定</el-button>

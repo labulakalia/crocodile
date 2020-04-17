@@ -142,7 +142,7 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 
 // GetTreeLog get tree log data
 func GetTreeLog(ctx context.Context, id string, startTime int64) ([]*define.TaskStatusTree, error) {
-	sqlget := `SELECT taskresps FROM crocodile_log WHERE taskid=? AND starttime=?`
+	sqlget := `SELECT taskresps FROM crocodile_log WHERE starttime=? AND taskid=?`
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("db.GetConn failed: %w", err)
@@ -154,7 +154,8 @@ func GetTreeLog(ctx context.Context, id string, startTime int64) ([]*define.Task
 	}
 
 	var taskreposbyte []byte
-	err = stmt.QueryRowContext(ctx, id, startTime).Scan(&taskreposbyte)
+	fmt.Println(startTime)
+	err = stmt.QueryRowContext(ctx, startTime, id).Scan(&taskreposbyte)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return make([]*define.TaskStatusTree, 0), nil

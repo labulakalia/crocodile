@@ -90,7 +90,14 @@
           ></el-input>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input type="textarea" v-model="userinfo.remark" size="mini" style="width: 300px;"></el-input>
+          <el-input
+            type="textarea"
+            v-model="userinfo.remark"
+            size="mini"
+            style="width: 300px;"
+            maxlength="100"
+            show-word-limit
+          ></el-input>
         </el-form-item>
       </el-form>
       <div style="margin-left: 80px;">
@@ -175,6 +182,10 @@ export default {
                 window.btoa(`${this.pass.password1}`);
               } catch (error) {
                 Message.warning("密码只能使用字母、数字、符号");
+                return;
+              }
+              if (this.pass.password1.length < 8) {
+                Message.warning("密码最少8位");
                 return;
               }
               this.userinfo.password = this.pass.password1;

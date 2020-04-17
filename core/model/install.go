@@ -110,14 +110,15 @@ func StartInstall(ctx context.Context, username, password string) error {
 		}
 		var execsql string
 		if config.CoreConf.Server.DB.Drivename == "sqlite3" {
-			// sqlite3 的自增字段为AUTOINCREMENT
+			// sqlite3 TODO 的自增字段为AUTOINCREMENT
 			execsql = strings.Replace(string(content), "AUTO_INCREMENT", "AUTOINCREMENT", -1)
+			execsql = strings.Replace(string(content), "COMMENT", "--", -1)
 		} else {
 			execsql = string(content)
 		}
 
 		if tbname == TBCasbin {
-			for _, sql := range strings.Split(execsql, "\n") {
+			for _, sql := range strings.Split(execsql, ";\n") {
 				_, err = conn.ExecContext(context.Background(), sql)
 				if err != nil {
 					log.Error("conn.ExecContext failed", zap.Error(err))

@@ -16,6 +16,8 @@
             placeholder="请输入主机组名称"
             clearable
             style="width: 500px;"
+            maxlength="30"
+            show-word-limit
           ></el-input>
         </el-form-item>
         <el-form-item label="Worker" prop="task_type" placeholder="请选择主机">
@@ -44,6 +46,8 @@
             placeholder="请输入任务备注"
             clearable
             style="width: 500px;"
+            maxlength="100"
+            show-word-limit
           ></el-input>
         </el-form-item>
       </el-form>

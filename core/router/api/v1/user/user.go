@@ -171,6 +171,11 @@ func ChangeUserInfo(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
+	if len(newinfo.Password) > 0 && len(newinfo.Password) < 8 {
+		log.Error("password is short 8")
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
 	uid := c.GetString("uid")
 	if uid != newinfo.ID {
 		log.Error("uid is error", zap.String("uid", uid), zap.String("infoid", newinfo.ID))
@@ -212,6 +217,11 @@ func AdminChangeUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+	if len(user.Password) > 0 && len(user.Password) < 8 {
+		log.Error("password is short 8")
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
@@ -335,7 +345,6 @@ func GetOperateLog(c *gin.Context) {
 	defer cancel()
 	type queryparams struct {
 		define.Query
-		UID      string `form:"uid"`
 		UserName string `form:"username"`
 		Method   string `form:"method"`
 		Module   string `form:"module"`
@@ -352,7 +361,7 @@ func GetOperateLog(c *gin.Context) {
 	}
 
 	// uid, method, module, limit, offset
-	oplogs, count, err := model.GetOperate(ctx, q.UID, q.UserName, q.Method, q.Module, q.Limit, q.Offset)
+	oplogs, count, err := model.GetOperate(ctx, "", q.UserName, q.Method, q.Module, q.Limit, q.Offset)
 	if err != nil {
 		log.Error("model.GetOperate filed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
