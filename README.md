@@ -119,4 +119,4 @@ Modify configuration files as needed
 [Crocodile_Trello](https://trello.com/b/9o299bds/crocodile)
 
 ## License
-Crocodile is under the MIT license. See the [LICENSE] (./ LICENSE) file for details.
+Crocodile is under the MIT license. See the [LICENSE](./LICENSE) file for details.
