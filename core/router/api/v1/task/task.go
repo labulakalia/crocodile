@@ -737,7 +737,7 @@ func ParseCron(c *gin.Context) {
 		CronExpr string `form:"expr" binding:"required"`
 	}
 	reqep := reqexpr{}
-	err := c.ShouldBindJSON(&reqep)
+	err := c.ShouldBindQuery(&reqep)
 	if err != nil {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
