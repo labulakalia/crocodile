@@ -1,0 +1,10 @@
+FROM alpine
+
+ENV GOPROXY https://goproxy.cn
+WORKDIR /app
+RUN apk update && apk --no-cache add ca-certificates curl vim python python3 nodejs npm go
+COPY build/crocodile-linux-amd64 crocodile
+CMD ["/app/crocodile","client","-c","core.toml"]
+
+# docker build -t labulaka522/crocodile_worker . -f Dockerfile.worker
+# docker run -p 8080:8080 -v $PWD/core.toml:/app/core.toml labulaka522/crocodile:worker

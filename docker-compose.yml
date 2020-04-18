@@ -1,0 +1,36 @@
+version: '3.3'
+services: 
+    master: 
+        image: labulaka522/crocodile
+        container_name: crocodile_master
+        restart: always
+        ports: 
+          - 8080:8080
+        volumes: 
+          - $PWD/core_docker.toml:/app/core.toml
+        depends_on:
+          - mysql
+          - redis
+    worker:
+        image: labulaka522/crocodile:worker
+        container_name: crocodile_worker
+        volumes: 
+            - $PWD/core_docker.toml:/app/core.toml
+        ports: 
+          - 8088:8088
+        depends_on:
+          - master
+    mysql:
+        image: mysql:latest
+        environment:
+            MYSQL_ROOT_PASSWORD: "crocodile"
+            MYSQL_DATABASE: "crocodile"
+        ports: 
+          - 3306:3306
+        # volumes: 
+        #   - "/data:/usr/lib/mysql"   # mysql数据持久化
+    redis:
+        image: redis:latest
+        restart: always
+        ports:
+          - 6379:6379

@@ -43,7 +43,6 @@ frontend:
 bindata: 
 	go get github.com/go-bindata/go-bindata/...
 	~/go/bin/go-bindata -o=core/utils/asset/asset.go  -pkg=asset web/crocodile/... sql/... && rm -rf ./crocodile
-
 swag:
 	go get -u github.com/swaggo/swag/cmd/swag
 	~/go/bin/swag init -o core/docs

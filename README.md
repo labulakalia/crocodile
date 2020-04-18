@@ -77,42 +77,46 @@ A distributed task scheduling system based on Golang that supports http requests
     Access token
 - Task log management, clean up logs  
 - Alarm notification support platform  
-    -Mail  
-    -Corporate WeChat  
-    -Nail  
-    -Slack Channel  
-    -Telegram Bot  
-    -WebHook URL  
+    - Mail  
+    - WeChat  
+    - DingDing  
+    - Slack Channel  
+    - Telegram Bot  
+    - WebHook URL  
 - Detailed task audit function  
     All operations on data changes to users will be recorded
 - Permission control 
     - Administrator  
-        Have all operating rights   
-    -  general user  
-        New tasks and host groups can be created, but only tasks or host groups that have been created can be operated, but audit records and all users cannot be viewed  
-    - Visitors  
-        Only viewing authority, no operation modification authority, but can not view audit records, all users
+        Have all operating rights    
+    - general user  
+        New tasks and host groups can be created, but only tasks or host groups that have been created can be operated, but audit records and all users cannot be viewed    
+    - Guest  
+    Only viewing authority, no operation modification authority, but can not view audit records, all users
 
 
 ## Supported platforms
--Linux
--Mac
+- Linux
+- Mac
 
-## Install
-- [Click to download](https://github.com/labulaka521/crocodile/releases) compiled binaries   
+## Quick Start
+
+```
+git clone https://github.com/labulaka521/crocodile
+cd crocodile
+docker-compose up -d
+```
+Then open url`http://ip:8080`
+
+
+## Running
+- [Click to download](https://github.com/labulaka521/crocodile/releases),uncompress it  
+- install`redis`、`mysql`,then change config file `core.toml`
 - If you need to enable certificate authentication between scheduling nodes, please generate a certificate,  
     Run the command to generate cert certificate 
     ```
     crocodile cert
     ```
-    Then two files `cert.pem` and` key.pem` will be generated locally in the current directory. After saving these two files, fill in the path of the file in the value configuration file. Each node needs these two files  
-- Modify the configuration of the configuration file
-
-## Running
-> Install MySQL and Redis   
-Both the dispatch center and Worker can communicate normally through each other's IP: PORT     
-Modify configuration files as needed
-
+        Then two files `cert.pem` and` key.pem` will be generated locally in the current directory. After saving these two files, fill in the path of the file in the value configuration file. Each node needs these two files  
 
 - Run as a scheduler center   
     Multiple dispatch centers can be started to prevent single points of failure from causing dispatch to hang up    

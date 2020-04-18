@@ -67,7 +67,7 @@ func getcmd(ctx context.Context, lang Lang, code string) (*exec.Cmd, error) {
 	case nodejs:
 		return runnodejs(ctx, code)
 	default:
-		return nil, fmt.Errorf("can not support lang: %d\n", lang)
+		return nil, fmt.Errorf("can not support lang: %d", lang)
 	}
 }
 

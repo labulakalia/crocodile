@@ -3,6 +3,11 @@ on:
     tags:
       - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 name: Build_release
+
+
+env:
+  IMAGE_NAME: labulaka522/crocodile
+
 jobs:
   build:
     name: Build And Upload Release
@@ -35,6 +40,13 @@ jobs:
           make vet
           make swag
           make build_all
+      - name: Push Docker
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD}} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          docker build -t $IMAGE_NAME . -f Dockerfile
+          docker build -t $IMAGE_NAME:worker . -f Dockerfile.worker
+          docker push IMAGE_NAME
+          docker push $IMAGE_NAME:worker
       - name: Upload file to release
         uses: labulaka521/upload-release-action@v1-release
         with:

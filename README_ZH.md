@@ -96,21 +96,25 @@
 - Linux
 - Mac
 
-## Install
-- [点击下载](https://github.com/labulaka521/crocodile/releases)编译好的二进制文件
-- 下载[配置文件](https://raw.githubusercontent.com/labulaka521/crocodile/master/core.toml)
+
+## Quick Start
+
+```
+git clone https://github.com/labulaka521/crocodile
+cd crocodile
+docker-compose up -d
+```
+然后在浏览器中打开`http://ip:8080`
+
+## Running
+- [点击下载](https://github.com/labulaka521/crocodile/releases)后解压
+- 安装redis、mysql，然后修改配置文件
 - 如果需要开启调度节点之间的证书认证，请生成证书，
     运行生成cert证书的命令
     ```shell
     crocodile cert
     ```
     然后会在当前目录本地生成两个文件`cert.pem`、`key.pem`，将这两个文件保存后，将文件的路径填写值配置文件中,每个节点都需要这两个文件
-- 修改配置文件的配置
-
-## Running
-  >安装MySQL和Redis  
-  >调度中心和Worker之间通过对方的IP:PORT都可以正常通信 
-  >按需修改配置文件 
 - 作为一个调度中心来运行  
     可以启动多个调度中心，防止单点故障导致调度挂掉  
     ```shell

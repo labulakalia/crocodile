@@ -107,7 +107,7 @@ func getgRPCConn(ctx context.Context, addr string) (*grpc.ClientConn, error) {
 		dialoptions = append(dialoptions, grpc.WithInsecure())
 	}
 
-	rpcctx, cancel := context.WithTimeout(ctx, defaultRPCTimeout)
+	rpcctx, cancel := context.WithTimeout(context.Background(), defaultRPCTimeout)
 	defer cancel()
 	//
 	conn, err = grpc.DialContext(rpcctx, addr, dialoptions...)
@@ -202,17 +202,17 @@ func tryGetRCCConn(ctx context.Context, next Next) (*grpc.ClientConn, error) {
 func RegistryClient(version string, port int) {
 	rand.Seed(time.Now().UnixNano())
 	var (
-		cancel   context.CancelFunc
-		ctx      context.Context
+		// cancel   context.CancelFunc
+		// ctx      context.Context
 		lastaddr string
 	)
 
 	for {
-		ctx, cancel = context.WithTimeout(context.Background(), defaultRPCTimeout)
+		// ctx, cancel = context.WithTimeout(context.Background(), defaultRPCTimeout)
 		addrs := config.CoreConf.Client.ServerAddrs
 		if len(addrs) == 0 {
 			log.Error("server addrs is empty")
-			cancel()
+			// cancel()
 			return
 		}
 		// do not get last addr
@@ -225,15 +225,14 @@ func RegistryClient(version string, port int) {
 			}
 		}
 
-		conn, err := getgRPCConn(ctx, lastaddr)
+		conn, err := getgRPCConn(context.Background(), lastaddr)
 		if err != nil {
 			log.Error("getgRPCConn failed", zap.Error(err))
 			time.Sleep(time.Second)
-			cancel()
+
 			continue
 		}
 		hbClient := pb.NewHeartbeatClient(conn)
-
 		hostname, _ := os.Hostname()
 		regHost := pb.RegistryReq{
 			Port:      int32(port),
@@ -243,15 +242,14 @@ func RegistryClient(version string, port int) {
 			Weight:    int32(config.CoreConf.Client.Weight),
 			Remark:    config.CoreConf.Client.Remark,
 		}
-		_, err = hbClient.RegistryHost(ctx, &regHost)
+		_, err = hbClient.RegistryHost(context.Background(), &regHost)
 		if err != nil {
 			log.Error("registry client failed", zap.Error(err))
-			cancel()
 			time.Sleep(time.Second)
 			continue
 
 		}
-		cancel()
+
 		log.Info("host registry success", zap.String("server", lastaddr))
 		timer := time.NewTimer(defaultHearbeatInterval)
 		cannotconn := 0

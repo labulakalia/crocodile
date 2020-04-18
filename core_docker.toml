@@ -34,7 +34,7 @@ maxhttptime = "10s" # 秒
 #        root:123456@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local
 #        mysql需要提前建好数据库
 drivename = "mysql"
-dsn = "root:crocodile@tcp(127.0.0.1:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local"
+dsn = "root:crocodile@tcp(mysql:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local"
 
 # sqlite3暂时不支持
 # sqlite3: crocodile.db 
@@ -45,7 +45,7 @@ maxconn = 20
 maxquerytime = "10s"
 
 [server.redis]
-addr = "127.0.0.1:6379"
+addr = "redis:6379"
 password = ""
 # 消息通知配置
 [notify]
@@ -96,7 +96,7 @@ webhookurl = "http://127.0.0.1:8088"
 # client port
 port =  8088     # 0为随机端口
 # 调度中心集群地址，可以设置多个防止单点故障
-serveraddrs = ["127.0.0.1:8080"]
+serveraddrs = ["master:8080"]
 # 将保存只此主机组，如果不存在或者选项为空将忽略
 hostgroup = ""
 # 权重
