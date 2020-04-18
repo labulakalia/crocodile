@@ -211,7 +211,7 @@ func (ds DataCode) Run(ctx context.Context) io.ReadCloser {
 		defer pw.Close()
 		defer func() {
 			now := time.Now().Local().Format("2006-01-02 15:04:05: ")
-			pw.Write([]byte(fmt.Sprintf("%sTask Run Finished,Return Code:%5d", now, exitCode))) // write exitCode,total 3 byte
+			pw.Write([]byte(fmt.Sprintf("%sTask Run Finished,Return Code:%5d", now, exitCode))) // write exitCode,total 5 byte
 		}()
 		cmd, err := getcmd(ctx, ds.Lang, ds.Code)
 		if err != nil {

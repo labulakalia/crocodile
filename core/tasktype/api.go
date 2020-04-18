@@ -35,7 +35,7 @@ func (da DataAPI) Run(ctx context.Context) io.ReadCloser {
 		defer pw.Close()
 		defer func() {
 			now := time.Now().Local().Format("2006-01-02 15:04:05: ")
-			pw.Write([]byte(fmt.Sprintf("\n%sRun Finished,Return Code:%3d", now, exitCode))) // write exitCode,total 3 byte
+			pw.Write([]byte(fmt.Sprintf("\n%sRun Finished,Return Code:%5d", now, exitCode))) // write exitCode,total 5 byte
 			// pw.Write([]byte(fmt.Sprintf("%3d", exitCode))) // write exitCode,total 3 byte
 		}()
 		// go1.13 use NewRequestWithContext
