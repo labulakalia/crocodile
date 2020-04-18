@@ -51,8 +51,6 @@
                   :value="item.value"
                 ></el-option>
               </el-select>
-              <span class="sub-title" v-if="savecode.lang === 2">所选主机组内的所有主机必须已经安装python3</span>
-              <span class="sub-title" v-if="savecode.lang === 3">所选主机组内的所有主机必须已经安装GoLang且版本大于等于1.11</span>
               <div style="margin-top:5px;">
                 <el-card :body-style="{ padding: '0px' }">
                   <editor
@@ -598,7 +596,6 @@
               @keyup.enter.native="getalltask"
               placeholder="前置匹配模糊搜索"
               style="width:200px;margin-right: 1px"
-
             ></el-input>
           </el-form-item>
           <el-form-item>
@@ -958,18 +955,28 @@ export default {
           label: "shell"
         },
         {
+          value: 4,
+          label: "python"
+        },
+        {
           value: 2,
           label: "python3"
         },
         {
           value: 3,
           label: "golang"
+        },
+        {
+          value: 5,
+          label: "nodejs"
         }
       ],
       lang: {
         1: "sh",
-        2: "python",
-        3: "golang"
+        2: "python3",
+        3: "golang",
+        4: "python",
+        5: "nodejs"
       },
       saveapi: {
         url: "",
@@ -1044,6 +1051,12 @@ main
         `,
         2: `#!/usr/bin/env python3
 def main():
+    print("run python3")
+
+if __name__ == '__main__':
+    main()`,
+        4: `#!/usr/bin/env python
+def main():
     print("run python")
 
 if __name__ == '__main__':
@@ -1054,7 +1067,9 @@ import "fmt"
 
 func main() {
 	fmt.Println("run golang")
-}`
+}`,
+        5: `#!/usr/bin/env node
+console.log("run nodejs")`
       },
       hostgroupselect: [],
       userselect: [],
@@ -1140,7 +1155,7 @@ func main() {
           } else if (this.is_change === true) {
             var name = this.task.name;
 
-            // delete this.task.name;
+            delete this.task.task_data.langdesc;
             changetask(this.task).then(response => {
               if (response.code === 0) {
                 Message.success(`修改任务 ${name} 成功`);

@@ -67,6 +67,7 @@ func CreateTask(c *gin.Context) {
 	// task.CreateByUID = c.GetString("uid")
 	task.Run = true
 	id := utils.GetID()
+	fmt.Printf("%+v\n",task.TaskData)
 	err = model.CreateTask(ctx, id, task.Name, task.TaskType, task.TaskData, true, task.ParentTaskIds, task.ParentRunParallel,
 		task.ChildTaskIds, task.ChildRunParallel, task.Cronexpr, task.Timeout, task.AlarmUserIds, task.RoutePolicy,
 		task.ExpectCode, task.ExpectContent, task.AlarmStatus, c.GetString("uid"), task.HostGroupID, task.Remark,

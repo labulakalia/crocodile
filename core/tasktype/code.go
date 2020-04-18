@@ -30,8 +30,10 @@ type Lang uint8
 
 const (
 	shell Lang = iota + 1
-	python
+	python3
 	golang
+	python
+	nodejs
 )
 
 // String return Lanf str
@@ -40,9 +42,13 @@ func (l Lang) String() string {
 	case shell:
 		return "shell"
 	case python:
+		return "python"
+	case python3:
 		return "python3"
 	case golang:
 		return "golang"
+	case nodejs:
+		return "nodejs"
 	default:
 		return "unknow lang"
 	}
@@ -54,10 +60,14 @@ func getcmd(ctx context.Context, lang Lang, code string) (*exec.Cmd, error) {
 		return runshell(ctx, code)
 	case python:
 		return runpython(ctx, code)
+	case python3:
+		return runpython3(ctx, code)
 	case golang:
 		return rungolang(ctx, code)
+	case nodejs:
+		return runnodejs(ctx, code)
 	default:
-		return nil, errors.New("can not support lang:" + lang.String())
+		return nil, fmt.Errorf("can not support lang: %d\n", lang)
 	}
 }
 
@@ -98,7 +108,43 @@ func runpython(ctx context.Context, code string) (*exec.Cmd, error) {
 	}
 	tmpfile.Sync()
 	tmpfile.Close()
+	cmd := exec.CommandContext(ctx, "python", pythoncodepath)
+	return cmd, nil
+}
+
+// Python3
+// run python code
+func runpython3(ctx context.Context, code string) (*exec.Cmd, error) {
+	tmpfile, err := ioutil.TempFile("", "*.py")
+	if err != nil {
+		return nil, err
+	}
+	pythoncodepath := tmpfile.Name()
+	_, err = tmpfile.WriteString(code)
+	if err != nil {
+		return nil, err
+	}
+	tmpfile.Sync()
+	tmpfile.Close()
 	cmd := exec.CommandContext(ctx, "python3", pythoncodepath)
+	return cmd, nil
+}
+
+// Javascript
+// run python code
+func runnodejs(ctx context.Context, code string) (*exec.Cmd, error) {
+	tmpfile, err := ioutil.TempFile("", "*.js")
+	if err != nil {
+		return nil, err
+	}
+	pythoncodepath := tmpfile.Name()
+	_, err = tmpfile.WriteString(code)
+	if err != nil {
+		return nil, err
+	}
+	tmpfile.Sync()
+	tmpfile.Close()
+	cmd := exec.CommandContext(ctx, "node", pythoncodepath)
 	return cmd, nil
 }
 

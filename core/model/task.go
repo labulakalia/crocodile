@@ -56,6 +56,7 @@ func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, 
 	defer stmt.Close()
 	createTime := time.Now().Unix()
 	taskdata, _ := json.Marshal(taskData)
+	fmt.Printf("%s\n", taskdata)
 	_, err = stmt.ExecContext(ctx,
 		id,
 		name,
@@ -122,6 +123,7 @@ func ChangeTask(ctx context.Context, id string, run bool, tasktype define.TaskTy
 	defer stmt.Close()
 	updateTime := time.Now().Unix()
 	taskdata, _ := json.Marshal(taskData)
+
 	_, err = stmt.ExecContext(ctx,
 		hostGroupID,
 		run,

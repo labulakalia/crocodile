@@ -36,7 +36,7 @@ maxhttptime = "10s" # 秒
 drivename = "mysql"
 dsn = "root:wang109097@tcp(localhost:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local"
 
-# sqlite3执行失败失败，暂不支持
+# sqlite3暂时不支持
 # sqlite3: crocodile.db 
 # drivename = "sqlite3"
 # dsn = "crocodile.db"

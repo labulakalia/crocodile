@@ -11,7 +11,7 @@
 English | [中文](./README_ZH.md) 
 
 ## Introduction
-A distributed task scheduling system based on Golang that supports http requests, run golang、python、 shell or other scheduled tasks
+A distributed task scheduling system based on Golang that supports http requests, run golang、python、python3、shell or other scheduled tasks
 
 ## Screenshot
 
@@ -60,7 +60,7 @@ A distributed task scheduling system based on Golang that supports http requests
 - View real-time logs of running tasks and tasks in real time, and can terminate running tasks  
 - Multiple task types:  
     - Perform `http` request tasks  
-    - Run `shell`,` python`, `golang` codes (of course other languages ​​can also be supported, please provide if necessary)  
+    - Run `shell`,` python`, `golang`、`python3`、`nodejs`codes (of course other languages ​​can also be supported, please provide if necessary)  
 - Father and child tasks:  
     When the parent task or child task is set, the `parent task`->` main task`-> `subtask` will be run first. If any task fails, the entire process will be interrupted immediately. You can also set the parent task or subtask` `Or` serial` run
 - Scheduling Algorithm:    

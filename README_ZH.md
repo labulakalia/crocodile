@@ -10,7 +10,7 @@
 
 
 ## Introduction
-基于Golang开发的分布式任务调度系统，支持http请求、运行golang、python、shell等调度任务  
+基于Golang开发的分布式任务调度系统，支持http请求、运行golang、python、shell、python3、nodejs等调度任务  
 
 ## Screenshot
 <details>
@@ -58,7 +58,7 @@
 - 实时查看正在运行的任务、任务的实时日志和任务状态
 - 多种任务类型:
     - 执行`http`请求任务
-    - 运行`shell`、`python`、`golang`代码(当然其他语言也可以支持，如需要请提出)
+    - 运行`shell`、`python`、`golang`、`python3`、`nodejs`代码(当然其他语言也可以支持，如需要请提出)
 - 父、子任务:   
     当设置了父任务或者子任务后，先会运行`父任务`->`主任务`->`子任务`，任意任务出错后会立即中断整个流程，还可以设置父任务或子任务`并行`或者`串行`运行
 - 调度算法:  
