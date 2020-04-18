@@ -789,8 +789,6 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 		goto Check
 	}
 
-	t.writelogt(taskruntype, id, "start run task %s[%s] on worker host %s", realtask.name, id, conn.Target())
-
 	// task run data
 	taskreq = &pb.TaskReq{
 		TaskId:   id,
