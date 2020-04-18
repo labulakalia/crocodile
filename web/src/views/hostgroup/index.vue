@@ -181,7 +181,7 @@ export default {
       createactuatordialog: false,
       updateactuatordialog: false,
       rules: {
-        name: [{ required: true, message: "请输入执行器名称", trigger: "blur" }]
+        name: [{ required: true, message: "请输入主机组名称", trigger: "blur" }]
       },
       addips: [],
       arronline: [],
