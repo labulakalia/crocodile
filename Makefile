@@ -28,7 +28,7 @@ build/%:
 	$(call build,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
 	$(call md5,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
 	$(call tar,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
-	$(call delete,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
+	# $(call delete,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
 
 clean:
 	rm -rf ${BUILD_DIR}
@@ -45,6 +45,7 @@ bindata:
 	~/go/bin/go-bindata -o=core/utils/asset/asset.go  -pkg=asset web/crocodile/... sql/... && rm -rf ./crocodile
 
 swag:
+	go mod download
 	swag init -o core/docs
 vet:
 	go vet main.go

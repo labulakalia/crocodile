@@ -33,12 +33,13 @@ jobs:
           make bindata
           make clean
           make vet
+          make swag
           make build_all
       - name: Upload file to release
         uses: labulaka521/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/*
+          file: build/*.tar.gz
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
