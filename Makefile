@@ -45,7 +45,7 @@ bindata:
 	~/go/bin/go-bindata -o=core/utils/asset/asset.go  -pkg=asset web/crocodile/... sql/... && rm -rf ./crocodile
 
 swag:
-	go mod download
+	go get -u github.com/swaggo/swag/cmd/swag
 	swag init -o core/docs
 vet:
 	go vet main.go
