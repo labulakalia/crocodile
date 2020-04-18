@@ -46,7 +46,7 @@ bindata:
 
 swag:
 	go get -u github.com/swaggo/swag/cmd/swag
-	swag init -o core/docs
+	~/go/bin/swag init -o core/docs
 vet:
 	go vet main.go
 runs:
