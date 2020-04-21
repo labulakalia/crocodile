@@ -149,11 +149,11 @@ func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 }
 
 // GetTaskTreeStatatus return task tree status data
-func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
+func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, bool, error) {
 	dependtasks, err := t.gettaskinfos()
 
 	if err != nil {
-		return nil, fmt.Errorf("t.gettaskinfos failed: %w", err)
+		return nil, false, fmt.Errorf("t.gettaskinfos failed: %w", err)
 	}
 	log.Debug("alltaskinfos", zap.Strings("tasks", dependtasks))
 
@@ -161,6 +161,8 @@ func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
 	var (
 		setStatus bool
 		// childset  bool
+		// task is run finish
+		finish = true
 	)
 	for _, keyname := range dependtasks {
 		// keyname
@@ -181,6 +183,11 @@ func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
 		if err != nil {
 			log.Error("t.getdata failed", zap.Error(err))
 			continue
+		}
+
+		// check task is finish
+		if statusres == define.TsRun || statusres == define.TsWait {
+			finish = false
 		}
 
 		task, exist := Cron2.gettask(id)
@@ -232,7 +239,7 @@ func (t *task2) GetTaskTreeStatatus() ([]*define.TaskStatusTree, error) {
 			log.Error("unsupport task run type", zap.Any("taskruntype", taskruntype))
 		}
 	}
-	return retTasksStatus, nil
+	return retTasksStatus, finish, nil
 }
 
 // GetTaskRealLog return a channel task real log
@@ -241,15 +248,6 @@ func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, o
 	// 循环读取记录任务日志的列表然后将日志写到channel中
 	// offset 为日志的偏移量每次取日志的offset,offset+1
 	// 如果取到了日志就直接返回，如果取出的日志为空并且任务还未运行结束(完成、失败、取消）则返回io.EOF
-
-	// 判断主任务锁是否存在
-	// ok, err := t.islock()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if !ok {
-	// 	return nil, fmt.Errorf("task %s[%s] is not n running", t.name, t.id)
-	// }
 
 	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, taskruntype, realid, taskrealtasklog)
 	var output []byte
@@ -279,20 +277,24 @@ func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, o
 }
 
 // cleantaskinfos return task's parent child id
-func (t *task2) cleantaskinfos() error {
+func (t *task2) cleantaskinfos() {
+	// 暂停三秒后再删除
+	time.Sleep(time.Second * 3)
+	log.Debug("start clean old key data",zap.String("task", t.name))
 	taskinfos := "task:" + t.id
-	// var res []string
-	// err := t.redis.LRange(taskinfos, 0, 1).ScanSlice(&res)
-	// if err != nil {
-	// 	return fmt.Errorf("t.redis.LRange failed: %w", err)
-	// }
-	// for _, key := range res {
-	// 	t.redis.Del(key + ":" + taskrealtasklog)
-	// 	t.redis.Del(key + ":" + taskresp)
-	// 	t.redis.Del(key + ":" + taskstatus)
-	// }
+	var res []string
+	err := t.redis.LRange(taskinfos, 0, 1).ScanSlice(&res)
+	if err != nil {
+		log.Error("t.redis.LRange failed:", zap.Error(err))
+		return
+	}
+	for _, key := range res {
+		t.redis.Del(key + ":" + taskrealtasklog)
+		t.redis.Del(key + ":" + taskresp)
+		t.redis.Del(key + ":" + taskstatus)
+	}
 	t.redis.Del(taskinfos)
-	return nil
+	return
 }
 
 // gettaskinfos return task's parent child id
@@ -449,10 +451,10 @@ func (t *task2) savetasklog() error {
 
 		tasklogres.TaskResps = append(tasklogres.TaskResps, &tr)
 	}
-	// err = t.cleantaskinfos()
-	// if err != nil {
-	// 	log.Error("t.cleantaskinfos failed", zap.Error(err))
-	// }
+
+	// clean keys
+	go t.cleantaskinfos()
+	// check task res
 	go alarm.JudgeNotify(tasklogres)
 	// save log
 	err = model.SaveLog(context.Background(), tasklogres)
@@ -780,8 +782,8 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 			taskdata.HostGroup, taskdata.HostGroupID, err)
 		goto Check
 	}
-	
-	t.writelogt(taskruntype, id,"start run task %s[%s] on host %s",taskdata.Name,taskdata.ID,conn.Target())
+
+	t.writelogt(taskruntype, id, "start run task %s[%s] on host %s", taskdata.Name, taskdata.ID, conn.Target())
 	tdata, err = json.Marshal(taskdata.TaskData)
 	if err != nil {
 		log.Error("json.Marshal", zap.Error(err))
@@ -1082,14 +1084,14 @@ func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
 		runtask.RunTime = int(time.Now().UnixNano()/1e6 - runtask.StartTime)
 		runtask.TriggerStr = runtask.Trigger.String()
 
-		ok, err := s.isrunning(runtask.ID)
+		ok, err := s.IsRunning(runtask.ID)
 		if err != nil {
-			log.Error("s.isrunning failed", zap.Error(err))
+			log.Error("s.IsRunning failed", zap.Error(err))
 			if strings.HasPrefix(err.Error(), "can not get taskid") {
 				// removerunningtask未执行，调度节点挂掉，所以就一直保留
 				// 如果到这里就直接删掉
 				Cron2.removerunningtask(&define.RunTask{ID: runtask.ID})
-				
+
 			}
 			continue
 		}
@@ -1103,8 +1105,8 @@ func (s *cacheSchedule2) GetRunningTask() ([]*define.RunTask, error) {
 	return runtasks, nil
 }
 
-// isrunning check task lock
-func (s *cacheSchedule2) isrunning(taskid string) (bool, error) {
+// IsRunning check task lock
+func (s *cacheSchedule2) IsRunning(taskid string) (bool, error) {
 	t, ok := s.gettask(taskid)
 	if !ok {
 		return false, fmt.Errorf("can not get taskid %s", taskid)

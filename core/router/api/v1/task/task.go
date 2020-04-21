@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis"
 	"github.com/gorhill/cronexpr"
 	"github.com/gorilla/websocket"
 	"github.com/labulaka521/crocodile/common/log"
@@ -67,7 +68,6 @@ func CreateTask(c *gin.Context) {
 	// task.CreateByUID = c.GetString("uid")
 	task.Run = true
 	id := utils.GetID()
-	fmt.Printf("%+v\n",task.TaskData)
 	err = model.CreateTask(ctx, id, task.Name, task.TaskType, task.TaskData, true, task.ParentTaskIds, task.ParentRunParallel,
 		task.ChildTaskIds, task.ChildRunParallel, task.Cronexpr, task.Timeout, task.AlarmUserIds, task.RoutePolicy,
 		task.ExpectCode, task.ExpectContent, task.AlarmStatus, c.GetString("uid"), task.HostGroupID, task.Remark,
@@ -512,7 +512,7 @@ func GetRunningTask(c *gin.Context) {
 // @Router /api/v1/task/log [get]
 // @Security ApiKeyAuth
 func LogTask(c *gin.Context) {
-	
+
 	name := c.Query("name")
 	statusstr := c.Query("status")
 
@@ -610,7 +610,6 @@ func RealRunTaskLog(c *gin.Context) {
 		log.Error("Upgrade failed", zap.Error(err))
 		return
 	}
-
 	defer conn.Close()
 	getid := define.GetID{}
 	err = c.BindQuery(&getid)
@@ -656,9 +655,30 @@ func RealRunTaskLog(c *gin.Context) {
 			return
 		} else if errors.Is(err, schedule.ErrNoGetLog) {
 			log.Debug("can not get new data, please wait some time")
+			// if can get data,check task is running ,is task is stop then close websocket
+			ok, err := schedule.Cron2.IsRunning(getid.ID)
+			if err != nil {
+				log.Error("Cron2.IsRunning failed", zap.Error(err))
+				return
+			}
+			if !ok {
+				log.Warn("task is not running ", zap.String("taskid", getid.ID))
+				return
+			}
 			time.Sleep(time.Second)
 		} else {
-			log.Error("read task log failed", zap.Error(err))
+			var erroutput []byte
+			if errors.Is(err, redis.Nil) {
+				erroutput = []byte("task is run finished")
+			} else {
+				log.Error("read task log failed", zap.Error(err))
+				erroutput = []byte(err.Error())
+			}
+			err = conn.WriteMessage(websocket.TextMessage, erroutput)
+			if err != nil {
+				log.Error("WriteMessage failed", zap.Error(err))
+				
+			}
 			return
 		}
 	}
@@ -703,7 +723,7 @@ func RealRunTaskStatus(c *gin.Context) {
 	for {
 		select {
 		case <-timer.C:
-			taskrunstatus, err := task.GetTaskTreeStatatus()
+			taskrunstatus, finish, err := task.GetTaskTreeStatatus()
 			if err != nil {
 				log.Error("task.GetTaskTreeStatatus failed", zap.Error(err))
 				return
@@ -714,7 +734,11 @@ func RealRunTaskStatus(c *gin.Context) {
 				log.Error("WriteJSON failed", zap.Error(err))
 				return
 			}
-
+			// if task status has one of  running,wait,so return status
+			// otherwise close websocket
+			if finish {
+				return
+			}
 			_, _, err = conn.ReadMessage()
 			if err != nil {
 				log.Error("ReadMessage failed", zap.Error(err))
