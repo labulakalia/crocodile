@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `crocodile_operate` (
         `modulename` VARCHAR(30) NOT NULL DEFAULT "" COMMENT "操作模块名称 例如任务名称",
         `operatetime` INTEGER NOT NULL DEFAULT 0 COMMENT "操作时间",
         `description` VARCHAR(200) COMMENT "操作说明，一般用户用户操作未直接改变数据库变化的操作，例如运行任务",-- "描述"
-        `columns` TEXT COMMENT "修改的字段",
+        `columns` MEDIUMTEXT COMMENT "修改的字段",
          PRIMARY KEY (`id`),
          KEY `idx_username` (`username`)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

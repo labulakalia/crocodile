@@ -271,6 +271,7 @@ func RegistryClient(version string, port int) {
 							// 断开超过两次重新在别的调度中心注册
 							if len(config.CoreConf.Client.ServerAddrs) >= 2 {
 								log.Debug("can not conn server,change other server")
+								conn.Close()
 								goto Next
 							}
 						} else {
