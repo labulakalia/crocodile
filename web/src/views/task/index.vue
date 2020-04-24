@@ -252,7 +252,7 @@
                 multiple
                 filterable
                 v-model="task.parent_taskids"
-                multiple-limit="20"
+                :multiple-limit="20"
               >
                 <el-option
                   v-for="item in taskselect"
@@ -969,6 +969,10 @@ export default {
         {
           value: 5,
           label: "nodejs"
+        },
+        {
+          value: 6,
+          label: "windowsbat"
         }
       ],
       lang: {
@@ -976,7 +980,8 @@ export default {
         2: "python3",
         3: "golang",
         4: "python",
-        5: "nodejs"
+        5: "nodejs",
+        6: "windowsbat"
       },
       saveapi: {
         url: "",
@@ -1069,8 +1074,10 @@ func main() {
 	fmt.Println("run golang")
 }`,
         5: `#!/usr/bin/env node
-console.log("run nodejs")`
+console.log("run nodejs")`,
+        6: `tasklist`
       },
+
       hostgroupselect: [],
       userselect: [],
       taskselect: [],

@@ -16,8 +16,6 @@ services:
         container_name: crocodile_worker
         volumes: 
             - $PWD/core_docker.toml:/app/core.toml
-        ports: 
-          - 8088:8088
         depends_on:
           - master
     mysql:
@@ -25,12 +23,8 @@ services:
         environment:
             MYSQL_ROOT_PASSWORD: "crocodile"
             MYSQL_DATABASE: "crocodile"
-        ports: 
-          - 3306:3306
         # volumes: 
         #   - "/data:/usr/lib/mysql"   # mysql数据持久化
     redis:
         image: redis:latest
         restart: always
-        ports:
-          - 6379:6379

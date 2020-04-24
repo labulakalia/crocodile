@@ -2,6 +2,7 @@ package tasktype
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -15,10 +16,13 @@ func main() {
 	fmt.Println("testgolang")
 }
 `
-	cmd, err := rungolang(context.Background(), pythoncode)
+	cmd, codepath, err := rungolang(context.Background(), pythoncode)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		os.Remove(codepath)
+	}()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatal(err)
@@ -31,10 +35,13 @@ func main() {
 func TestRunShell(t *testing.T) {
 	shellcode := `sleep 1
 echo testshell`
-	cmd, err := runshell(context.Background(), shellcode)
+	cmd, codepath, err := runshell(context.Background(), shellcode)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		os.Remove(codepath)
+	}()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatal(err)
@@ -48,10 +55,13 @@ echo testshell`
 func TestRunPython(t *testing.T) {
 	shellcode := `sleep 1
 echo testpython`
-	cmd, err := runshell(context.Background(), shellcode)
+	cmd, codepath, err := runshell(context.Background(), shellcode)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		os.Remove(codepath)
+	}()
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatal(err)
@@ -67,6 +77,7 @@ func TestImport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	pattern := `[0-1]\.[0-9]{1,2}`
 	re := regexp.MustCompile(pattern)
 	t.Log(re.FindString(string(out)) > "1.11")

@@ -1,7 +1,7 @@
 FROM alpine
 
 WORKDIR /app
-COPY build/crocodile-linux-amd64 crocodile
+COPY crocodile-linux-amd64 crocodile
 CMD ["/app/crocodile","server","-c","core.toml"]
 
 # docker build -t labulaka522/crocodile . -f Dockerfile

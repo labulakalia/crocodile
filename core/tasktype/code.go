@@ -34,6 +34,7 @@ const (
 	golang
 	python
 	nodejs
+	windowsbat
 )
 
 // String return Lanf str
@@ -49,12 +50,14 @@ func (l Lang) String() string {
 		return "golang"
 	case nodejs:
 		return "nodejs"
+	case windowsbat:
+		return "windowsbat"
 	default:
 		return "unknow lang"
 	}
 }
 
-func getcmd(ctx context.Context, lang Lang, code string) (*exec.Cmd, error) {
+func getcmd(ctx context.Context, lang Lang, code string) (*exec.Cmd, string, error) {
 	switch lang {
 	case shell:
 		return runshell(ctx, code)
@@ -66,86 +69,88 @@ func getcmd(ctx context.Context, lang Lang, code string) (*exec.Cmd, error) {
 		return rungolang(ctx, code)
 	case nodejs:
 		return runnodejs(ctx, code)
+	case windowsbat:
+		return runwindowsbat(ctx, code)
 	default:
-		return nil, fmt.Errorf("can not support lang: %d", lang)
+		return nil, "", fmt.Errorf("can not support lang: %d", lang)
 	}
 }
 
 // Shell
 // run shell code
-func runshell(ctx context.Context, code string) (*exec.Cmd, error) {
+func runshell(ctx context.Context, code string) (*exec.Cmd, string, error) {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		shell = "/bin/sh"
 	}
 	tmpfile, err := ioutil.TempFile("", "*.sh")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	shellcodepath := tmpfile.Name()
 	_, err = tmpfile.WriteString(code)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	tmpfile.Sync()
 	tmpfile.Close()
 	cmd := exec.CommandContext(ctx, shell, shellcodepath)
-	return cmd, nil
+	return cmd, shellcodepath, nil
 }
 
 // Python
 // run python code
-func runpython(ctx context.Context, code string) (*exec.Cmd, error) {
+func runpython(ctx context.Context, code string) (*exec.Cmd, string, error) {
 	tmpfile, err := ioutil.TempFile("", "*.py")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	pythoncodepath := tmpfile.Name()
 	_, err = tmpfile.WriteString(code)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	tmpfile.Sync()
 	tmpfile.Close()
 	cmd := exec.CommandContext(ctx, "python", pythoncodepath)
-	return cmd, nil
+	return cmd, pythoncodepath, nil
 }
 
 // Python3
 // run python code
-func runpython3(ctx context.Context, code string) (*exec.Cmd, error) {
+func runpython3(ctx context.Context, code string) (*exec.Cmd, string, error) {
 	tmpfile, err := ioutil.TempFile("", "*.py")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	pythoncodepath := tmpfile.Name()
+	python3codepath := tmpfile.Name()
 	_, err = tmpfile.WriteString(code)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	tmpfile.Sync()
 	tmpfile.Close()
-	cmd := exec.CommandContext(ctx, "python3", pythoncodepath)
-	return cmd, nil
+	cmd := exec.CommandContext(ctx, "python3", python3codepath)
+	return cmd, python3codepath, nil
 }
 
 // Javascript
 // run python code
-func runnodejs(ctx context.Context, code string) (*exec.Cmd, error) {
+func runnodejs(ctx context.Context, code string) (*exec.Cmd, string, error) {
 	tmpfile, err := ioutil.TempFile("", "*.js")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	pythoncodepath := tmpfile.Name()
+	nodejscodepath := tmpfile.Name()
 	_, err = tmpfile.WriteString(code)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	tmpfile.Sync()
 	tmpfile.Close()
-	cmd := exec.CommandContext(ctx, "node", pythoncodepath)
-	return cmd, nil
+	cmd := exec.CommandContext(ctx, "node", nodejscodepath)
+	return cmd, nodejscodepath, nil
 }
 
 // Golang
@@ -158,13 +163,14 @@ go `
 )
 
 // run golang code
-func rungolang(ctx context.Context, code string) (*exec.Cmd, error) {
+func rungolang(ctx context.Context, code string) (*exec.Cmd, string, error) {
 	// golang version must rather equal 1.11
 	// GO111MODULE ust be on
-	cmd := exec.Command("go", "version")
+	cmd := exec.CommandContext(context.Background(), "go", "version")
+
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	pattern := `[0-1]\.[0-9]{1,2}`
@@ -172,7 +178,7 @@ func rungolang(ctx context.Context, code string) (*exec.Cmd, error) {
 	goversion := re.FindString(string(out))
 	if goversion < "1.11" {
 		err := errors.New("go version must rather equal go1.11 and enable go module")
-		return nil, err
+		return nil, "", err
 	}
 	if os.Getenv("GO111MODULE") != "on" {
 		os.Setenv("GO111MODULE", "on")
@@ -181,24 +187,43 @@ func rungolang(ctx context.Context, code string) (*exec.Cmd, error) {
 
 	tmpdir, err := ioutil.TempDir("", "crocodile_")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	err = ioutil.WriteFile(path.Join(tmpdir, modname), []byte(modcontent), os.ModePerm)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	gonamefile := gonamepre + strconv.FormatInt(time.Now().Unix(), 10) + ".go"
 	err = ioutil.WriteFile(path.Join(tmpdir, gonamefile), []byte(code), os.ModePerm)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	os.Chdir(tmpdir)
 
 	gocmd := exec.CommandContext(ctx, "go", "run", gonamefile)
 
-	return gocmd, nil
+	return gocmd, tmpdir, nil
+}
+
+// Windows bat
+// run bat code
+func runwindowsbat(ctx context.Context, code string) (*exec.Cmd, string, error) {
+	tmpfile, err := ioutil.TempFile("", "*.bat")
+	if err != nil {
+		return nil, "", err
+	}
+	batcodepath := tmpfile.Name()
+	_, err = tmpfile.WriteString(code)
+	if err != nil {
+		return nil, "", err
+	}
+
+	tmpfile.Sync()
+	tmpfile.Close()
+	cmd := exec.CommandContext(ctx, "cmd", "/C", batcodepath)
+	return cmd, batcodepath, nil
 }
 
 // Run implment TaskRuner
@@ -207,13 +232,21 @@ func rungolang(ctx context.Context, code string) (*exec.Cmd, error) {
 func (ds DataCode) Run(ctx context.Context) io.ReadCloser {
 	pr, pw := io.Pipe()
 	go func() {
-		var exitCode = DefaultExitCode
+		var (
+			exitCode = DefaultExitCode
+			err      error
+			codepath string
+			cmd      *exec.Cmd
+		)
 		defer pw.Close()
 		defer func() {
 			now := time.Now().Local().Format("2006-01-02 15:04:05: ")
 			pw.Write([]byte(fmt.Sprintf("%sTask Run Finished,Return Code:%5d", now, exitCode))) // write exitCode,total 5 byte
+			if codepath != "" {
+				_ = os.Remove(codepath)
+			}
 		}()
-		cmd, err := getcmd(ctx, ds.Lang, ds.Code)
+		cmd, codepath, err = getcmd(ctx, ds.Lang, ds.Code)
 		if err != nil {
 			pw.Write([]byte(err.Error()))
 			return

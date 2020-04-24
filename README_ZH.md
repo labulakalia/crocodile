@@ -10,7 +10,7 @@
 
 
 ## Introduction
-基于Golang开发的分布式任务调度系统，支持http请求、运行golang、python、shell、python3、nodejs等调度任务  
+基于Golang开发的分布式任务调度系统，支持http、golang、python、shell、python3、nodejs、bat等调度任务  
 
 ## Screenshot
 <details>
@@ -95,6 +95,7 @@
 ## Supported platforms
 - Linux
 - Mac
+- Windows
 
 
 ## Quick Start
@@ -140,6 +141,8 @@ docker-compose up -d
     - 作为Worker节点运行`make runc`
 > sql目录也是被打包在`go-bindata`中的，在安装时会从`go-bindata`生成的文件读取sql创建语句，如果修改了sql，就重新执行下`make bin-data`
 
+## Doc
+[Wiki](https://github.com/labulaka521/crocodile/wiki/)
 
 # TODO
 [Trello_Crocodile](https://trello.com/b/9o299bds/crocodile)

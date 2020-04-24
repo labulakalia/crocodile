@@ -8,27 +8,34 @@ APP_NAME=crocodile
 
 sources=$(wildcard *.go)
 
-build = GOOS=$(1) GOARCH=$(2) go build -o ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2) -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go 
-md5 = md5sum ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2) > ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)_checksum.txt
-tar =  cp core.toml ${BUILD_DIR} && tar -cvzf ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2).tar.gz  -C ${BUILD_DIR}  $(APP_NAME)-$(1)-$(2) $(APP_NAME)-$(1)-$(2)_checksum.txt core.toml
-delete = rm -rf ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2) ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)_checksum.txt ${BUILD_DIR}/core.toml
-ALL_LINUX = linux-amd64 \
-	linux-386 \
-	linux-arm \
-	linux-arm64
+build = GOOS=$(1) GOARCH=$(2) go build -o ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)$(3) -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go  
+md5 = md5sum ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)$(3) > ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)_checksum.txt
+tar =  cp core.toml ${BUILD_DIR} && tar -cvzf ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2).tar.gz  -C ${BUILD_DIR}  $(APP_NAME)-$(1)-$(2)$(3) $(APP_NAME)-$(1)-$(2)_checksum.txt core.toml
+delete = rm -rf ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)$(3) ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)_checksum.txt ${BUILD_DIR}/core.toml
 
-ALL = $(ALL_LINUX) \
-	darwin-amd64
+LINUX = linux-amd64
 
-build_linux: $(ALL_LINUX:%=build/%)
+WINDOWS = windows-amd64-.exe
+
+DARWIN = darwin-amd64
+
+ALL = $(LINUX) \
+	$(WINDOWS) \
+	$(DARWIN)
+
+build_linux: $(LINUX:%=build/%)
+
+build_windows: $(WINDOWS:%=build/%)
+
+build_darwin: $(DARWIN:%=build/%)
 
 build_all: $(ALL:%=build/%)
 
 build/%: 
-	$(call build,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
-	$(call md5,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
-	$(call tar,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
-	# $(call delete,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)))
+	$(call build,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)),$(word 3, $(subst -, ,$*)))
+	$(call md5,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)),$(word 3, $(subst -, ,$*)))
+	$(call tar,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)),$(word 3, $(subst -, ,$*)))
+	$(call delete,$(firstword $(subst -, , $*)),$(word 2, $(subst -, ,$*)),$(word 3, $(subst -, ,$*)))
 
 clean:
 	rm -rf ${BUILD_DIR}
