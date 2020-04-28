@@ -25,6 +25,7 @@ import (
 	pb "github.com/labulaka521/crocodile/core/proto"
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
+	"github.com/labulaka521/crocodile/core/utils/resp"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -280,7 +281,7 @@ func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, o
 func (t *task2) cleantaskinfos() {
 	// 暂停三秒后再删除
 	time.Sleep(time.Second * 3)
-	log.Debug("start clean old key data",zap.String("task", t.name))
+	log.Debug("start clean old key data", zap.String("task", t.name))
 	taskinfos := "task:" + t.id
 	var res []string
 	err := t.redis.LRange(taskinfos, 0, 1).ScanSlice(&res)
@@ -782,6 +783,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 			taskdata.HostGroup, taskdata.HostGroupID, err)
 		goto Check
 	}
+	defer conn.Close()
 
 	t.writelogt(taskruntype, id, "start run task %s[%s] on host %s", taskdata.Name, taskdata.ID, conn.Target())
 	tdata, err = json.Marshal(taskdata.TaskData)
@@ -804,8 +806,9 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 	} else {
 		taskctx, ctxcancel = context.WithCancel(ctx)
 	}
-
 	defer ctxcancel()
+
+	// defer ctxcancel()
 	taskclient = pb.NewTaskClient(conn)
 
 	taskrespstream, err = taskclient.RunTask(taskctx, taskreq)
@@ -828,9 +831,15 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 				goto Check
 			}
 			err = DealRPCErr(err)
+			if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
+				// worker host is down,so we need run this fail task again
+				log.Error("worker host is down, run task again", zap.String("taskid", id))
+				t.writelogt(taskruntype, id, "worker host %s is down,so run task %s again", conn.Target(), taskdata.Name)
+				return t.runTask(ctx, id, taskruntype)
+			}
 			t.writelogt(taskruntype, id, "Task %s[%s] Run Fail: %v", taskdata.Name, id, err.Error())
 			// Alarm
-			log.Error("Recv failed", zap.Error(err))
+			log.Error("recv failed", zap.Error(err))
 			// err = resp.GetMsgErr(taskrespcode)
 			goto Check
 		}
@@ -838,6 +847,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 		output = append(output, pbtaskresp.GetResp()...)
 	}
 Check:
+
 	// 存储任务结果
 	tmptaskresp := define.TaskResp{
 		TaskID:   id,
@@ -920,6 +930,12 @@ func Init2() error {
 		Addr:     config.CoreConf.Server.Redis.Addr,
 		Password: config.CoreConf.Server.Redis.PassWord,
 	})
+
+	err := client.Ping().Err()
+	if err != nil {
+		log.Error("connect redis failed", zap.String("addr", config.CoreConf.Server.Redis.Addr))
+		return err
+	}
 
 	Cron2 = &cacheSchedule2{
 		ts:    make(map[string]*task2),
