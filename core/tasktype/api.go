@@ -68,6 +68,7 @@ func (da DataAPI) Run(ctx context.Context) io.ReadCloser {
 			pw.Write(customerr.Bytes())
 			return
 		}
+		defer doresp.Body.Close()
 
 		bs, err := ioutil.ReadAll(doresp.Body)
 		if err != nil {
@@ -76,20 +77,6 @@ func (da DataAPI) Run(ctx context.Context) io.ReadCloser {
 		}
 		pw.Write(bs)
 
-		//var out = make([]byte, 1024)
-		//for {
-		//	n, err := doresp.Body.Read(out)
-		//	if err != nil {
-		//		if err == io.EOF {
-		//			break
-		//		}
-		//		log.Error("Read failed", zap.Error(err))
-		//		return
-		//	}
-		//	if n > 0 {
-		//		pw.Write(out[:n])
-		//	}
-		//}
 		if doresp.StatusCode > 0 {
 			exitCode = doresp.StatusCode
 		}
