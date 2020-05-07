@@ -118,7 +118,7 @@ func Oprtation() func(c *gin.Context) {
 				log.Error("req status code is not 0, do not save", zap.Int("statuscode", c.GetInt("statuscode")))
 				return
 			}
-			model.SaveOperateLog(ctx, c,
+			err = model.SaveOperateLog(ctx, c,
 				uid,
 				username,
 				role,

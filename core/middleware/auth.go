@@ -123,6 +123,5 @@ func PermissionControl() func(c *gin.Context) {
 		c.Writer.Header().Add("WWW-Authenticate", fmt.Sprintf("Bearer realm='%s'", resp.GetMsg(code)))
 		resp.JSON(c, resp.ErrUnauthorized, nil)
 		c.Abort()
-		return
 	}
 }

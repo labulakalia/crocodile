@@ -1059,7 +1059,7 @@ func (s *cacheSchedule2) runSchedule(taskid string) {
 		next = expr.Next(last)
 		select {
 		case <-task.close:
-			log.Info("close task Schedule", zap.String("ID", taskid), zap.Any("Name", task.name))
+			log.Info("close task Schedule", zap.String("taskid", taskid), zap.Any("name", task.name))
 			return
 		case <-time.After(next.Sub(last)):
 			last = next
