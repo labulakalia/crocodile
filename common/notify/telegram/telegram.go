@@ -60,7 +60,7 @@ func (t *Telegram) Send(tos []string, title string, content string) error {
 			return err
 		}
 		go func(uid int) {
-			t.bot.Send(&tb.User{ID: uid}, title+"\n"+title)
+			_, _ = t.bot.Send(&tb.User{ID: uid}, title+"\n"+title)
 		}(uid)
 	}
 	return nil

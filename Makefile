@@ -8,7 +8,7 @@ APP_NAME=crocodile
 
 sources=$(wildcard *.go)
 
-build = GOOS=$(1) GOARCH=$(2) go build -o ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)$(3) -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go  
+build = CGO_ENABLED=0 GOOS=$(1) GOARCH=$(2) go build -o ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)$(3) -ldflags "-X main.v=${VERSION} -X main.c=${COMMIT} -X main.d=${BUILDDATE}" main.go  
 md5 = md5sum ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)$(3) > ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)_checksum.txt
 tar =  cp core.toml ${BUILD_DIR} && tar -cvzf ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2).tar.gz  -C ${BUILD_DIR}  $(APP_NAME)-$(1)-$(2)$(3) $(APP_NAME)-$(1)-$(2)_checksum.txt core.toml
 delete = rm -rf ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)$(3) ${BUILD_DIR}/$(APP_NAME)-$(1)-$(2)_checksum.txt ${BUILD_DIR}/core.toml

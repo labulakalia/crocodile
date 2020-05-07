@@ -19,7 +19,6 @@ func TestGetId(t *testing.T) {
 		t.Fatalf("NewWorker Err: %v", err)
 	}
 	id := worker.generateID()
-	id = worker.generateID()
 	t.Log(id)
 	err = CheckID(id)
 	if err != nil {

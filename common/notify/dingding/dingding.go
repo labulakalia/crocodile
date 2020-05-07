@@ -19,7 +19,7 @@ func getsign(secret string, now string) string {
 	signstr := now + "\n" + secret
 	// HmacSHA256
 	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte(signstr))
+	_, _ = h.Write([]byte(signstr))
 	hm := h.Sum(nil)
 	// Base64 encode
 	b := base64.StdEncoding.EncodeToString(hm)
