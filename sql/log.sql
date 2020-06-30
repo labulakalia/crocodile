@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS `crocodile_log` (
     `endtime` BIGINT NOT NULL DEFAULT 0 COMMENT "结束时间 毫秒",
     `totalruntime` INT NOT NULL  DEFAULT 0 COMMENT "总共运行时间",
     `status` INT NOT NULL  DEFAULT 0  COMMENT "执行结束 1:成功 -1:失败",
-    `taskresps` TEXT COMMENT "任务日志",
+    `taskresps` MEDIUMTEXT COMMENT "任务日志",
     `triggertype` INT NOT NULL  DEFAULT 0 COMMENT "触发方式",
     `errcode` INT NOT NULL  DEFAULT 0 COMMENT "错误返回码",
     `errmsg` TEXT COMMENT "错误信息",-- "出错信息",
