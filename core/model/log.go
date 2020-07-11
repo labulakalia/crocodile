@@ -18,7 +18,7 @@ import (
 
 // SaveLog  save task reps log
 func SaveLog(ctx context.Context, l *define.Log) error {
-	log.Info("start savelog", zap.Any("tasklog", l))
+	log.Info("start save tasklog", zap.String("task", l.Name))
 	savesql := `INSERT INTO crocodile_log
 				(name,
 				taskid,
@@ -79,12 +79,17 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 					crocodile_log`
 	args := []interface{}{}
 	if taskname != "" {
-		args = append(args, taskname)
-		getsql += ` WHERE name=?`
+		args = append(args, taskname+"%")
+		getsql += ` WHERE name LIKE ?`
 	}
 
 	if status != 0 {
-		getsql += ` AND status=?`
+		if len(args) == 1 {
+			getsql += ` AND status=?`
+		} else {
+			getsql += ` WHERE status=?`
+		}
+		
 		args = append(args, status)
 	}
 	count, err := countColums(ctx, getsql, args...)
