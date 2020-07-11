@@ -279,8 +279,6 @@ func (t *task2) GetTaskRealLog(taskruntype define.TaskRespType, realid string, o
 
 // cleantaskinfos return task's parent child id
 func (t *task2) cleantaskinfos() {
-	// 暂停三秒后再删除
-	time.Sleep(time.Second * 3)
 	log.Debug("start clean old key data", zap.String("task", t.name))
 	taskinfos := "task:" + t.id
 	var res []string
@@ -305,6 +303,9 @@ func (t *task2) gettaskinfos() ([]string, error) {
 	err := t.redis.LRange(taskinfos, 0, -1).ScanSlice(&res)
 	if err != nil {
 		return nil, fmt.Errorf("t.redis.LRange failed: %w", err)
+	}
+	if len(res) == 0 {
+		return nil, fmt.Errorf("get taskid %s infos res is empty", t.id)
 	}
 	return res, err
 }
@@ -449,18 +450,18 @@ func (t *task2) savetasklog() error {
 		} else {
 			tr.Status = taskstatus.(define.TaskStatus).String()
 		}
-
 		tasklogres.TaskResps = append(tasklogres.TaskResps, &tr)
 	}
 
-	// clean keys
-	go t.cleantaskinfos()
 	// check task res
 	go alarm.JudgeNotify(tasklogres)
 	// save log
 	err = model.SaveLog(context.Background(), tasklogres)
-
-	return err
+	if err != nil {
+		return err
+	}
+    t.cleantaskinfos()
+	return nil
 }
 
 func (t *task2) writelog(tasrunktype define.TaskRespType, realid string, value []byte) {
@@ -910,7 +911,7 @@ Check:
 			t.setdata(taskruntype, id, define.TsFail, taskstatus)
 		}
 	} else {
-		log.Error("task run success", zap.String("task", realtask.name))
+		log.Info("task run success", zap.String("task", realtask.name))
 		t.setdata(taskruntype, id, define.TsFinish, taskstatus)
 		// 如有任务失败，那么还未运行的任务可以标记为取消
 	}

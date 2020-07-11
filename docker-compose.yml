@@ -25,6 +25,10 @@ services:
             MYSQL_DATABASE: "crocodile"
         # volumes: 
         #   - "/data:/usr/lib/mysql"   # mysql数据持久化
+        ports: 
+          - 3306:3306
     redis:
         image: redis:latest
         restart: always
+        ports: 
+          - 6379:6379
