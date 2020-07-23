@@ -182,8 +182,19 @@ func ChangeUserInfo(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
+	exist, err := model.Check(ctx, model.TBUser, model.UserName, newinfo.Name, newinfo.ID)
+	if err != nil {
+		log.Error("IsExist failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	if exist {
+		resp.JSON(c, resp.ErrUserNameExist, nil)
+		return
+	}
 	err = model.ChangeUserInfo(ctx,
 		uid,
+		newinfo.Name,
 		newinfo.Email,
 		newinfo.WeChat,
 		newinfo.DingPhone,
@@ -251,6 +262,83 @@ func AdminChangeUser(c *gin.Context) {
 		return
 	}
 
+	resp.JSON(c, resp.Success, nil)
+}
+
+// AdminDeleteUser will delete user
+// @Summary admin delete user
+// @Tags User
+// @Description admin delet user
+// @Produce json
+// @Param User body define.AdminChangeUser true "Admin Change User"
+// @Success 200 {object} resp.Response
+// @Router /api/v1/user/admin [delete]
+// @Security ApiKeyAuth
+func AdminDeleteUser(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(),
+		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	defer cancel()
+
+	user := define.GetID{}
+	err := c.ShouldBindJSON(&user)
+	if err != nil {
+		log.Error("ShouldBindJSON failed", zap.Error(err))
+		resp.JSON(c, resp.ErrBadRequest, nil)
+		return
+	}
+
+	var role define.Role
+	if v, ok := c.Get("role"); ok {
+		role = v.(define.Role)
+	}
+	if role != define.AdminUser {
+		resp.JSON(c, resp.ErrUnauthorized, nil)
+		return
+	}
+	// 只能删除普通用户，不能删除admin用户
+	userinfo, err := model.GetUserByID(ctx, user.ID)
+	if err != nil {
+		log.Error("GetUserByID failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	if userinfo.Role == define.AdminUser {
+		resp.JSON(c, resp.ErrUnauthorized, nil)
+		return
+	}
+	// TODO only admin
+	exist, err := model.Check(ctx, model.TBUser, model.ID, user.ID)
+	if err != nil {
+		log.Error("IsExist failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+	}
+	if !exist {
+		resp.JSON(c, resp.ErrUserNotExist, nil)
+		return
+	}
+	// 检查用户是否创建资源
+	ok1, err := model.Check(ctx, model.TBTask, model.CreateByID, user.ID)
+	if err != nil {
+		log.Error("Check failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	ok2, err := model.Check(ctx, model.TBHostgroup, model.CreateByID, user.ID)
+	if err != nil {
+		log.Error("Check failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
+	if ok1 || ok2 {
+		resp.JSON(c, resp.ErrDelUserUseByOther, nil)
+		return
+	}
+	err = model.DeleteUser(ctx, user.ID)
+	if err != nil {
+		log.Error("DeleteUser failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+	}
 	resp.JSON(c, resp.Success, nil)
 }
 

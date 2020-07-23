@@ -74,9 +74,10 @@ func NewHTTPRouter() *http.Server {
 	{
 		ru.POST("/registry", user.RegistryUser) // only admin // 管理员创建了新的用户。。。
 		ru.GET("/info", user.GetUser)
-		ru.GET("/all", user.GetUsers)          // only admin
-		ru.PUT("/admin", user.AdminChangeUser) // only admin  // 管理员修改了某某用户
-		ru.PUT("/info", user.ChangeUserInfo)   // 某某修改了个人信息
+		ru.GET("/all", user.GetUsers)             // only admin
+		ru.PUT("/admin", user.AdminChangeUser)    // only admin  // 管理员修改了某某用户
+		ru.DELETE("/admin", user.AdminDeleteUser) // only admin  // 管理员删除普通用户
+		ru.PUT("/info", user.ChangeUserInfo)      // 某某修改了个人信息
 		ru.POST("/login", user.LoginUser)
 		ru.POST("/logout", user.LogoutUser) // 某某注销登陆
 		ru.GET("/select", user.GetSelect)

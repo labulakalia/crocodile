@@ -64,15 +64,15 @@ anonymous = false
 skipverify = false
 # 钉钉
 [notify.dingding]
-enable = false
-webhook = ""
+enable = true
+webhook = "https://oapi.dingtalk.com/robot/send?access_token=6ae9d11ebb800df912e5bc4288de1a43022291de52adabbb4fcacc04ac05ca3e"
 # 安全设置
 # 1 自定义关键字
 # 2 加签
 # 3 IP地址
-securelevel = 1
+securelevel = 2
 # 如果securelevel 为2 需要填写加签密钥
-secret = ""
+secret = "SECa1ae99f317a9a2b6c31e4167181825b5bec688cd859d6d62e7c936e6f76ef9da"
 # slack
 [notify.slack]
 enable = false
@@ -94,7 +94,7 @@ webhookurl = "http://127.0.0.1:8088"
 # 执行器设置
 [client]
 # client port
-port =  8088     # 0为随机端口
+port =  8089     # 0为随机端口
 # 调度中心集群地址，可以设置多个防止单点故障
 serveraddrs = ["127.0.0.1:8080"]
 # 将保存只此主机组，如果不存在或者选项为空将忽略

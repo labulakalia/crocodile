@@ -184,6 +184,17 @@ func DeleteHostGroup(c *gin.Context) {
 			return
 		}
 	}
+	ok, err := model.Check(ctx, model.TBTask, model.HostGroupID, hostgroup.ID)
+	if err != nil {
+		log.Error("Check failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer, nil)
+		return
+
+	}
+	if ok {
+		resp.JSON(c, resp.ErrDelHostGroupUseByTask, nil)
+		return
+	}
 
 	err = model.DeleteHostGroup(ctx, hostgroup.ID)
 	if err != nil {
