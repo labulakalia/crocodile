@@ -24,7 +24,9 @@ var msgcode = map[int]string{
 
 	ErrCronExpr: "CronExpr表达式不规范",
 
-	ErrTaskUseByOtherTask: "存在任务依赖此任务，请先在其他的任务的父子任务中移除此任务",
+	ErrTaskUseByOtherTask:    "存在任务依赖此任务，请先在其他的任务的父子任务中移除此任务",
+	ErrDelHostGroupUseByTask: "正在被其他的任务使用，不能删除",
+	ErrDelUserUseByOther:     "请先删除此用户创建的主机组或者任务后再删除",
 
 	ErrInternalServer: "服务端错误",
 

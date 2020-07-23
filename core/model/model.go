@@ -50,6 +50,12 @@ const (
 	UID // uid正常
 	// NameCreateByUID check name's createByUID
 	NameCreateByUID
+	// HostGroupID check hostgroup is used by tasks
+	HostGroupID
+	// CreateByID check use is used by hostgroup or tasks
+	CreateByID
+	// UserName check exist user name 
+	UserName
 )
 
 const (
@@ -92,6 +98,13 @@ func Check(ctx context.Context, table string, checkType checkType, args ...inter
 	case UID:
 		// 检查UID状态是否正常
 		check += "id=? AND forbid=false"
+	case HostGroupID:
+		check += "hostGroupID=?"
+	case CreateByID:
+		check += "createByID=?"
+	case UserName:
+		// 修改用户名 检查新的用户名不与除自已外其他的用户名重复
+		check += "name=? AND id!=?"
 	default:
 		return false, errors.New("reqType unSupport")
 	}
@@ -100,7 +113,7 @@ func Check(ctx context.Context, table string, checkType checkType, args ...inter
 		return false, fmt.Errorf("sqlDb.GetConn failed: %w", err)
 	}
 	defer conn.Close()
-
+	log.Debug("check sql", zap.String("sql", check),zap.Any("args", args))
 	stmt, err := conn.PrepareContext(ctx, check)
 	if err != nil {
 		return false, fmt.Errorf("conn.PrepareContext failed: %w", err)

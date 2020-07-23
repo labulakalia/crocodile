@@ -604,7 +604,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 				} else {
 					t.redis.PExpire(lockid, t.cronsub)
 				}
-				
+
 			}
 		}
 	}()
@@ -794,7 +794,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 			taskdata.HostGroup, taskdata.HostGroupID, err)
 		goto Check
 	}
-	defer conn.Close()
+	// defer conn.Close()
 
 	t.writelogt(taskruntype, id, "start run task %s[%s] on host %s", taskdata.Name, taskdata.ID, conn.Target())
 	tdata, err = json.Marshal(taskdata.TaskData)
@@ -841,6 +841,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 				taskrespcode, err = t.getreturncode(taskruntype, id)
 				goto Check
 			}
+			log.Error("recv task stream failed", zap.Error(err))
 			err = DealRPCErr(err)
 			if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
 				// worker host is down,so we need run this fail task again
@@ -983,7 +984,15 @@ func Init2() error {
 // Add task to schedule
 func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next Next, canrun bool) {
 	log.Debug("start add task", zap.String("taskid", taskid), zap.String("taskname", taskname))
-	s.Lock()
+
+	oldtask, exist := s.gettask(taskid)
+	if exist {
+		close(oldtask.close)
+		if oldtask.ctxcancel != nil {
+			oldtask.ctxcancel()
+		}
+		delete(s.ts, taskname)
+	}
 	t := task2{
 		id:       taskid,
 		name:     taskname,
@@ -993,17 +1002,10 @@ func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next 
 		canrun:   canrun,
 		redis:    s.redis,
 	}
-	oldtask, exist := s.ts[taskid]
-	if exist {
-		close(oldtask.close)
-		if oldtask.ctxcancel != nil {
-			oldtask.ctxcancel()
-		}
-		delete(s.ts, taskname)
-	}
+	s.Lock()
 	s.ts[taskid] = &t
-	go s.runSchedule(taskid)
 	s.Unlock()
+	go s.runSchedule(taskid)
 }
 
 // Del schedule task
@@ -1064,7 +1066,7 @@ func (s *cacheSchedule2) runSchedule(taskid string) {
 	task.cronsub = expr.Next(last).Sub(last) / 4
 	if task.cronsub > time.Second*30 {
 		task.cronsub = time.Second * 30
-	} 
+	}
 
 	for {
 		next = expr.Next(last)
