@@ -28,6 +28,11 @@ type DataAPI struct {
 // Body
 // Test
 
+
+func (da DataAPI)Type() string {
+	return "api"
+}
+
 // Run implment TaskRun interface
 func (da DataAPI) Run(ctx context.Context) io.ReadCloser {
 	pr, pw := io.Pipe()

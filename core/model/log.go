@@ -528,7 +528,12 @@ func GetNotifyByUID(ctx context.Context, uid string) ([]define.Notify, error) {
 
 // NotifyRead make notify status is readed
 func NotifyRead(ctx context.Context, id int, uid string) error {
-	updatesql := `UPDATE crocodile_notify SET is_read=? WHERE id=? AND notifyuid=?`
+	args := []interface{}{true, uid}
+	updatesql := `UPDATE crocodile_notify SET is_read=? WHERE notifyuid=?`
+	if id != 0 {
+		updatesql += "  AND id=?"
+		args = append(args, id)
+	}
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return fmt.Errorf("db.GetConn failed: %w", err)
@@ -539,7 +544,7 @@ func NotifyRead(ctx context.Context, id int, uid string) error {
 	if err != nil {
 		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
-	_, err = stmt.ExecContext(ctx, true, id, uid)
+	_, err = stmt.ExecContext(ctx, args...)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}

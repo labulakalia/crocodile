@@ -568,6 +568,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 		log.Warn("ignore run task,because this task is running", zap.String("taskname", t.name))
 		return
 	}
+	log.Info("start run task", zap.String("taskname", t.name))
 
 	rand.Seed(time.Now().UnixNano())
 	randstr := strconv.FormatInt(time.Now().UnixNano()/int64(rand.Int()), 10)
@@ -595,7 +596,11 @@ func (t *task2) StartRun(trigger define.Trigger) {
 		for {
 			select {
 			case <-stopexpire:
+<<<<<<< HEAD
 				log.Info("stop expire lock", zap.String("lockid", lockid))
+=======
+				log.Debug("stop expire lock", zap.String("lockid", lockid))
+>>>>>>> dev
 				ticker.Stop()
 				return
 			case <-ticker.C:
@@ -604,7 +609,11 @@ func (t *task2) StartRun(trigger define.Trigger) {
 				} else {
 					t.redis.PExpire(lockid, t.cronsub)
 				}
+<<<<<<< HEAD
 				
+=======
+
+>>>>>>> dev
 			}
 		}
 	}()
@@ -794,7 +803,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 			taskdata.HostGroup, taskdata.HostGroupID, err)
 		goto Check
 	}
-	defer conn.Close()
+	// defer conn.Close()
 
 	t.writelogt(taskruntype, id, "start run task %s[%s] on host %s", taskdata.Name, taskdata.ID, conn.Target())
 	tdata, err = json.Marshal(taskdata.TaskData)
@@ -841,6 +850,7 @@ func (t *task2) runTask(ctx context.Context, /*real run task id*/
 				taskrespcode, err = t.getreturncode(taskruntype, id)
 				goto Check
 			}
+			log.Error("recv task stream failed", zap.Error(err))
 			err = DealRPCErr(err)
 			if err.Error() == resp.GetMsgErr(resp.ErrRPCUnavailable).Error() {
 				// worker host is down,so we need run this fail task again
@@ -970,7 +980,7 @@ func Init2() error {
 		log.Error("GetTasks failed", zap.Error(err))
 		return err
 	}
-	log.Debug("start init task", zap.Any("task", eps))
+	log.Debug("start init task", zap.Int("task", len(eps)))
 	for _, t := range eps {
 		Cron2.addtask(t.ID, t.Name, t.Cronexpr, GetRoutePolicy(t.HostGroupID, t.RoutePolicy), t.Run)
 	}
@@ -983,7 +993,15 @@ func Init2() error {
 // Add task to schedule
 func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next Next, canrun bool) {
 	log.Debug("start add task", zap.String("taskid", taskid), zap.String("taskname", taskname))
-	s.Lock()
+
+	oldtask, exist := s.gettask(taskid)
+	if exist {
+		close(oldtask.close)
+		if oldtask.ctxcancel != nil {
+			oldtask.ctxcancel()
+		}
+		delete(s.ts, taskname)
+	}
 	t := task2{
 		id:       taskid,
 		name:     taskname,
@@ -993,17 +1011,10 @@ func (s *cacheSchedule2) addtask(taskid, taskname string, cronExpr string, next 
 		canrun:   canrun,
 		redis:    s.redis,
 	}
-	oldtask, exist := s.ts[taskid]
-	if exist {
-		close(oldtask.close)
-		if oldtask.ctxcancel != nil {
-			oldtask.ctxcancel()
-		}
-		delete(s.ts, taskname)
-	}
+	s.Lock()
 	s.ts[taskid] = &t
-	go s.runSchedule(taskid)
 	s.Unlock()
+	go s.runSchedule(taskid)
 }
 
 // Del schedule task

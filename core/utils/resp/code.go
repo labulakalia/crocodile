@@ -38,6 +38,11 @@ const (
 	// ErrTaskUseByOtherTask 别的任务依赖此任务，请先在其他的任务的父子任务中移除此任务
 	ErrTaskUseByOtherTask = 10423
 
+	// ErrDelHostGroupUseByTask 正在被其他的任务使用，不能删除
+	ErrDelHostGroupUseByTask = 10424
+	// ErrDelUserUseByOther // 请先删除此用户创建的主机组或者任务后再删除
+	ErrDelUserUseByOther = 10425
+
 	// ErrInternalServer 服务端错误
 	ErrInternalServer = 10500
 	// ErrCtxDeadlineExceeded 调用超时

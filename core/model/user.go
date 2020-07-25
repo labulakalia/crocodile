@@ -308,7 +308,7 @@ func AdminChangeUser(ctx context.Context, id string, role define.Role, forbid bo
 
 // ChangeUserInfo user change self's config define.ChangeUserSelf
 // func ChangeUserInfo(ctx context.Context, id string, changeinfo *define.ChangeUserSelf) error {
-func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, telegram, password, remark string) error {
+func ChangeUserInfo(ctx context.Context, id, name, email, wechat, dingding, telegram, password, remark string) error {
 	var (
 		changeuser   string
 		hashpassword string
@@ -333,6 +333,7 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, tel
 	}
 	changeuser = `UPDATE crocodile_user 
 					SET hashpassword=?,
+					    name=?,
 						email=?,
 						wechat=?,
 						dingphone=?,
@@ -349,6 +350,7 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, tel
 	defer stmt.Close()
 
 	_, err = stmt.ExecContext(ctx, hashpassword,
+		name,
 		email,
 		wechat,
 		dingding,
@@ -357,6 +359,26 @@ func ChangeUserInfo(ctx context.Context, id string, email, wechat, dingding, tel
 		remark,
 		id,
 	)
+	if err != nil {
+		return fmt.Errorf("stmt.ExecContext failed: %w", err)
+	}
+	return nil
+}
+
+// DeleteUser will delete user msg
+func DeleteUser(ctx context.Context, id string) error {
+	delsql := `DELETE FROM crocodile_user WHERE id=?`
+	conn, err := db.GetConn(ctx)
+	if err != nil {
+		return fmt.Errorf("db.Db.GetConn failed: %w", err)
+	}
+	defer conn.Close()
+	stmt, err := conn.PrepareContext(ctx, delsql)
+	if err != nil {
+		return fmt.Errorf("conn.PrepareContext failed: %w", err)
+	}
+	defer stmt.Close()
+	_, err = stmt.ExecContext(ctx, id)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext failed: %w", err)
 	}

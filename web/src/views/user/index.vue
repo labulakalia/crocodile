@@ -125,6 +125,13 @@
           <template slot-scope="scope">
             <el-button-group>
               <el-button type="warning" size="mini" @click="changeuserpre(scope.row)">修改</el-button>
+              <el-popconfirm
+                :hideIcon="true"
+                title="确定删除此用户(只能删除非管理员用户)"
+                @onConfirm="deleteuser(scope.row.id)"
+              >
+                <el-button slot="reference" type="danger" size="mini">删除</el-button>
+              </el-popconfirm>
             </el-button-group>
           </template>
         </el-table-column>
@@ -143,7 +150,12 @@
 </template>
 
 <script>
-import { getallusers, adminchangeinfo, createuser } from "@/api/user";
+import {
+  getallusers,
+  adminchangeinfo,
+  createuser,
+  admindeleteuser,
+} from "@/api/user";
 
 import { Message } from "element-ui";
 
@@ -157,15 +169,17 @@ export default {
         name: [{ required: true, message: "请输入用户名称", trigger: "blur" }],
         role: [{ required: true, message: "请选择用户类型", trigger: "blur" }],
         password: [
-          { required: true, message: "请输入用户密码", trigger: "blur" }
+          { required: true, message: "请输入用户密码", trigger: "blur" },
         ],
-        forbid: [{ required: true, message: "请输入用户密码", trigger: "blur" }]
+        forbid: [
+          { required: true, message: "请输入用户密码", trigger: "blur" },
+        ],
       },
       addips: [],
       pagecount: 0,
       userquery: {
         offset: 0,
-        limit: 15
+        limit: 15,
       },
       user: {
         id: "",
@@ -173,37 +187,37 @@ export default {
         role: 0,
         forbid: 1,
         password: "",
-        remark: ""
+        remark: "",
       },
       createuser: {
         name: "",
         password: "",
         role: 0,
-        remark: ""
+        remark: "",
       },
       roleoptions: [
         {
           label: "普通用户",
-          value: 1
+          value: 1,
         },
         {
           label: "管理员",
-          value: 2
+          value: 2,
         },
         {
           label: "访客",
-          value: 3
-        }
+          value: 3,
+        },
       ],
       forbidoptions: [
         {
           label: "禁止登陆",
-          value: true
+          value: true,
         },
         {
           label: "正常登陆",
-          value: false
-        }
+          value: false,
+        },
       ],
       hghosts: [],
       is_change: false,
@@ -211,7 +225,7 @@ export default {
       hostselect: [],
       changepasswd: false,
       password1: "",
-      password2: ""
+      password2: "",
     };
   },
   created() {
@@ -219,7 +233,7 @@ export default {
   },
   methods: {
     startgetallusers() {
-      getallusers(this.userquery).then(response => {
+      getallusers(this.userquery).then((response) => {
         this.data = response.data;
         this.pagecount = response.count;
       });
@@ -290,7 +304,7 @@ export default {
         if (this.changepasswd === false) {
           this.user.password = "";
         }
-        adminchangeinfo(this.user).then(resp => {
+        adminchangeinfo(this.user).then((resp) => {
           if (resp.code === 0) {
             Message.success(`修改用户 ${name} 成功`);
             this.startgetallusers();
@@ -315,7 +329,7 @@ export default {
           return;
         }
 
-        this.$refs[formName].validate(valid => {
+        this.$refs[formName].validate((valid) => {
           if (valid) {
             if (this.is_create === true) {
               // if (this.password1 === "" || this.password2 === "") {
@@ -337,7 +351,7 @@ export default {
               delete this.user.id;
               delete this.user.forbid;
 
-              createuser(this.user).then(resp => {
+              createuser(this.user).then((resp) => {
                 if (resp.code === 0) {
                   Message.success(`创建用户 ${this.user.name} 成功`);
                   this.startgetallusers();
@@ -351,11 +365,22 @@ export default {
         });
       }
     },
+    deleteuser(id) {
+      admindeleteuser({ id: id }).then((resp) => {
+        if (resp.code === 0) {
+          Message.success(`删除用户 ${this.user.name} 成功`);
+          this.startgetallusers();
+          this.is_create = false;
+        } else {
+          Message.error(`删除用户 ${name} 失败: ${resp.msg}`);
+        }
+      });
+    },
     handleCurrentChangerun(page) {
       this.userquery.offset = (page - 1) * this.userquery.limit;
       this.startgetallusers();
-    }
-  }
+    },
+  },
 };
 </script>
 

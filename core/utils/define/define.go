@@ -150,11 +150,12 @@ type AdminChangeUser struct {
 
 // ChangeUserSelf change self's config
 type ChangeUserSelf struct {
-	ID        string `json:"id"  binding:"required"` // user id
-	Email     string `json:"email"`                  // 用户邮箱
-	WeChat    string `json:"wechat"`                 // wechat id
-	DingPhone string `json:"dingphone"`              // dingding phone
-	Telegram  string `json:"telegram"`               // telegram bot chat id
+	ID        string `json:"id"  binding:"required"`  // user id
+	Name      string `json:"name" binding:"required"` // 用户名称
+	Email     string `json:"email"`                   // 用户邮箱
+	WeChat    string `json:"wechat"`                  // wechat id
+	DingPhone string `json:"dingphone"`               // dingding phone
+	Telegram  string `json:"telegram"`                // telegram bot chat id
 	Password  string `json:"password"`
 	Remark    string `json:"remark"`
 }
