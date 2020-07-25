@@ -48,11 +48,20 @@ export function changeselfinfo(data) {
     data: data
   })
 }
+
 // /api/v1/user/admin
 export function adminchangeinfo(data) {
   return request({
     url: '/api/v1/user/admin',
     method: 'put',
+    data: data
+  })
+}
+
+export function admindeleteuser(data) {
+  return request({
+    url: '/api/v1/user/admin',
+    method: 'delete',
     data: data
   })
 }
@@ -80,3 +89,4 @@ export function getoperatelog(params) {
     params: params
   })
 }
+

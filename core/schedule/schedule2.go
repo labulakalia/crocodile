@@ -568,6 +568,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 		log.Warn("ignore run task,because this task is running", zap.String("taskname", t.name))
 		return
 	}
+	log.Info("start run task", zap.String("taskname", t.name))
 
 	rand.Seed(time.Now().UnixNano())
 	randstr := strconv.FormatInt(time.Now().UnixNano()/int64(rand.Int()), 10)
@@ -595,7 +596,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 		for {
 			select {
 			case <-stopexpire:
-				log.Info("stop expire lock", zap.String("lockid", lockid))
+				log.Debug("stop expire lock", zap.String("lockid", lockid))
 				ticker.Stop()
 				return
 			case <-ticker.C:
@@ -971,7 +972,7 @@ func Init2() error {
 		log.Error("GetTasks failed", zap.Error(err))
 		return err
 	}
-	log.Debug("start init task", zap.Any("task", eps))
+	log.Debug("start init task", zap.Int("task", len(eps)))
 	for _, t := range eps {
 		Cron2.addtask(t.ID, t.Name, t.Cronexpr, GetRoutePolicy(t.HostGroupID, t.RoutePolicy), t.Run)
 	}
