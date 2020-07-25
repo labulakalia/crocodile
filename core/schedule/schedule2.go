@@ -596,11 +596,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 		for {
 			select {
 			case <-stopexpire:
-<<<<<<< HEAD
-				log.Info("stop expire lock", zap.String("lockid", lockid))
-=======
 				log.Debug("stop expire lock", zap.String("lockid", lockid))
->>>>>>> dev
 				ticker.Stop()
 				return
 			case <-ticker.C:
@@ -609,11 +605,7 @@ func (t *task2) StartRun(trigger define.Trigger) {
 				} else {
 					t.redis.PExpire(lockid, t.cronsub)
 				}
-<<<<<<< HEAD
-				
-=======
 
->>>>>>> dev
 			}
 		}
 	}()
@@ -1075,7 +1067,7 @@ func (s *cacheSchedule2) runSchedule(taskid string) {
 	task.cronsub = expr.Next(last).Sub(last) / 4
 	if task.cronsub > time.Second*30 {
 		task.cronsub = time.Second * 30
-	} 
+	}
 
 	for {
 		next = expr.Next(last)
