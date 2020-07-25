@@ -7,7 +7,7 @@
           size="mini"
           type="warning"
           @click="markallread()"
-        >已读</el-button>
+        >全部已读</el-button>
         <br />
         <el-table
           highlight-current-row
@@ -40,6 +40,7 @@
 
 <script>
 import { getnotify, readnotify } from "@/api/notify";
+import { Message } from "element-ui";
 
 export default {
   data() {
@@ -67,8 +68,14 @@ export default {
       });
     },
     markallread() {
-      readnotify({});
-      this.startgetnotifys();
+      readnotify({}).then((resp) => {
+        if (resp.code === 0) {
+          Message.success("ok");
+          this.data = [];
+        } else {
+          Message.error(`${resp.msg}`);
+        }
+      });
     },
   },
 };
