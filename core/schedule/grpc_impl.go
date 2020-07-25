@@ -87,8 +87,6 @@ type TaskService struct {
 // if start run,every output must be output by stream.Send
 // return err must be err
 func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) error {
-	log.Debug("recv new task", zap.Any("taskid", req.GetTaskId()),zap.Int32("codetype", req.TaskType))
-
 	// save running task
 	r, err := tasktype.GetDataRun(req)
 	if err != nil {

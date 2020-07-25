@@ -89,7 +89,7 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 		} else {
 			getsql += ` WHERE status=?`
 		}
-		
+
 		args = append(args, status)
 	}
 	count, err := countColums(ctx, getsql, args...)
