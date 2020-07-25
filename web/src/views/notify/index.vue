@@ -68,7 +68,6 @@ export default {
       });
     },
     markallread() {
-<<<<<<< HEAD
       readnotify({}).then((resp) => {
         if (resp.code === 0) {
           Message.success("ok");
@@ -77,10 +76,6 @@ export default {
           Message.error(`${resp.msg}`);
         }
       });
-=======
-      readnotify({});
-      this.startgetnotifys();
->>>>>>> be92ff147942695a7e40c457feb3d1b8ca263ff0
     },
   },
 };
