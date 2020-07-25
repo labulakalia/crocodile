@@ -25,7 +25,7 @@ INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Normal','/api/v1
 INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Guest','/api/v1/user/select','(GET)','','','');
 INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Admin','/api/v1/user/registry','(POST)','','','');
 INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Admin','/api/v1/user/all','(GET)','','','');
-INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Admin','/api/v1/user/admin','(PUT)','','','');
+INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Admin','/api/v1/user/admin','(PUT)|(DELETE)','','','');
 INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Admin','/api/v1/user/alarmstatus','(GET)','','','');
 INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Normal','/api/v1/user/alarmstatus','(GET)','','','');
 INSERT INTO casbin_rule (p_type,v0,v1,v2,v3,v4,v5) VALUES ('p','Guest','/api/v1/user/alarmstatus','(GET)','','','');
