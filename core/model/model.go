@@ -113,7 +113,7 @@ func Check(ctx context.Context, table string, checkType checkType, args ...inter
 		return false, fmt.Errorf("sqlDb.GetConn failed: %w", err)
 	}
 	defer conn.Close()
-	log.Debug("check sql", zap.String("sql", check),zap.Any("args", args))
+
 	stmt, err := conn.PrepareContext(ctx, check)
 	if err != nil {
 		return false, fmt.Errorf("conn.PrepareContext failed: %w", err)

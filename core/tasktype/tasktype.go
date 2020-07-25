@@ -20,6 +20,7 @@ const (
 // reader last 3 byte must be exit code
 type TaskRuner interface {
 	Run(ctx context.Context) (out io.ReadCloser)
+	Type() string
 }
 
 // GetDataRun get task type

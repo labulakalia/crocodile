@@ -226,6 +226,11 @@ func runwindowsbat(ctx context.Context, code string) (*exec.Cmd, string, error) 
 	return cmd, batcodepath, nil
 }
 
+// Type return task run lang
+func (ds DataCode)Type() string {
+	return ds.Lang.String()
+}
+
 // Run implment TaskRuner
 // run shell command
 // return io.ReadCloser

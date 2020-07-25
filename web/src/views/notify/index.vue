@@ -2,6 +2,13 @@
   <div class="app-container">
     <el-container>
       <el-aside width="250px">
+        <el-button
+          :disabled="data.length === 0"
+          size="mini"
+          type="warning"
+          @click="markallread()"
+        >已读</el-button>
+        <br />
         <el-table
           highlight-current-row
           size="mini"
@@ -39,7 +46,7 @@ export default {
     return {
       data: [],
       notifycontent: "",
-      lastreadindex: null
+      lastreadindex: null,
     };
   },
   created() {
@@ -55,11 +62,15 @@ export default {
       this.lastreadindex = this.data.indexOf(row);
     },
     startgetnotifys() {
-      getnotify().then(resp => {
+      getnotify().then((resp) => {
         this.data = resp.data;
       });
-    }
-  }
+    },
+    markallread() {
+      readnotify({});
+      this.startgetnotifys();
+    },
+  },
 };
 </script>
 

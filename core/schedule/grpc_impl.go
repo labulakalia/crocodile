@@ -3,11 +3,12 @@ package schedule
 import (
 	"context"
 	"fmt"
-	"github.com/labulaka521/crocodile/core/utils/resp"
 	"io"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/labulaka521/crocodile/core/utils/resp"
 
 	"github.com/labulaka521/crocodile/common/log"
 	"github.com/labulaka521/crocodile/core/model"
@@ -86,8 +87,6 @@ type TaskService struct {
 // if start run,every output must be output by stream.Send
 // return err must be err
 func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) error {
-	log.Debug("recv new task", zap.Any("taskid", req.GetTaskId()),zap.Int32("codetype", req.TaskType))
-
 	// save running task
 	r, err := tasktype.GetDataRun(req)
 	if err != nil {
@@ -97,7 +96,7 @@ func (ts *TaskService) RunTask(req *pb.TaskReq, stream pb.Task_RunTaskServer) er
 		}
 		return nil
 	}
-
+	log.Info("recv new task", zap.Any("taskid", req.GetTaskId()), zap.String("codetype", r.Type()))
 	taskctx, taskcancel := context.WithCancel(stream.Context())
 
 	runningtask.Add(req.GetTaskId(), taskcancel)
@@ -151,10 +150,9 @@ func (hs *HeartbeatService) RegistryHost(ctx context.Context, req *pb.RegistryRe
 	req.Ip = ip
 	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
 
-
 	isinstall, err := model.QueryIsInstall(ctx)
 	if err != nil {
-		log.Error("model.QueryIsInstall failed",zap.Error(err))
+		log.Error("model.QueryIsInstall failed", zap.Error(err))
 		return &pb.Empty{}, err
 	}
 

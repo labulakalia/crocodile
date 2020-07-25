@@ -288,7 +288,7 @@ func RegistryClient(version string, port int) {
 				}
 				cannotconn = 0
 				cancel()
-				log.Info("send hearbeat success", zap.String("server", lastaddr))
+				log.Debug("send hearbeat success", zap.String("server", lastaddr))
 				timer.Reset(defaultHearbeatInterval)
 			case <-clentstophb:
 				log.Info("Stop Send HearBeat")

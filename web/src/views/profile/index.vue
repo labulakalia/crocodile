@@ -57,6 +57,9 @@
             style="width: 300px;"
           ></el-input>-->
         </el-form-item>
+        <el-form-item label="用户名">
+          <el-input v-model="userinfo.name" size="mini" style="width: 300px;"></el-input>
+        </el-form-item>
         <el-form-item label="邮箱">
           <el-input
             :disabled="!alarmstatus.email"
@@ -121,23 +124,24 @@ export default {
       password2: "",
       pass: {
         password1: "",
-        password2: ""
+        password2: "",
       },
       rules: {
         password1: [{ required: true, message: "请输入密码", trigger: "blur" }],
         password2: [
-          { required: true, message: "请再次输入密码", trigger: "blur" }
-        ]
+          { required: true, message: "请再次输入密码", trigger: "blur" },
+        ],
       },
       userinfo: {
         id: "",
+        name: "",
         email: "",
         wechat: "",
         dingphone: "",
         slack: "",
         telegram: "",
         password: "",
-        remark: ""
+        remark: "",
       },
       changepasswd: false,
       alarmstatus: {
@@ -146,8 +150,8 @@ export default {
         slack: false,
         telegram: false,
         wechat: false,
-        wehook: false
-      }
+        wehook: false,
+      },
     };
   },
   created() {
@@ -159,7 +163,7 @@ export default {
       console.log(tab);
     },
     getuserinfo() {
-      getInfo().then(resp => {
+      getInfo().then((resp) => {
         var data = resp.data;
         this.userinfo.id = data.id;
         this.userinfo.email = data.email;
@@ -168,11 +172,12 @@ export default {
         this.userinfo.slack = data.slack;
         this.userinfo.telegram = data.telegram;
         this.userinfo.remark = data.remark;
+        this.userinfo.name = data.name;
       });
     },
     submitchangeinfo() {
       if (this.changepasswd) {
-        this.$refs["pass"].validate(valid => {
+        this.$refs["pass"].validate((valid) => {
           if (this.changepasswd && valid) {
             if (this.pass.password1 !== this.pass.password2) {
               Message.warning("两次密码输入不一致请重新输入");
@@ -193,7 +198,7 @@ export default {
           } else {
             return false;
           }
-          changeselfinfo(this.userinfo).then(resp => {
+          changeselfinfo(this.userinfo).then((resp) => {
             if (resp.code === 0) {
               Message.success("更新成功");
               this.changepasswd = false;
@@ -205,7 +210,7 @@ export default {
           });
         });
       } else {
-        changeselfinfo(this.userinfo).then(resp => {
+        changeselfinfo(this.userinfo).then((resp) => {
           if (resp.code === 0) {
             Message.success("更新成功");
             this.changepasswd = false;
@@ -273,10 +278,10 @@ export default {
       // }
     },
     startgetalarmstatus() {
-      getalarmstatus().then(resp => {
+      getalarmstatus().then((resp) => {
         this.alarmstatus = resp.data;
       });
-    }
-  }
+    },
+  },
 };
 </script>
