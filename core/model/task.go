@@ -56,7 +56,6 @@ func CreateTask(ctx context.Context, id, name string, tasktype define.TaskType, 
 	defer stmt.Close()
 	createTime := time.Now().Unix()
 	taskdata, _ := json.Marshal(taskData)
-	fmt.Printf("%s\n", taskdata)
 	_, err = stmt.ExecContext(ctx,
 		id,
 		name,
@@ -295,7 +294,7 @@ func getTasks(ctx context.Context,
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
 	}
-
+	log.Debug("query sql", zap.String("sql", getsql))
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return tasks, 0, fmt.Errorf("db.GetConn failed: %w", err)
