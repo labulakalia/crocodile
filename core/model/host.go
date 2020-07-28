@@ -37,6 +37,7 @@ func RegistryToUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext faled: %w", err)
 	}
+	
 	return nil
 }
 
@@ -276,6 +277,7 @@ func StopHost(ctx context.Context, hostid string, stop bool) error {
 	if err != nil {
 		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
+	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, stop, hostid)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext failed: %w", err)
@@ -299,6 +301,7 @@ func DeleteHost(ctx context.Context, hostid string) error {
 	if err != nil {
 		return fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
+	defer stmt.Close()
 	_, err = stmt.ExecContext(ctx, hostid)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext failed: %w", err)
