@@ -107,7 +107,7 @@ git clone https://github.com/labulaka521/crocodile
 cd crocodile
 docker-compose up -d
 ```
-Then open url`http://ip:8080`
+Then open url`http://yourip:8080`,you need to input a admin user and password to install it, than you will come in this system
 
 
 ## Running

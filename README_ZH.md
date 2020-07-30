@@ -105,7 +105,7 @@ git clone https://github.com/labulaka521/crocodile
 cd crocodile
 docker-compose up -d
 ```
-然后在浏览器中打开`http://ip:8080`
+然后在浏览器中打开`http://ip:8080`，然后在初始化页面输入一个管理员用户名、用户密码然后点击`开始安装`，安装完成后你就可以进入到系统中去
 
 ## Running
 - [点击下载](https://github.com/labulaka521/crocodile/releases)后解压
