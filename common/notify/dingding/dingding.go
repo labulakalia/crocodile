@@ -43,8 +43,10 @@ const (
 
 // Ding dingding alarm conf
 type Ding struct {
-	MsgType string // text
-	url     string
+	MsgType    string // text
+	webhookurl string
+	sl         Secrue
+	secret     string
 }
 
 // Result post resp
@@ -72,20 +74,23 @@ type SendMsg struct {
 // NewDing init a Dingding send conf
 func NewDing(webhookurl string, sl Secrue, secret string) notify.Sender {
 	d := Ding{
-		url:     webhookurl,
-		MsgType: "text",
+		webhookurl: webhookurl,
+		MsgType:    "text",
+		sl:         sl,
+		secret:     secret,
 	}
 
-	if sl == Sign {
-		now := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
-		sign := getsign(secret, now)
-		d.url += fmt.Sprintf("&timestamp=%s&sign=%s", now, sign)
-	}
 	return &d
 }
 
 // Send to notify tos is phone number
 func (d *Ding) Send(tos []string, title string, content string) error {
+	var requrl = d.webhookurl
+	if d.sl == Sign {
+		now := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+		sign := getsign(d.secret, now)
+		requrl += fmt.Sprintf("&timestamp=%s&sign=%s", now, sign)
+	}
 	sendmsg := SendMsg{
 		MsgType: "text",
 		Text: text{
@@ -97,7 +102,7 @@ func (d *Ding) Send(tos []string, title string, content string) error {
 		},
 	}
 
-	resp, err := notify.JSONPost(http.MethodPost, d.url, sendmsg, http.DefaultClient)
+	resp, err := notify.JSONPost(http.MethodPost, requrl, sendmsg, http.DefaultClient)
 	if err != nil {
 		return err
 	}
