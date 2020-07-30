@@ -37,18 +37,20 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 		needtables = append(needtables, tbname)
 	}
 	var queryname string
-
+	params := []string{}
 	drivename := config.CoreConf.Server.DB.Drivename
 	if drivename == "sqlite3" {
 		querytable = `SELECT count(*) FROM sqlite_master WHERE type="table" AND (`
 		queryname = "name"
 	} else if drivename == "mysql" {
-		querytable = `SELECT count(*) FROM information_schema.TABLES WHERE (`
+		dbname := strings.Split(strings.Split(config.CoreConf.Server.DB.Dsn,"?")[0],"/")[1]
+		params = append(params, dbname)
+		querytable = `SELECT count(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? (`
 		queryname = "table_name"
 	} else {
 		return false, fmt.Errorf("unsupport drive type %s, only support sqlite3 or mysql", drivename)
 	}
-	params := []string{}
+
 
 	for i := 0; i < len(crcocodileTables); i++ {
 		params = append(params, queryname+"=?")
@@ -119,9 +121,13 @@ func StartInstall(ctx context.Context, username, password string) error {
 
 		if tbname == TBCasbin {
 			for _, sql := range strings.Split(execsql, ";\n") {
+				if sql == "" {
+					log.Warn("sql is empty string")
+					continue
+				}
 				_, err = conn.ExecContext(context.Background(), sql)
 				if err != nil {
-					log.Error("conn.ExecContext failed", zap.Error(err))
+					log.Error("conn.ExecContext failed", zap.Error(err),zap.String("sql",sql))
 					return fmt.Errorf("conn.ExecContext failed: %w", err)
 				}
 			}
