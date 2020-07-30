@@ -160,6 +160,7 @@ func getusers(ctx context.Context, uids []string, name string, offset, limit int
 	if err != nil {
 		return users, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var (
 			createTime int64

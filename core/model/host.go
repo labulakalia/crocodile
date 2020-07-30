@@ -180,6 +180,7 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 	if err != nil {
 		return nil, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
+	defer rows.Close()
 
 	hosts := []*define.Host{}
 	for rows.Next() {

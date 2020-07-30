@@ -294,7 +294,6 @@ func getTasks(ctx context.Context,
 		getsql += " LIMIT ? OFFSET ?"
 		args = append(args, limit, offset)
 	}
-	log.Debug("query sql", zap.String("sql", getsql))
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return tasks, 0, fmt.Errorf("db.GetConn failed: %w", err)
@@ -310,6 +309,7 @@ func getTasks(ctx context.Context,
 	if err != nil {
 		return tasks, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
+	defer rows.Close()
 	for rows.Next() {
 		t := define.GetTask{}
 		var (

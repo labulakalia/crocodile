@@ -138,6 +138,7 @@ func getHostGroups(ctx context.Context, id, hgname string, limit, offset int) ([
 	if err != nil {
 		return hgs, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var (
 			hg                     define.HostGroup

@@ -115,6 +115,7 @@ func GetLog(ctx context.Context, taskname string, status int, offset, limit int)
 	if err != nil {
 		return logs, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
+	defer rows.Close()
 	for rows.Next() {
 		getlog := define.Log{}
 		taskrepos := []*define.TaskResp{}
@@ -397,18 +398,19 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 		return oplogs, 0, fmt.Errorf("db.GetConn failed: %w", err)
 	}
 	defer conn.Close()
-	log.Debug("sql", zap.String("sql", getsql))
+
 	stmt, err := conn.PrepareContext(ctx, getsql)
 	if err != nil {
 		return oplogs, 0, fmt.Errorf("conn.PrepareContext failed: %w", err)
 	}
 	defer stmt.Close()
-	rows, err := stmt.QueryContext(ctx, args...)
-	defer stmt.Close()
 
+	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {
 		return oplogs, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
+	defer rows.Close()
+
 
 	for rows.Next() {
 		var (
@@ -514,7 +516,7 @@ func GetNotifyByUID(ctx context.Context, uid string) ([]define.Notify, error) {
 	if err != nil {
 		return notifys, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
-
+	defer rows.Close()
 	for rows.Next() {
 		var notify define.Notify
 		err = rows.Scan(&notify.ID, &notify.NotifyType, &notify.Title, &notify.Content, &notify.NotifyTime)
