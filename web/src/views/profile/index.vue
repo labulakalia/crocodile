@@ -198,29 +198,36 @@ export default {
           } else {
             return false;
           }
-          changeselfinfo(this.userinfo).then((resp) => {
-            if (resp.code === 0) {
-              Message.success("更新成功");
-              this.changepasswd = false;
-              this.password1 = "";
-              this.password2 = "";
-            } else {
-              Message.error(`更新失败 ${resp.msg}`);
-            }
-          });
-        });
-      } else {
-        changeselfinfo(this.userinfo).then((resp) => {
-          if (resp.code === 0) {
-            Message.success("更新成功");
-            this.changepasswd = false;
-            this.password1 = "";
-            this.password2 = "";
-          } else {
-            Message.error(`更新失败 ${resp.msg}`);
-          }
         });
       }
+      try {
+        window.btoa(`${this.userinfo.name}`);
+      } catch (error) {
+        Message.warning("用户名只能使用字母、数字、符号");
+        return;
+      }
+      changeselfinfo(this.userinfo).then((resp) => {
+        if (resp.code === 0) {
+          Message.success("更新成功");
+          this.changepasswd = false;
+          this.password1 = "";
+          this.password2 = "";
+        } else {
+          Message.error(`更新失败 ${resp.msg}`);
+        }
+      });
+      //  else {
+      //   changeselfinfo(this.userinfo).then((resp) => {
+      //     if (resp.code === 0) {
+      //       Message.success("更新成功");
+      //       this.changepasswd = false;
+      //       this.password1 = "";
+      //       this.password2 = "";
+      //     } else {
+      //       Message.error(`更新失败 ${resp.msg}`);
+      //     }
+      //   });
+      // }
       // this.$refs["pass"].validate(valid => {
       //   if (this.changepasswd && valid) {
       //     if (this.pass.password1 !== this.pass.password2) {

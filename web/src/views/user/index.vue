@@ -297,7 +297,12 @@ export default {
         }
         this.user.password = this.password1;
       }
-
+      try {
+        window.btoa(`${this.user.name}`);
+      } catch (error) {
+        Message.warning("用户名只能使用字母、数字、符号");
+        return;
+      }
       if (this.is_change === true) {
         var name = this.user.name;
         delete this.user.name;

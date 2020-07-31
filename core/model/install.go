@@ -33,9 +33,6 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 	var querytable string
 	needtables := []interface{}{}
 
-	for _, tbname := range crcocodileTables {
-		needtables = append(needtables, tbname)
-	}
 	var queryname string
 	params := []string{}
 	drivename := config.CoreConf.Server.DB.Drivename
@@ -43,14 +40,17 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 		querytable = `SELECT count(*) FROM sqlite_master WHERE type="table" AND (`
 		queryname = "name"
 	} else if drivename == "mysql" {
-		dbname := strings.Split(strings.Split(config.CoreConf.Server.DB.Dsn,"?")[0],"/")[1]
-		params = append(params, dbname)
-		querytable = `SELECT count(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? (`
+		dbname := strings.Split(strings.Split(config.CoreConf.Server.DB.Dsn, "?")[0], "/")[1]
+		needtables = append(needtables, dbname)
+		querytable = `SELECT count(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND (`
 		queryname = "table_name"
 	} else {
 		return false, fmt.Errorf("unsupport drive type %s, only support sqlite3 or mysql", drivename)
 	}
 
+	for _, tbname := range crcocodileTables {
+		needtables = append(needtables, tbname)
+	}
 
 	for i := 0; i < len(crcocodileTables); i++ {
 		params = append(params, queryname+"=?")
@@ -58,6 +58,7 @@ func QueryIsInstall(ctx context.Context) (bool, error) {
 	querytable += strings.Join(params, " OR ")
 	querytable += ")"
 	var count int
+	fmt.Println(querytable, params)
 	conn, err := db.GetConn(ctx)
 	if err != nil {
 		return false, fmt.Errorf("db.GetConn failed: %w", err)
@@ -127,7 +128,7 @@ func StartInstall(ctx context.Context, username, password string) error {
 				}
 				_, err = conn.ExecContext(context.Background(), sql)
 				if err != nil {
-					log.Error("conn.ExecContext failed", zap.Error(err),zap.String("sql",sql))
+					log.Error("conn.ExecContext failed", zap.Error(err), zap.String("sql", sql))
 					return fmt.Errorf("conn.ExecContext failed: %w", err)
 				}
 			}
