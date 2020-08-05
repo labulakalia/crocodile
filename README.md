@@ -151,8 +151,10 @@ Then open url`http://yourip:8080`,you need to input a admin user and password to
 ## Doc
 [Wiki](https://github.com/labulaka521/crocodile/wiki/)
 
-# TODO
-[Crocodile_Trello](https://trello.com/b/9o299bds/crocodile)
+## Donate
+If this project could help you, I hope you could donate me by alipay
+
+<img src="./screenshot/alipay.jpg" width=100 height=100>
 
 ## License
 Crocodile is under the MIT license. See the [LICENSE](./LICENSE) file for details.

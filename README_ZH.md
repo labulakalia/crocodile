@@ -144,8 +144,11 @@ docker-compose up -d
 ## Doc
 [Wiki](https://github.com/labulaka521/crocodile/wiki/)
 
-# TODO
-[Trello_Crocodile](https://trello.com/b/9o299bds/crocodile)
+## Donate
+如果这个项目帮助了你，希望你可以通过支付宝可以捐助
+
+<img src="./screenshot/alipay.jpg" width=100 height=100>
+
 
 ## License
 Crocodile is under the MIT license. See the [LICENSE](./LICENSE) file for details.
