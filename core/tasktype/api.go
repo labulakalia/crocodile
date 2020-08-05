@@ -28,7 +28,7 @@ type DataAPI struct {
 // Body
 // Test
 
-
+// Type return api
 func (da DataAPI)Type() string {
 	return "api"
 }
