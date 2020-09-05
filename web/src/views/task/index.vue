@@ -676,13 +676,6 @@
           </template>
         </el-table-column>
 
-        <el-table-column align="center" label="调度状态" width="80">
-          <template slot-scope="scope">
-            <el-tag v-if="scope.row.run" size="mini" type="success">Normal</el-tag>
-            <el-tag v-else size="mini" type="danger">Stop</el-tag>
-          </template>
-        </el-table-column>
-
         <el-table-column align="center" label="超时(s)" width="70">
           <template slot-scope="scope">
             <span v-if="scope.row.timeout === -1">-</span>
@@ -704,6 +697,20 @@
         <el-table-column align="center" label="创建人" width="80">
           <template slot-scope="scope">
             <span>{{ scope.row.create_by }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column align="center" label="调度状态" width="90">
+          <template slot-scope="scope">
+            <el-tooltip :content="status_task[scope.row.run]"  placement="top">
+              <el-switch
+                v-model="scope.row.run"
+                active-color="#13ce66"
+                inactive-color="#ff4949"
+                focus
+                @change="changetaskstatus(scope.row)"
+                :content="'Switch value: '"
+              ></el-switch>
+            </el-tooltip>
           </template>
         </el-table-column>
 
@@ -783,7 +790,7 @@ import {
   getrunningtasks,
   gettaskLog,
   getselecttask,
-  clonetask
+  clonetask,
 } from "@/api/task";
 
 import { getToken } from "@/utils/auth";
@@ -800,7 +807,7 @@ import cron from "@/components/Cron/cron";
 export default {
   components: {
     editor: require("vue2-ace-editor"),
-    cron
+    cron,
   },
   computed: {
     CronCollapse() {
@@ -808,7 +815,7 @@ export default {
     },
     clonediatitle() {
       return `克隆任务 ${this.clonename}`;
-    }
+    },
   },
   watch: {
     "task.cronexpr": {
@@ -816,7 +823,7 @@ export default {
         this.cronExpression = newv;
       },
       deep: true,
-      immediate: true
+      immediate: true,
     },
     diarealogVisible: {
       handler(newv, oldv) {
@@ -824,8 +831,8 @@ export default {
           console.log("start close socket");
           this.tlsocket.close();
         }
-      }
-    }
+      },
+    },
   },
   data() {
     return {
@@ -850,69 +857,69 @@ export default {
         expect_code: 0,
         expect_content: "",
         alarm_status: -1,
-        remark: ""
+        remark: "",
       },
       status_options: [
         {
           value: false,
-          label: "正常"
+          label: "正常",
         },
         {
           value: true,
-          label: "停止"
-        }
+          label: "停止",
+        },
       ],
       task_typeoption: [
         {
           value: 1,
-          label: "Code"
+          label: "Code",
         },
         {
           value: 2,
-          label: "API"
-        }
+          label: "API",
+        },
       ],
       parallelrun: [
         {
           value: true,
-          label: "并行"
+          label: "并行",
         },
         {
           value: false,
-          label: "串行"
-        }
+          label: "串行",
+        },
       ],
       route_policyoption: [
         {
           value: 1,
-          label: "Random"
+          label: "Random",
         },
         {
           value: 2,
-          label: "RoundRobin"
+          label: "RoundRobin",
         },
         {
           value: 3,
-          label: "Weight"
+          label: "Weight",
         },
         {
           value: 4,
-          label: "LeastTask"
-        }
+          label: "LeastTask",
+        },
       ],
       alarm_statusoption: [
         {
           value: -2,
-          label: "Always"
+          label: "Always",
         },
         {
           value: -1,
-          label: "Fail"
+          label: "Fail",
         },
         {
           value: 1,
-          label: "Success"
-        }
+          label: "Success",
+        },
       ],
       data: [],
       runningdata: [],
@@ -920,26 +927,26 @@ export default {
       rules: {
         name: [{ required: true, message: "请输入任务名称", trigger: "blur" }],
         task_type: [
-          { required: true, message: "请选择任务类型", trigger: "blur" }
+          { required: true, message: "请选择任务类型", trigger: "blur" },
         ],
         cronexpr: [
-          { required: true, message: "请输入Cron表达式", trigger: "blur" }
+          { required: true, message: "请输入Cron表达式", trigger: "blur" },
         ],
         timeout: [
-          { required: true, message: "请输入超时时间", trigger: "change" }
+          { required: true, message: "请输入超时时间", trigger: "change" },
         ],
         route_policy: [
-          { required: true, message: "请选择路由策略", trigger: "blur" }
+          { required: true, message: "请选择路由策略", trigger: "blur" },
         ],
         alarm_status: [
-          { required: true, message: "请选择报警策略", trigger: "blur" }
+          { required: true, message: "请选择报警策略", trigger: "blur" },
         ],
         alarm_userids: [
-          { required: true, message: "请选择报警用户", trigger: "blur" }
+          { required: true, message: "请选择报警用户", trigger: "blur" },
         ],
         host_groupid: [
-          { required: true, message: "请选择主机组", trigger: "blur" }
-        ]
+          { required: true, message: "请选择主机组", trigger: "blur" },
+        ],
       },
       is_change: false,
       is_create: false,
@@ -947,33 +954,33 @@ export default {
       is_preview: false,
       savecode: {
         lang: 1,
-        code: ""
+        code: "",
       },
       langoption: [
         {
           value: 1,
-          label: "shell"
+          label: "shell",
         },
         {
           value: 4,
-          label: "python"
+          label: "python",
         },
         {
           value: 2,
-          label: "python3"
+          label: "python3",
         },
         {
           value: 3,
-          label: "golang"
+          label: "golang",
         },
         {
           value: 5,
-          label: "nodejs"
+          label: "nodejs",
         },
         {
           value: 6,
-          label: "windowsbat"
-        }
+          label: "windowsbat",
+        },
       ],
       lang: {
         1: "sh",
@@ -981,52 +988,52 @@ export default {
         3: "golang",
         4: "python",
         5: "nodejs",
-        6: "windowsbat"
+        6: "windowsbat",
       },
       saveapi: {
         url: "",
         method: "GET",
         payload: "",
-        header: {}
+        header: {},
       },
       method: "",
       url: "",
       methodoption: [
         {
           value: "GET",
-          label: "GET"
+          label: "GET",
         },
         {
           value: "HEAD",
-          label: "HEAD"
+          label: "HEAD",
         },
         {
           value: "POST",
-          label: "POST"
+          label: "POST",
         },
         {
           value: "PUT",
-          label: "PUT"
+          label: "PUT",
         },
         {
           value: "PATCH",
-          label: "PATCH"
+          label: "PATCH",
         },
         {
           value: "DELETE",
-          label: "DELETE"
-        }
+          label: "DELETE",
+        },
       ],
       content_type: "",
       content_typeoption: [
         {
           value: "application/json",
-          label: "application/json"
+          label: "application/json",
         },
         {
           value: "application/x-www-form-urlencoded",
-          label: "application/x-www-form-urlencoded"
-        }
+          label: "application/x-www-form-urlencoded",
+        },
       ],
       headerlist: [{}],
       methodurl: [{}],
@@ -1040,11 +1047,11 @@ export default {
         offset: 0,
         limit: 15,
         self: false,
-        psname: ""
+        psname: "",
       },
       runningquery: {
         offset: 0,
-        limit: 15
+        limit: 15,
       },
       examplecode: {
         1: `#!/usr/bin/env sh
@@ -1075,7 +1082,7 @@ func main() {
 }`,
         5: `#!/usr/bin/env node
 console.log("run nodejs")`,
-        6: `tasklist`
+        6: `tasklist`,
       },
 
       hostgroupselect: [],
@@ -1098,7 +1105,11 @@ console.log("run nodejs")`,
       clonenewname: "",
       cloneid: "",
       clonename: "",
-      clonevisible: false
+      clonevisible: false,
+      status_task: {
+        true: "自动调度开启",
+        false: "自动调度关闭"
+      }
     };
   },
   created() {
@@ -1106,13 +1117,13 @@ console.log("run nodejs")`,
   },
   methods: {
     getalltask() {
-      gettask(this.query).then(resp => {
+      gettask(this.query).then((resp) => {
         this.data = resp.data;
         this.pagecount = resp.count;
       });
     },
     submittask(formName) {
-      this.$refs[formName].validate(valid => {
+      this.$refs[formName].validate((valid) => {
         if (valid) {
           this.task.expect_code = parseInt(this.task.expect_code);
           if (isNaN(this.task.expect_code)) {
@@ -1122,7 +1133,7 @@ console.log("run nodejs")`,
             this.task.task_data = this.savecode;
           } else if (this.task.task_type === 2) {
             // add header
-            this.headerlist.forEach(item => {
+            this.headerlist.forEach((item) => {
               if (item.key !== "") {
                 this.saveapi.header[item.key] = item.value;
               }
@@ -1131,7 +1142,7 @@ console.log("run nodejs")`,
             if (["GET", "HEAD"].includes(this.saveapi.method) === false) {
               if (this.content_type === "application/x-www-form-urlencoded") {
                 var formlist = [];
-                this.formlist.forEach(item => {
+                this.formlist.forEach((item) => {
                   if (item.key !== "") {
                     formlist.push(`${item.key}=${item.value}`);
                   }
@@ -1148,7 +1159,7 @@ console.log("run nodejs")`,
 
           if (this.is_create === true) {
             delete this.task.id;
-            createtask(this.task).then(response => {
+            createtask(this.task).then((response) => {
               if (response.code === 0) {
                 Message.success(`创建任务 ${this.task.name} 成功`);
                 this.getalltask();
@@ -1163,7 +1174,7 @@ console.log("run nodejs")`,
             var name = this.task.name;
 
             delete this.task.task_data.langdesc;
-            changetask(this.task).then(response => {
+            changetask(this.task).then((response) => {
               if (response.code === 0) {
                 Message.success(`修改任务 ${name} 成功`);
                 this.getalltask();
@@ -1180,9 +1191,9 @@ console.log("run nodejs")`,
     },
     startdeletetask(task) {
       var deldata = {
-        id: task.id
+        id: task.id,
       };
-      deletetask(deldata).then(response => {
+      deletetask(deldata).then((response) => {
         if (response.code === 0) {
           this.getalltask();
           Message.success(`删除任务${task.name}成功`);
@@ -1193,9 +1204,9 @@ console.log("run nodejs")`,
     },
     startkilltask(task) {
       var killdata = {
-        id: task.id
+        id: task.id,
       };
-      killtask(killdata).then(response => {
+      killtask(killdata).then((response) => {
         if (response.code === 0) {
           Message.success(`终止任务 ${task.name} 成功`);
         } else {
@@ -1205,9 +1216,9 @@ console.log("run nodejs")`,
     },
     startruntask(task) {
       var rundata = {
-        id: task.id
+        id: task.id,
       };
-      runtask(rundata).then(response => {
+      runtask(rundata).then((response) => {
         if (response.code === 0) {
           Message.success(`任务 ${task.name} 已经开始运行`);
         } else {
@@ -1221,10 +1232,10 @@ console.log("run nodejs")`,
     edit_header() {
       this.saveapi.header["Content-Type"] = this.content_type;
     },
-    codeinitEditor: function(editor) {
+    codeinitEditor: function (editor) {
       editor.setAutoScrollEditorIntoView(true);
       editor.setShowPrintMargin(false);
-      editor.on("dblclick", function() {
+      editor.on("dblclick", function () {
         editor.container.webkitRequestFullscreen();
       });
       require("brace/ext/language_tools");
@@ -1236,10 +1247,10 @@ console.log("run nodejs")`,
       require("brace/mode/golang");
       require("brace/theme/solarized_dark");
     },
-    realloginitEditor: function(editor) {
+    realloginitEditor: function (editor) {
       editor.setAutoScrollEditorIntoView(true);
       editor.setShowPrintMargin(false);
-      editor.on("change", function() {
+      editor.on("change", function () {
         editor.renderer.scrollToLine(Number.POSITIVE_INFINITY);
       });
       // require("brace/ext/language_tools");
@@ -1251,7 +1262,7 @@ console.log("run nodejs")`,
       // require("brace/mode/golang");
       require("brace/theme/solarized_dark");
     },
-    rowreqbodyinitEditor: function(editor) {
+    rowreqbodyinitEditor: function (editor) {
       editor.setAutoScrollEditorIntoView(true);
       editor.setShowPrintMargin(false);
 
@@ -1332,13 +1343,13 @@ console.log("run nodejs")`,
       this.getselect();
     },
     getselect() {
-      getselecttask().then(response => {
+      getselecttask().then((response) => {
         this.taskselect = response.data;
       });
-      getselecthostgroup().then(response => {
+      getselecthostgroup().then((response) => {
         this.hostgroupselect = response.data;
       });
-      getselectuser().then(response => {
+      getselectuser().then((response) => {
         this.userselect = response.data;
       });
     },
@@ -1380,7 +1391,7 @@ console.log("run nodejs")`,
           if (key !== "Content-Type") {
             this.headerlist.push({
               key: key,
-              value: this.saveapi.header[key]
+              value: this.saveapi.header[key],
             });
           }
         }
@@ -1396,11 +1407,11 @@ console.log("run nodejs")`,
           // testetet=tetetstet&tetste=12121
           this.formlist = [];
           if (this.saveapi.payload !== "") {
-            this.saveapi.payload.split("&").forEach(item => {
+            this.saveapi.payload.split("&").forEach((item) => {
               var v = item.split("=");
               this.formlist.push({
                 key: v[0],
-                value: v[1]
+                value: v[1],
               });
             });
           }
@@ -1424,7 +1435,7 @@ console.log("run nodejs")`,
       this.runningInterval = setInterval(this.getrundatafunc, 5000);
     },
     getrundatafunc(query) {
-      getrunningtasks(query).then(resp => {
+      getrunningtasks(query).then((resp) => {
         this.runningdata = resp.data;
         this.pagecount = resp.count;
       });
@@ -1459,10 +1470,10 @@ console.log("run nodejs")`,
 
       this.trsocket = new WebSocket(wsurl);
 
-      this.trsocket.onopen = event => {
+      this.trsocket.onopen = (event) => {
         this.trsocket.send(token);
       };
-      this.trsocket.onmessage = event => {
+      this.trsocket.onmessage = (event) => {
         this.runtaskdata = JSON.parse(event.data);
         this.trsocket.send("ok");
       };
@@ -1490,7 +1501,7 @@ console.log("run nodejs")`,
       var tasktype = {
         1: "主任务",
         2: "父任务",
-        3: "子任务"
+        3: "子任务",
       };
       this.realtasklogtitle = `${tasktype[data.tasktype]} ${data.name}[${
         data.id
@@ -1512,10 +1523,10 @@ console.log("run nodejs")`,
       console.log(`start conn websocket ${wsurl}`);
       this.tlsocket = new WebSocket(wsurl);
       console.log(this.tlsocket);
-      this.tlsocket.onopen = event => {
+      this.tlsocket.onopen = (event) => {
         this.tlsocket.send(token);
       };
-      this.tlsocket.onmessage = event => {
+      this.tlsocket.onmessage = (event) => {
         // this.runtaskdata = JSON.parse(event.data);
         this.realtasklog = this.realtasklog + event.data;
         this.tlsocket.send("ok");
@@ -1537,13 +1548,13 @@ console.log("run nodejs")`,
     startclonetask() {
       var reqdata = {
         id: this.cloneid,
-        name: this.clonenewname
+        name: this.clonenewname,
       };
       if (this.clonenewname === "") {
         Message.warning("请输入新的任务名称");
         return;
       }
-      clonetask(reqdata).then(resp => {
+      clonetask(reqdata).then((resp) => {
         if (resp.code === 0) {
           Message.success(`克隆任务成功`);
           this.clonevisible = false;
@@ -1552,8 +1563,19 @@ console.log("run nodejs")`,
           Message.error(`克隆任务失败 ${resp.msg}`);
         }
       });
-    }
-  }
+    },
+    changetaskstatus(data) {
+      var status = { true: "启动自动调度", false: "关闭自动调度" };
+      changetask(data).then((response) => {
+        if (response.code === 0) {
+          Message.success(`任务${data.name}已经${status[data.run]}`);
+          this.getalltask();
+        } else {
+          Message.error(`任务${data.name}修改失败: ${response.msg}`);
+        }
+      });
+    },
+  },
 };
 </script>
 
