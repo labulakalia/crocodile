@@ -11,13 +11,12 @@ import (
 	"gorm.io/gorm"
 )
 
-const dbPrefix = "crocodile_"
+const dbPrefix = "test_crocodile_"
 
 // Model custom common model
 type Model struct {
-	gorm.Model
 	ID        string         `gorm:"type:CHAR(18);primaryKey;index" json:"id"`
-	Created   time.Time      `json:"create_at"`
+	CreatedAt time.Time      `json:"create_at"`
 	UpdatedAt time.Time      `json:"update_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
@@ -27,9 +26,9 @@ type Host struct {
 	Model
 	Addr          string `gorm:"type:varchar(25);not null;uniqueindex" json:"addr"`
 	HostName      string `gorm:"type:varchar(100);not null" json:"hostname"`
-	CountRunTasks int    `gorm:"type:int;not null" json:"count_run_tasks"`
+	CountRunTasks int    `gorm:"type:integer;not null" json:"count_run_tasks"`
 	Online        bool   `gorm:"-" json:"online"`
-	Weight        int    `gorm:"type:int;not null;default:100" json:"weight"`
+	Weight        int    `gorm:"type:integer;not null;default:100" json:"weight"`
 	Stop          bool   `gorm:"type:bool;not null;default:false" json:"stop"`
 	Version       string `gorm:"type:varchar(10);size:10;not null;" json:"version"`
 	Remark        string `gorm:"type:varchar(100);size:100;not null;default:''" json:"remark"`
@@ -45,8 +44,8 @@ type HostGroup struct {
 	Model
 	Name       string `gorm:"type:varchar(30);not null;uniqueindex" json:"name"`
 	CreateID   string `gorm:"type:char(18);not null" json:"-"`
-	CreateName string `gorm:"" json:"create_name"`
-	Hosts      IDs    `gorm:"type:varchar(1000)" json:"hosts"`
+	CreateName string `gorm:"-" json:"create_name"`
+	Hosts      IDs    `gorm:"type:varchar(360);not null;default ''" json:"hosts"`
 	Remark     string `gorm:"type:varchar(100);not null;default:''" json:"remark"`
 }
 
@@ -90,23 +89,23 @@ func (h HostGroup) TableName() string {
 
 // Log orm model
 type Log struct {
-	ID          uint                `gorm:"primarykey;autoIncrement"`
-	Name        string              `gorm:"varchar(30);not null;index" json:"name"`
-	TaskID      string              `gorm:"char(18);not null;index:idx_s_t;" json:"task_id"`
+	ID          int                 `gorm:"primarykey;autoIncrement"`
+	Name        string              `gorm:"type:varchar(30);not null" json:"name"`
+	TaskID      string              `gorm:"type:char(18);not null" json:"task_id"`
 	StartTime   time.Time           `gorm:"not null;index:idx_s_t" json:"start_time"`
 	EndTime     time.Time           `gorm:"not null" json:"end_time"`
-	Status      int                 `gorm:"int;not null;default 0"`
-	TaskResps   TaskResps           `gorm:"MEDIUMTEXT" json:"task_resps"`
-	TriggerType define.Trigger      `gorm:"int;not null;default 0" json:"trigger_type"`
-	ErrCode     int                 `gorm:"int;default 0;not null" json:"err_code"`
-	ErrMsg      string              `gorm:"varchar(2000);not null" json:"err_msg"`
-	ErrTaskType define.TaskRespType `gorm:"int;not null;default 0" json:"err_tasktype"`
-	ErrTaskID   string              `gorm:"char(18);not null;default ''" json:"err_taskid"`
+	Status      int                 `gorm:"type:tinyint;not null;default 0" json:"status"`
+	TaskResps   TaskResps           `gorm:"type:mediumtext" json:"task_resps"`
+	TriggerType define.Trigger      `gorm:"type:tinyint;not null;default 0" json:"trigger_type"`
+	ErrCode     int                 `gorm:"type:integer;default 0;not null" json:"err_code"`
+	ErrMsg      string              `gorm:"type:mediumtext;not null" json:"err_msg"`
+	ErrTaskType define.TaskRespType `gorm:"type:integer;not null;default 0" json:"err_tasktype"`
+	ErrTaskID   string              `gorm:"type:char(19);not null;default ''" json:"err_taskid"`
 }
 
 // TableName custom HostGroup table name
 func (h Log) TableName() string {
-	return dbPrefix + "hostgroup"
+	return dbPrefix + "log"
 }
 
 // TaskResps task resp log data
@@ -148,12 +147,12 @@ func (t TaskResps) Value() (driver.Value, error) {
 // Notify orm model
 type Notify struct {
 	ID       uint              `gorm:"primarykey;autoIncrement"`
-	Type     define.NotifyType `gorm:"int;not null;default 0" json:"type"`
-	UID      string            `gorm:"char(18);not null;default '';index" json:"uid"`
+	Type     define.NotifyType `gorm:"type:integer;not null;default 0" json:"type"`
+	UID      string            `gorm:"type:char(18);not null;default '';index" json:"uid"`
 	CreateAt time.Time         `gorm:"not null" json:"create_at"`
-	Title    string            `gorm:"varchar(30);not null;default ''" json:"title"`
-	Content  string            `gorm:"varchar(1000);not null;default ''" json:"content"`
-	IsRead   bool              `gorm:"bool" json:"is_read"`
+	Title    string            `gorm:"type:varchar(30);not null;default ''" json:"title"`
+	Content  string            `gorm:"type:varchar(500);not null;default ''" json:"content"`
+	IsRead   bool              `gorm:"type:bool;not null;default false" json:"is_read"`
 }
 
 // TableName custom Notify table name
@@ -164,14 +163,14 @@ func (h Notify) TableName() string {
 // Operate orm model
 type Operate struct {
 	ID          uint        `gorm:"primarykey;autoIncrement" json:"id"`
-	UID         string      `gorm:"char(18);not null;index" json:"uid"`
-	Role        define.Role `gorm:"int;not null;default 0" json:"role"`
-	Method      string      `gorm:"varchar(7);not null;default ''" json:"method"`
-	Module      string      `gorm:"varchar(10);not null;default ''" json:"module"`
-	ModuleName  string      `gorm:"varchar(30);not null;default ''" json:"module_name"`
+	UID         string      `gorm:"type:char(18);not null;index" json:"uid"`
+	Role        define.Role `gorm:"type:integer;not null;default 0" json:"role"`
+	Method      string      `gorm:"type:varchar(7);not null;default ''" json:"method"`
+	Module      string      `gorm:"type:varchar(10);not null;default ''" json:"module"`
+	ModuleName  string      `gorm:"type:varchar(30);not null;default ''" json:"module_name"`
 	OperateTime time.Time   `json:"operate_time"`
-	Description string      `json:"varchar(200);" json:"description"`
-	Columns     string      `json:"MEDIUMTEXT" json:"columns"`
+	Description string      `gorm:"type:varchar(200);" json:"description"`
+	Columns     string      `gorm:"type:mediumtext" json:"columns"`
 }
 
 // TableName custom Operate table name
@@ -182,15 +181,15 @@ func (h Operate) TableName() string {
 // User orm model
 type User struct {
 	Model
-	Name         string      `gorm:"varchar(30);not null;default ''" json:"name"`
-	HashPassword string      `gorm:"varchar(100);not null;default ''" json:"hash_passworf,omitempty"`
-	Role         define.Role `gorm:"int;not null;default 0" json:"role"`
-	Forbid       bool        `gorm:"bool;not null;default false" json:"forbid"`
-	Email        string      `gorm:"varchar(30)" json:"email"`
-	DingPhone    string      `gorm:"varchar(12)" json:"dingphone"`
-	Wechat       string      `gorm:"varchar(30)" json:"wechat"`
-	WebHook      string      `gorm:"varchar(100)" json:"web_hook"`
-	Remark       string      `gorm:"varchar(100);not null;default ''" json:"remark"`
+	Name         string      `gorm:"type:varchar(30);not null;default ''" json:"name"`
+	HashPassword string      `gorm:"type:varchar(100);not null;default ''" json:"hash_passworf,omitempty"`
+	Role         define.Role `gorm:"type:integer;not null;default 0" json:"role"`
+	Forbid       bool        `gorm:"type:bool;not null;default false" json:"forbid"`
+	Email        string      `gorm:"type:varchar(30)" json:"email"`
+	DingPhone    string      `gorm:"type:varchar(12)" json:"dingphone"`
+	Wechat       string      `gorm:"type:varchar(30)" json:"wechat"`
+	WebHook      string      `gorm:"type:varchar(100)" json:"webhook"`
+	Remark       string      `gorm:"type:varchar(100);not null;default ''" json:"remark"`
 }
 
 // TableName custom User table name
@@ -201,24 +200,24 @@ func (h User) TableName() string {
 // Task orm model
 type Task struct {
 	Model
-	Name           string             `gorm:"varchar(30);not null" json:"name"`
-	TaskType       define.TaskType    `gorm:"int;not null" json:"task_type"`
-	TaskData       string             `gorm:"MEDIUMTEXT" json:"task_data"`
-	Run            bool               `gorm:"bool;not null;default false" json:"run"`
-	ParentTaskIDS  IDs                `gorm:"varchar(1000);not null;default ''" json:"parent_task_ids"`
-	ParentParallel bool               `gorm:"bool;not null;default false" json:"parent_parallel"`
-	ChildTaskIDs   IDs                `gorm:"varchar(1000);not null;default ''" json:"child_task_ids"`
-	ChildParallel  bool               `gorm:"bool;not null;default false" json:"child_parallel"`
-	CreateUID      string             `gorm:"char(18);not null;default '';index" json:"create_uid"`
-	HostgroupID    string             `gorm:"char(18);not null;default ''" json:"hostgroup_id"`
-	Cronexpr       string             `gorm:"varchar(1000);not null;default ''" json:"cronexpr"`
-	Timeout        int                `gorm:"int;not null;default -1" json:"timeout"`
-	AlarmUIDs      IDs                `gorm:"varchar(200);not null" json:"alarm_uids"`
-	RoutePolicy    define.RoutePolicy `gorm:"int;not null;default 1" json:"route_policy"`
-	ExpectCode     int                `gorm:"int;not null;default 0" json:"expect_code"`
-	ExpectContent  string             `gorm:"varchar(1000);not null;default ''" json:"expect_content"`
-	AlarmPolicy    uint               `gorm:"int;not null;default 2" json:"alarm_policy"`
-	Remark         string             `gorm:"varchar(100);not null;default ''" json:"remark"`
+	Name           string             `gorm:"type:varchar(30);not null" json:"name"`
+	TaskType       define.TaskType    `gorm:"type:integer;not null" json:"task_type"`
+	TaskData       string             `gorm:"type:mediumtext" json:"task_data"`
+	Run            bool               `gorm:"type:bool;not null;default false" json:"run"`
+	ParentTaskIDS  IDs                `gorm:"type:varchar(360);not null;default ''" json:"parent_task_ids"`
+	ParentParallel bool               `gorm:"type:bool;not null;default false" json:"parent_parallel"`
+	ChildTaskIDs   IDs                `gorm:"type:varchar(360);not null;default ''" json:"child_task_ids"`
+	ChildParallel  bool               `gorm:"type:bool;not null;default false" json:"child_parallel"`
+	CreateUID      string             `gorm:"type:char(18);not null;default '';index" json:"create_uid"`
+	HostgroupID    string             `gorm:"type:char(18);not null;default ''" json:"hostgroup_id"`
+	Cronexpr       string             `gorm:"type:varchar(200);not null;default ''" json:"cronexpr"`
+	Timeout        int                `gorm:"type:integer;not null;default -1" json:"timeout"`
+	AlarmUIDs      IDs                `gorm:"type:varchar(180);not null" json:"alarm_uids"`
+	RoutePolicy    define.RoutePolicy `gorm:"type:integer;not null;default 1" json:"route_policy"`
+	ExpectCode     int                `gorm:"type:integer;not null;default 0" json:"expect_code"`
+	ExpectContent  string             `gorm:"type:varchar(100);not null;default ''" json:"expect_content"`
+	AlarmPolicy    uint               `gorm:"type:integer;not null;default 2" json:"alarm_policy"`
+	Remark         string             `gorm:"type:varchar(100);not null;default ''" json:"remark"`
 }
 
 // TableName custom Task table name
