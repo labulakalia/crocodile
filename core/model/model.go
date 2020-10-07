@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -13,7 +14,56 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
+
+// InitGormSqlite init gorm db
+// this is test db
+func InitGormSqlite() *gorm.DB {
+	sqlitedbpath := "/tmp/test.db"
+	os.Remove(sqlitedbpath)
+	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+
+	db = db.Debug()
+	// db.Table(name string, args ...interface{})
+	if err != nil {
+		panic(err)
+	}
+	db.AutoMigrate(
+		&Host{},
+		&HostGroup{},
+		&Log{},
+		&Notify{},
+		&Operate{},
+		&Task{},
+		&User{},
+	)
+	return db
+}
+
+// InitGorm init gorm db
+func InitGorm() *gorm.DB {
+	dsn := "root:crocodile@tcp(127.0.0.1:3306)/crocodile?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+
+	db = db.Debug()
+	// db.Table(name string, args ...interface{})
+	if err != nil {
+		panic(err)
+	}
+	db.AutoMigrate(
+		&Host{},
+		&HostGroup{},
+		&Log{},
+		&Notify{},
+		&Operate{},
+		&Task{},
+		&User{},
+	)
+	return db
+}
 
 // InitDb init db
 func InitDb() error {
@@ -21,6 +71,7 @@ func InitDb() error {
 		err error
 	)
 	dbcfg := config.CoreConf.Server.DB
+
 	err = db.NewDb(db.Drivename(dbcfg.Drivename),
 		db.Dsn(dbcfg.Dsn),
 		db.MaxIdleConnection(dbcfg.MaxIdle),
@@ -30,6 +81,7 @@ func InitDb() error {
 	if err != nil {
 		return err
 	}
+
 	log.Debug("InitDb Success", zap.String("drive", dbcfg.Drivename), zap.String("DSN", dbcfg.Dsn))
 	return nil
 
@@ -54,7 +106,7 @@ const (
 	HostGroupID
 	// CreateByID check use is used by hostgroup or tasks
 	CreateByID
-	// UserName check exist user name 
+	// UserName check exist user name
 	UserName
 )
 

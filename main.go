@@ -30,7 +30,7 @@ var (
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
-func main111() {
+func main() {
 	version.Commit = c
 	version.Version = v
 	version.BuildDate = d
@@ -42,11 +42,4 @@ func main111() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println("rootCmd.Execute failed", err.Error())
 	}
-}
-
-type a []string
-
-func main() {
-	b := a{}
-	fmt.Println(b)
 }

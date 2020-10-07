@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"gorm.io/gorm"
 )
@@ -21,17 +22,31 @@ type Model struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
+// BeforeCreate hook generate snake id
+func (m *Model) BeforeCreate(tx *gorm.DB) error {
+	m.ID = utils.GetID()
+	return nil
+}
+
 // Host orm model
 type Host struct {
 	Model
-	Addr          string `gorm:"type:varchar(25);not null;uniqueindex" json:"addr"`
+	Addr          string `gorm:"type:varchar(25);not null;index" json:"addr"`
 	HostName      string `gorm:"type:varchar(100);not null" json:"hostname"`
 	CountRunTasks int    `gorm:"type:integer;not null" json:"count_run_tasks"`
 	Online        bool   `gorm:"-" json:"online"`
-	Weight        int    `gorm:"type:integer;not null;default:100" json:"weight"`
+	Weight        int32  `gorm:"type:integer;not null;default:100" json:"weight"`
 	Stop          bool   `gorm:"type:bool;not null;default:false" json:"stop"`
 	Version       string `gorm:"type:varchar(10);size:10;not null;" json:"version"`
 	Remark        string `gorm:"type:varchar(100);size:100;not null;default:''" json:"remark"`
+}
+
+var maxworklive time.Duration = 20 * time.Second
+
+// AfterFind change host online status
+func (h *Host) AfterFind(tx *gorm.DB) error {
+	h.Online = time.Now().Sub(h.UpdatedAt) < maxworklive
+	return nil
 }
 
 // TableName custom Host table name

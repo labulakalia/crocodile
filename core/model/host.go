@@ -13,31 +13,33 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 const (
 	maxWorkerTTL int64 = 20 // defaultHearbeatInterval = 15
 )
 
-// RegistryToUpdateHost refistry new host
-func RegistryToUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
-	updatesql := `UPDATE crocodile_host set weight=?,version=?,lastUpdateTimeUnix=?,remark=? WHERE addr=?`
-	conn, err := db.GetConn(ctx)
-	if err != nil {
-		return fmt.Errorf("db.GetConn failed: %w", err)
-	}
-	defer conn.Close()
-	stmt, err := conn.PrepareContext(ctx, updatesql)
-	if err != nil {
-		return fmt.Errorf("conn.PrepareContext failed: %w", err)
-	}
-	defer stmt.Close()
+var (
+	gormdb *gorm.DB
+)
+
+// CreateOrUpdateHost create new host if host not exist, update if host exist
+func CreateOrUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
 	addr := fmt.Sprintf("%s:%d", req.Ip, req.Port)
-	_, err = stmt.ExecContext(ctx, req.Weight, req.Version, time.Now().Unix(), req.Remark, addr)
-	if err != nil {
-		return fmt.Errorf("stmt.ExecContext faled: %w", err)
+	host := Host{
+		Addr:     addr,
+		HostName: req.Hostname,
+		Weight:   req.Weight,
+		Version:  req.Version,
+		Remark:   req.Remark,
 	}
-	
+	err := gormdb.WithContext(ctx).Where(Host{Addr: addr}).Assign(&host).FirstOrCreate(&Host{}).Error
+	if err != nil {
+		return fmt.Errorf("create or update host %v failed %w", host, err)
+	}
+	// TODO
+	// check hostgroup
 	return nil
 }
 
@@ -90,6 +92,18 @@ func RegistryNewHost(ctx context.Context, req *pb.RegistryReq) (string, error) {
 	return id, nil
 }
 
+// UpdateHostHearbeatv2 update host last recv hearbeat time
+func UpdateHostHearbeatv2(ctx context.Context, addr string, countRunTasks int) error {
+	result := gormdb.WithContext(ctx).Model(&Host{}).Where("addr", addr).Update("count_run_tasks", countRunTasks)
+	if result.Error != nil {
+		return fmt.Errorf("update host hearbeat failed %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("host %s not registry, may be this host is delete", addr)
+	}
+	return nil
+}
+
 // UpdateHostHearbeat update host last recv hearbeat time
 func UpdateHostHearbeat(ctx context.Context, ip string, port int32, runningtasks []string) error {
 	updatesql := `UPDATE crocodile_host set lastUpdateTimeUnix=?,runningTasks=? WHERE addr=?`
@@ -119,6 +133,20 @@ func UpdateHostHearbeat(ctx context.Context, ip string, port int32, runningtasks
 	}
 	return nil
 }
+
+// func getHostsv2(ctx context.Context, ids []string, offset, limit int) ([]*Host, int, error) {
+// var tmpdb = gormdb.Not(query interface{}, args ...interface{})
+// for _, id := range ids {
+// 	gormdb.Or("id = ?", id)
+// }
+// res := []*Host{}
+// gormdb.WHERE
+// err := gormdb.Where("id in ?", ids).Offset(offset).Limit(limit).Find(&res).Error
+// if err != nil {
+// 	return nil, 0, fmt.Error("get hosts %v failed %w",ids, err)
+// }
+// return
+// }
 
 // get host by addr or id
 func getHosts(ctx context.Context, addr string, ids []string, offset, limit int) ([]*define.Host, int, error) {
@@ -214,8 +242,24 @@ func getHosts(ctx context.Context, addr string, ids []string, offset, limit int)
 	return hosts, count, nil
 }
 
+// GetHostsv2 get hosts
+func GetHostsv2(ctx context.Context, offset, limit int) ([]*Host, int64, error) {
+	hosts := []*Host{}
+	err := gormdb.WithContext(ctx).Find(&hosts).Offset(offset).Limit(limit).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("find hosts failed %w", err)
+	}
+	var count int64
+	err = gormdb.WithContext(ctx).Find(&hosts).Count(&count).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("count all hosts failed %w", err)
+	}
+	return hosts, count, nil
+}
+
 // GetHosts get all hosts
 func GetHosts(ctx context.Context, offset, limit int) ([]*define.Host, int, error) {
+
 	return getHosts(ctx, "", nil, offset, limit)
 }
 
@@ -243,6 +287,16 @@ func ExistAddr(ctx context.Context, addr string) (*define.Host, bool, error) {
 	return hosts[0], true, nil
 }
 
+// GetHostByIDv2 get host by hostid
+func GetHostByIDv2(ctx context.Context, id string) (*Host, error) {
+	host := Host{}
+	err := gormdb.WithContext(ctx).Where("id = ?", id).Find(&host).Error
+	if err != nil {
+		return nil, fmt.Errorf("find host id %s failed %w", id, err)
+	}
+	return &host, nil
+}
+
 // GetHostByID get host by hostid
 func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 	hosts, _, err := getHosts(ctx, "", []string{id}, 0, 0)
@@ -257,6 +311,16 @@ func GetHostByID(ctx context.Context, id string) (*define.Host, error) {
 	return hosts[0], nil
 }
 
+// GetHostsByIDSv2 get hosts by hostids
+func GetHostsByIDSv2(ctx context.Context, ids []string) ([]*Host, error) {
+	hosts := []*Host{}
+	err := gormdb.WithContext(ctx).Where("id in ?", ids).Find(&hosts).Error
+	if err != nil {
+		return nil, fmt.Errorf("find host ids %v failed %w", ids, err)
+	}
+	return hosts, nil
+}
+
 // GetHostByIDS get hosts by hostids
 func GetHostByIDS(ctx context.Context, ids []string) ([]*define.Host, error) {
 	hosts, _, err := getHosts(ctx, "", ids, 0, 0)
@@ -264,6 +328,16 @@ func GetHostByIDS(ctx context.Context, ids []string) ([]*define.Host, error) {
 		return nil, err
 	}
 	return hosts, nil
+}
+
+// ChangeHostStatus change host status
+// it is operate not allow change host's update time
+func ChangeHostStatus(ctx context.Context, id string) error {
+	err := gormdb.WithContext(ctx).Model(&Host{}).Omit("update_time").Where("id = ?", id).Update("stop", "~ stop").Error
+	if err != nil {
+		return fmt.Errorf("update host %s status failed %w", id, err)
+	}
+	return nil
 }
 
 // StopHost will stop run worker in hostid
@@ -282,6 +356,15 @@ func StopHost(ctx context.Context, hostid string, stop bool) error {
 	_, err = stmt.ExecContext(ctx, stop, hostid)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext failed: %w", err)
+	}
+	return nil
+}
+
+// DeleteHostv2 delete hosts
+func DeleteHostv2(ctx context.Context, id string) error {
+	err := gormdb.Model(&Host{}).Delete("id = ?", id).Error
+	if err != nil {
+		return fmt.Errorf("delete host %s failed %w", id, err)
 	}
 	return nil
 }
