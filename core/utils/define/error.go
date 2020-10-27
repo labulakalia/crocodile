@@ -30,10 +30,12 @@ func (u ErrDelHostID) Error() string {
 }
 
 // ErrNotExist query not exist
+// 
 type ErrNotExist struct {
+	Type  string
 	Value string
 }
 
 func (u ErrNotExist) Error() string {
-	return fmt.Sprintf("value %s is not exist", u.Value)
+	return fmt.Sprintf("%s value %s is not exist", u.Type, u.Value)
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/db"
@@ -307,6 +308,40 @@ func CleanTaskLog(ctx context.Context, name, taskid string, deletetime int64) (i
 	return delcount, nil
 }
 
+// Log v2
+
+// CreateLogv2 create task log
+func CreateLogv2(ctx context.Context, log *Log) error {
+	err := gormdb.WithContext(ctx).Create(log).Error
+	if err != nil {
+		return fmt.Errorf("create log failed: %w", err)
+	}
+	return nil
+}
+
+// GetLogv2 get task log data
+func GetLogv2(ctx context.Context, taskname string, status int, offset, limit int) ([]*Log, int64, error) {
+	res := []*Log{}
+	var count int64
+	err := gormdb.WithContext(ctx).Where(&Log{
+		TaskName: taskname,
+		Status:   status,
+	}).Find(&res).Count(&count).Offset(offset).Limit(limit).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("find task %s log failed: %w", taskname, err)
+	}
+	return res, count, nil
+}
+
+// CleanLogv2 clean olg log data
+func CleanLogv2(ctx context.Context, taskid string, beforeStartTime time.Time) error {
+	err := gormdb.WithContext(ctx).Unscoped().Where("task_id = ? and start_time < ?", taskid, beforeStartTime).Delete(&Log{}).Error
+	if err != nil {
+		return fmt.Errorf("delete taskid %s log failed: %w", taskid, err)
+	}
+	return nil
+}
+
 // SaveOperateLog save all user change operate
 func SaveOperateLog(ctx context.Context,
 	c *gin.Context, uid, username string,
@@ -410,7 +445,6 @@ func GetOperate(ctx context.Context, uid, username, method, module string, limit
 		return oplogs, 0, fmt.Errorf("stmt.QueryContext failed: %w", err)
 	}
 	defer rows.Close()
-
 
 	for rows.Next() {
 		var (
@@ -554,6 +588,39 @@ func NotifyRead(ctx context.Context, id int, uid string) error {
 	_, err = stmt.ExecContext(ctx, args...)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext failed: %w", err)
+	}
+	return nil
+}
+
+// v2
+
+// CreateNotify  create notify
+func CreateNotify(ctx context.Context, notify *Notify) error {
+	err := gormdb.WithContext(ctx).Create(notify).Error
+	if err != nil {
+		return fmt.Errorf("create notify failed: %w", err)
+	}
+	return nil
+}
+
+// GetNotify get user unread notify
+func GetNotify(ctx context.Context, uid string) ([]Notify, error) {
+	var res = []Notify{}
+	err := gormdb.WithContext(ctx).Where("uid = ?", uid).Find(&res).Error
+	if err != nil {
+		return nil, fmt.Errorf("get user id %s notify failed: %w", uid, err)
+	}
+	return res, nil
+}
+
+// ReadNotify delete notify
+func ReadNotify(ctx context.Context, id uint, uid string) error {
+	err := gormdb.WithContext(ctx).Where(Notify{
+		ID:  id,
+		UID: uid,
+	}).Delete(&Notify{}).Error
+	if err != nil {
+		return fmt.Errorf("delete uid %s notify %d failed: %w", uid, id, err)
 	}
 	return nil
 }

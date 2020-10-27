@@ -31,6 +31,8 @@ var (
 // @in header
 // @name Authorization
 func main() {
+	fma:q!
+	:q!
 	version.Commit = c
 	version.Version = v
 	version.BuildDate = d

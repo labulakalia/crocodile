@@ -14,6 +14,7 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // LoginUser login user
@@ -382,6 +383,131 @@ func DeleteUser(ctx context.Context, id string) error {
 	_, err = stmt.ExecContext(ctx, id)
 	if err != nil {
 		return fmt.Errorf("stmt.ExecContext failed: %w", err)
+	}
+	return nil
+}
+
+// LoginUserv2 login user
+func LoginUserv2(ctx context.Context, name string, password string) (string, error) {
+	type TmpUser struct {
+		ID           string
+		HashPassword string
+		Forbid       bool
+	}
+	var res TmpUser
+	err := gormdb.WithContext(ctx).Model(&User{}).Select("id,hash_password, forbid").Where("name = ?", name).Scan(&res).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return "", fmt.Errorf("get user %s failed: %w", name, err)
+	}
+	err = utils.CheckHashPass(res.HashPassword, password)
+	if err != nil {
+		return "", fmt.Errorf("utils.CheckHashPass failed: %w", define.ErrUserPass{Err: err})
+	}
+	if res.Forbid {
+		return "", define.ErrForbid{Name: name}
+	}
+	token, err := jwt.GenerateToken(res.ID, name)
+	if err != nil {
+		return "", fmt.Errorf("jwt.GenerateToken failed: %w", err)
+	}
+	return token, nil
+}
+
+// AddUserv2 add new user
+func AddUserv2(ctx context.Context, name, hashpassword string, role define.Role, remark string) error {
+	var user = User{
+		Name:         name,
+		HashPassword: hashpassword,
+		Role:         role,
+		Remark:       remark,
+	}
+	err := gormdb.WithContext(ctx).Create(&user).Error
+	if err != nil {
+		return fmt.Errorf("create user failed: %w", err)
+	}
+	return nil
+}
+
+// GetUserByIDv2 get user by id
+func GetUserByIDv2(ctx context.Context, id string) (*User, error) {
+	var user User
+	result := gormdb.WithContext(ctx).Where("id = ?", id).First(&user)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("get user id %s failed: %w", id, result.Error)
+	}
+	if result.Error == gorm.ErrRecordNotFound {
+		return nil, define.ErrNotExist{Type: "user id", Value: id}
+	}
+	return &user, nil
+}
+
+// GetUserByNamev2 get user by name
+func GetUserByNamev2(ctx context.Context, name string) (*User, error) {
+	var user User
+	result := gormdb.WithContext(ctx).Where("name = ?", name).First(&user)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("get user name %s failed: %w", name, result.Error)
+	}
+	if result.Error == gorm.ErrRecordNotFound {
+		return nil, define.ErrNotExist{Type: "user name", Value: name}
+	}
+	return &user, nil
+}
+
+// GetUsersv2 get all users info
+func GetUsersv2(ctx context.Context, ids []string, offset, limit int) ([]*User, int64, error) {
+	var (
+		count int64
+		users = []*User{}
+	)
+	db := gormdb.WithContext(ctx)
+	if len(ids) > 0 {
+		db = db.Where("id in (?)", ids)
+	}
+	err := db.Find(&users).Count(&count).Limit(limit).Offset(offset).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("get users failed: %w", err)
+	}
+	return users, count, nil
+}
+
+// AdminChangeUserv2 admin change user some column define.AdminChangeUser
+func AdminChangeUserv2(ctx context.Context, id string, role define.Role, forbid bool, hashpassword, remark string) error {
+	changeuser := User{
+		Role:         role,
+		Forbid:       forbid,
+		HashPassword: hashpassword,
+		Remark:       remark,
+	}
+	result := gormdb.WithContext(ctx).Where("id = ?", id).Updates(&changeuser)
+	if result.Error != nil {
+		return fmt.Errorf("update user %s failed: %w", id, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return define.ErrNotExist{Type: "user id", Value: id}
+	}
+	return nil
+}
+
+// ChangeUserInfov2 user change self's config define.ChangeUserSelf
+func ChangeUserInfov2(ctx context.Context, id, email, wechat, wechatbot, dingding, telegram, hashpassword, alarmTmpl, remark string, env Env) error {
+	changeuser := User{
+		Email:        email,
+		Wechat:       wechat,
+		WechatBot:    wechatbot,
+		DingPhone:    dingding,
+		Telegram:     telegram,
+		HashPassword: hashpassword,
+		AlartTmpl:    alarmTmpl,
+		Remark:       remark,
+		Env:          env,
+	}
+	result := gormdb.WithContext(ctx).Where("id = ?", id).Updates(&changeuser)
+	if result.Error != nil {
+		return fmt.Errorf("update user %s failed: %w", id, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return define.ErrNotExist{Type: "user id", Value: id}
 	}
 	return nil
 }

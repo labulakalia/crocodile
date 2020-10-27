@@ -677,7 +677,7 @@ func RealRunTaskLog(c *gin.Context) {
 			err = conn.WriteMessage(websocket.TextMessage, erroutput)
 			if err != nil {
 				log.Error("WriteMessage failed", zap.Error(err))
-				
+
 			}
 			return
 		}

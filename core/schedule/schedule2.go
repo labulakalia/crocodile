@@ -116,12 +116,6 @@ func (t *task2) setdata(tasrunktype define.TaskRespType, realid string,
 	keyname := fmt.Sprintf("task:%s:%d:%s:%s", t.id, tasrunktype, realid, setdata)
 	switch setdata {
 	case taskstatus:
-
-		// status, ok := value.(int)
-		// if !ok {
-		// 	log.Error("value not can change int", zap.Any("data", taskstatus))
-		// 	return errors.New("value type error")
-		// }
 		err := t.redis.Set(keyname, int(value.(define.TaskStatus)), 0).Err()
 		if err != nil {
 			log.Error("t.redis.Set", zap.Error(err))
@@ -446,6 +440,7 @@ func (t *task2) savetasklog() error {
 		}
 
 		tr := taskresp.(define.TaskResp)
+		
 		tr.LogData = tasklog.(string)
 
 		if taskstatus.(define.TaskStatus) == define.TsWait {

@@ -13,6 +13,7 @@ import (
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // CreateHostgroup create hostgroup
@@ -176,7 +177,7 @@ func GetHostGroupByID(ctx context.Context, id string) (*define.HostGroup, error)
 		return nil, err
 	}
 	if len(hostgroups) != 1 {
-		err = define.ErrNotExist{Value: id}
+		err = define.ErrNotExist{Value: id, Type: "hostgroup id"}
 		return nil, err
 	}
 	return &hostgroups[0], nil
@@ -218,4 +219,102 @@ func RandHostID(hg *define.HostGroup) (string, error) {
 	}
 	hostid := hg.HostsID[rand.Int()%len(hg.HostsID)]
 	return hostid, nil
+}
+
+// TODO V2
+
+// CreateHostgroupv2 create new hostgroup
+func CreateHostgroupv2(ctx context.Context, name, remark, createID, createName string, hostids []string) error {
+	hostgroup := HostGroup{
+		Name:       name,
+		CreateID:   createID,
+		CreateName: createName,
+		Hosts:      IDs(hostids),
+		Remark:     remark,
+	}
+	err := gormdb.WithContext(ctx).Create(&hostgroup).Error
+	if err != nil {
+		return fmt.Errorf("create hosrgroup %v failed: %w", hostgroup, err)
+	}
+	return nil
+}
+
+// ChangeHostGroupv2 change hostgroup
+func ChangeHostGroupv2(ctx context.Context, hostids []string, id, remark string) error {
+	hostgroup := HostGroup{
+		Hosts:  IDs(hostids),
+		Remark: remark,
+	}
+
+	res := gormdb.WithContext(ctx).Model(&HostGroup{}).Where("id = ?", id).Updates(hostgroup)
+	if res.Error != nil {
+		return fmt.Errorf("update hostgroup %v failed: %w", id, res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return define.ErrNotExist{Type: "hostgroup id", Value: id}
+	}
+	return nil
+}
+
+// DeleteHostGroupv2 delete hostgroup
+func DeleteHostGroupv2(ctx context.Context, id string) error {
+	res := gormdb.WithContext(ctx).Model(&HostGroup{}).Delete("id = ?", id)
+	if res.Error != nil {
+		return fmt.Errorf("delete hostgroup %s failed: %w", id, res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return define.ErrNotExist{Type: "hostgroup id", Value: id}
+	}
+	return nil
+}
+
+// GetHostGroupsv2 get all hostgroup
+func GetHostGroupsv2(ctx context.Context, limit, offset int) ([]*HostGroup, int64, error) {
+	var hgs = []*HostGroup{}
+	var count int64
+	err := gormdb.WithContext(ctx).Find(&hgs).Count(&count).Limit(limit).Offset(offset).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("find hostgroup failed: %w", err)
+	}
+
+	return hgs, count, nil
+}
+
+// GetHostGroupByIDv2 get hostgroup id by id
+func GetHostGroupByIDv2(ctx context.Context, id string) (*HostGroup, error) {
+	var hg = HostGroup{}
+	err := gormdb.WithContext(ctx).Where("id = ?", id).First(&hg).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("get hostgroup %s failed: %w", id, err)
+	}
+	if err == gorm.ErrRecordNotFound {
+		return nil, define.ErrNotExist{Value: id, Type: "hostgroup id"}
+	}
+	return &hg, nil
+}
+
+// GetHostGroupByNamev2 get hostgroup by name
+func GetHostGroupByNamev2(ctx context.Context, hgname string) (*HostGroup, error) {
+	var hg = HostGroup{}
+	err := gormdb.WithContext(ctx).Where("name = ?", hgname).First(&hg).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("get hostgroup %s failed: %w", hgname, err)
+	}
+	if err == gorm.ErrRecordNotFound {
+		return nil, define.ErrNotExist{Value: hgname, Type: "hostgroup name"}
+	}
+	return &hg, nil
+}
+
+// GetHostsByHGIDv2 get hosts by hg id
+func GetHostsByHGIDv2(ctx context.Context, hgid string) ([]*Host, error) {
+	hg, err := GetHostGroupByIDv2(ctx, hgid)
+	if err != nil {
+		return nil, fmt.Errorf("get hostgroupd %s failed: %w", hgid, err)
+	}
+	hosts, err := GetHostsByIDSv2(ctx, hg.Hosts)
+	if err != nil {
+		return nil, fmt.Errorf("get hosts ids %v failed: %w", hg.Hosts, err)
+	}
+	return hosts, nil
 }

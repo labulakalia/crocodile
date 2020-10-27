@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/labulaka521/crocodile/core/tasktype"
 	"github.com/labulaka521/crocodile/core/utils/define"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 // CreateTask create task
@@ -408,4 +410,91 @@ func getTasks(ctx context.Context,
 		tasks = append(tasks, t)
 	}
 	return tasks, count, nil
+}
+
+// CreateTaskv2 create task v2
+func CreateTaskv2(ctx context.Context, task *Task) (string, error) {
+	err := gormdb.WithContext(ctx).Create(task).Error
+	if err != nil {
+		return "", fmt.Errorf("create task failed: %w", err)
+	}
+	return task.ID, nil
+}
+
+// ChangeTaskv2 change task v2
+func ChangeTaskv2(ctx context.Context, task *Task) error {
+	result := gormdb.WithContext(ctx).Model(&Task{}).Where("id = ?", task.ID).Updates(task)
+	if result.Error != nil {
+		return fmt.Errorf("update task %s failed: %w", task.ID, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return define.ErrNotExist{Type: "task id", Value: task.ID}
+	}
+	return nil
+}
+
+// DeleteTaskv2 delete task
+func DeleteTaskv2(ctx context.Context, taskid string) error {
+	result := gormdb.WithContext(ctx).Model(&Task{}).Delete("id = ?", taskid)
+	if result.Error != nil {
+		return fmt.Errorf("delete task %s failed: %w", taskid, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return define.ErrNotExist{Type: "task id", Value: taskid}
+	}
+	return nil
+}
+
+// TaskIsUsev2 check a task is other task's parent task ids or child task when delete task
+func TaskIsUsev2(ctx context.Context, taskid string) (int64, error) {
+	var count int64
+	gormdb = gormdb.Debug()
+	err := gormdb.WithContext(ctx).Model(&Task{}).Where("child_task_ids LIKE @likeid OR parent_task_ids LIKE @likeid", sql.Named("likeid", "%"+taskid+"%")).Count(&count).Error
+	if err != nil {
+		return 0, fmt.Errorf("find taskid %s failed: %w", taskid, err)
+	}
+	return count, nil
+}
+
+// GetTasksv2 get all tasks
+func GetTasksv2(ctx context.Context, offset, limit int, presearchtaskname, createUID string) ([]*Task, int64, error) {
+	var (
+		count int64
+		tasks = []*Task{}
+	)
+	db := gormdb.WithContext(ctx).Where(&Task{CreateUID: createUID})
+	if presearchtaskname != "" {
+		db = db.Where("name LIKE ?", presearchtaskname+"%")
+	}
+	err := db.Find(&tasks).Count(&count).Limit(limit).Offset(offset).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("get tasks failed: %w", err)
+	}
+	return tasks, count, nil
+}
+
+// GetTaskByIDv2 get task by id
+func GetTaskByIDv2(ctx context.Context, taskid string) (*Task, error) {
+	var task = Task{}
+	result := gormdb.WithContext(ctx).Where("id = ?", taskid).First(&task)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("find taskkid %s failed: %w", taskid, result.Error)
+	}
+	if result.Error == gorm.ErrRecordNotFound {
+		return nil, define.ErrNotExist{Type: "task id", Value: taskid}
+	}
+	return &task, nil
+}
+
+// GetTaskByNamev2 get task by name
+func GetTaskByNamev2(ctx context.Context, taskname string) (*Task, error) {
+	var task = Task{}
+	result := gormdb.WithContext(ctx).Where("name = ?", taskname).First(&task)
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("find taskkname %s failed: %w", taskname, result.Error)
+	}
+	if result.Error == gorm.ErrRecordNotFound {
+		return nil, define.ErrNotExist{Type: "task name", Value: taskname}
+	}
+	return &task, nil
 }

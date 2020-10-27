@@ -17,14 +17,17 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // InitGormSqlite init gorm db
 // this is test db
 func InitGormSqlite() *gorm.DB {
-	sqlitedbpath := "/tmp/test.db"
+	sqlitedbpath := "test.db"
 	os.Remove(sqlitedbpath)
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(sqlitedbpath), &gorm.Config{
+		Logger: logger.Discard.LogMode(logger.Info),
+	})
 
 	db = db.Debug()
 	// db.Table(name string, args ...interface{})

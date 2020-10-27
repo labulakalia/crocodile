@@ -428,8 +428,6 @@ func GetTasksTreeStatus() []*TaskStatusTree {
 	}
 
 	mainTaskStatus := &TaskStatusTree{
-		// Name:   task.name,
-		// ID:     taskid,
 		TaskType: MasterTask,
 		Status:   TsNoData.String(),
 	}
@@ -522,8 +520,8 @@ func (nt NotifyType) String() string {
 		return "任务通知"
 	case UpgradeNotify:
 		return "新版本发布"
-	// case ReviewReq:
-	// 	return "审核请求" // zaicontent中点击url到任务列表
+	case ReviewReq:
+		return "审核请求" // zaicontent中点击url到任务列表
 	default:
 		return "Unknow"
 	}
