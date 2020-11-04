@@ -42,6 +42,8 @@ var msgcode = map[int]string{
 	IsInstall:     "系统已经安装完成，请勿再次执行安装操作",
 	ErrInstall:    "安装失败",
 	ErrDBConnFail: "数据库连接失败",
+
+	ErrNameExist: "名称已存在",
 }
 
 // GetMsg get msg by code

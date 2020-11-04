@@ -224,15 +224,16 @@ func RandHostID(hg *define.HostGroup) (string, error) {
 // TODO V2
 
 // CreateHostgroupv2 create new hostgroup
-func CreateHostgroupv2(ctx context.Context, name, remark, createID, createName string, hostids []string) error {
-	hostgroup := HostGroup{
-		Name:       name,
-		CreateID:   createID,
-		CreateName: createName,
-		Hosts:      IDs(hostids),
-		Remark:     remark,
+func CreateHostgroupv2(ctx context.Context, name, remark, createID string, hostids []string) error {
+
+	hostgroup := &HostGroup{
+		Name:     name,
+		CreateID: createID,
+		Hosts:    IDs(hostids),
+		Remark:   remark,
 	}
-	err := gormdb.WithContext(ctx).Create(&hostgroup).Error
+
+	err := gormdb.WithContext(ctx).Create(hostgroup).Error
 	if err != nil {
 		return fmt.Errorf("create hosrgroup %v failed: %w", hostgroup, err)
 	}
@@ -240,10 +241,11 @@ func CreateHostgroupv2(ctx context.Context, name, remark, createID, createName s
 }
 
 // ChangeHostGroupv2 change hostgroup
-func ChangeHostGroupv2(ctx context.Context, hostids []string, id, remark string) error {
-	hostgroup := HostGroup{
-		Hosts:  IDs(hostids),
-		Remark: remark,
+func ChangeHostGroupv2(ctx context.Context, hostids []string, id, remark, currentUID string) error {
+	hostgroup := &HostGroup{
+		Hosts:      IDs(hostids),
+		Remark:     remark,
+		currentUID: currentUID,
 	}
 
 	res := gormdb.WithContext(ctx).Model(&HostGroup{}).Where("id = ?", id).Updates(hostgroup)
@@ -257,8 +259,14 @@ func ChangeHostGroupv2(ctx context.Context, hostids []string, id, remark string)
 }
 
 // DeleteHostGroupv2 delete hostgroup
-func DeleteHostGroupv2(ctx context.Context, id string) error {
-	res := gormdb.WithContext(ctx).Model(&HostGroup{}).Delete("id = ?", id)
+func DeleteHostGroupv2(ctx context.Context, id, currentUID string) error {
+	hostgroup := HostGroup{
+		Model: Model{
+			ID: id,
+		},
+		currentUID: currentUID,
+	}
+	res := gormdb.WithContext(ctx).Model(&HostGroup{}).Delete(&hostgroup)
 	if res.Error != nil {
 		return fmt.Errorf("delete hostgroup %s failed: %w", id, res.Error)
 	}
@@ -317,4 +325,14 @@ func GetHostsByHGIDv2(ctx context.Context, hgid string) ([]*Host, error) {
 		return nil, fmt.Errorf("get hosts ids %v failed: %w", hg.Hosts, err)
 	}
 	return hosts, nil
+}
+
+// HostInUse find host is used by hostgroup
+func HostInUse(tx *gorm.DB, id string) (bool, error) {
+	var count int64
+	err := tx.Where("hosts LIKE ?", "%"+id+"%").Find(&HostGroup{}).Count(&count).Error
+	if err != nil {
+		return false, fmt.Errorf("hosts like failed: %w", err)
+	}
+	return count > 0, nil
 }

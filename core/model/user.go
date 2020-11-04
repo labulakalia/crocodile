@@ -48,7 +48,7 @@ func LoginUser(ctx context.Context, name string, password string) (string, error
 
 	err = utils.CheckHashPass(hashpassword, password)
 	if err != nil {
-		return "", fmt.Errorf("utils.CheckHashPass failed: %w", define.ErrUserPass{Err: err})
+		return "", err
 	}
 	token, err := jwt.GenerateToken(uid, name)
 	if err != nil {
@@ -401,7 +401,8 @@ func LoginUserv2(ctx context.Context, name string, password string) (string, err
 	}
 	err = utils.CheckHashPass(res.HashPassword, password)
 	if err != nil {
-		return "", fmt.Errorf("utils.CheckHashPass failed: %w", define.ErrUserPass{Err: err})
+		log.Error("checkout hash passwd failed", zap.Error(err))
+		return "", define.ErrUserPass{UserName: name}
 	}
 	if res.Forbid {
 		return "", define.ErrForbid{Name: name}
@@ -424,6 +425,16 @@ func AddUserv2(ctx context.Context, name, hashpassword string, role define.Role,
 	err := gormdb.WithContext(ctx).Create(&user).Error
 	if err != nil {
 		return fmt.Errorf("create user failed: %w", err)
+	}
+	if enforcer == nil {
+		return nil
+	}
+	ok, err := enforcer.AddRoleForUser(user.ID, role.String())
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("AddRoleForUser failed")
 	}
 	return nil
 }

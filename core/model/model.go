@@ -290,3 +290,25 @@ func gencountsql(querysql string) string {
 	return strings.Replace(querysql, querysql[from:to], " count(*) ", -1)
 
 }
+
+// GetIDNameDict return slice key like map[key]value
+func GetIDNameDict(ctx context.Context, ids []string, model interface{}) (map[string]string, error) {
+	result := []map[string]interface{}{}
+	err := gormdb.WithContext(ctx).Model(model).Select("id", "name").Where("id in ?", ids).Find(&result).Error
+	if err != nil {
+		return nil, fmt.Errorf("select id ,name failed :%w", err)
+	}
+	var res = map[string]string{}
+	for _, v := range result {
+		id, ok := v["id"]
+		if !ok {
+			continue
+		}
+		name, ok := v["name"]
+		if !ok {
+			continue
+		}
+		res[id.(string)] = name.(string)
+	}
+	return res, nil
+}

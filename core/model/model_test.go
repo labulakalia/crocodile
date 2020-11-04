@@ -1,44 +1,52 @@
 package model
 
 import (
+	"context"
 	"testing"
-
-	"github.com/labulaka521/crocodile/core/config"
-	mylog "github.com/labulaka521/crocodile/core/utils/log"
 )
 
-func Test_countColums(t *testing.T) {
-	querysql := `SELECT id,name,role,forbid,hashpassword FROM crocodile_user`
-	wantsql := `SELECT count() FROM crocodile_user`
-	gensql := gencountsql(querysql)
-	if gensql != wantsql {
-		t.Errorf("generate sql failed want getsql '%s',but gensql is '%s'", wantsql, gensql)
-	}
-}
-
-func Test_ShowTable(t *testing.T) {
-	config.Init("/Users/labulakalia/workerspace/golang/crocodile/core/config/core.toml")
-	mylog.Init()
-	InitDb()
-	InitRabc()
-	// conn,err := db.GetConn(context.Background())
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// rows,err := conn.QueryContext(context.Background(), "SELECT name FROM sqlite_master WHERE type ='table'")
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// for rows.Next() {
-	// 	var table string
-	// 	rows.Scan(&table)
-	// 	t.Log(table)
-	// }
-
-	enforcer := GetEnforcer()
-	pass, err := enforcer.Enforce("238397974042906624", "/api/v1/hostgroup", "POST")
+func TestGetIDNameDIct(t *testing.T) {
+	t.Run("create hostGroup", TestCreateHostgroupv2)
+	hgs, count, err := GetHostGroupsv2(context.Background(), 0, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(pass)
+	if count == 0 {
+		t.Fatal("can get hg")
+	}
+	hg := hgs[0]
+
+	type args struct {
+		ctx   context.Context
+		model interface{}
+		ids   []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{
+			name: "id name",
+			args: args{
+				ctx:   context.Background(),
+				model: &HostGroup{},
+				ids: []string{
+					hg.ID,
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetIDNameDict(tt.args.ctx, tt.args.ids, tt.args.model)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetIDNameDIct() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			t.Logf("%+v", got)
+		})
+	}
 }

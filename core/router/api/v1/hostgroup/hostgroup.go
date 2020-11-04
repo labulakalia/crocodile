@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
-	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
@@ -36,24 +35,23 @@ func CreateHostGroup(c *gin.Context) {
 		return
 	}
 
-	exist, err := model.Check(ctx, model.TBHostgroup, model.Name, hg.Name)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if exist {
-		resp.JSON(c, resp.ErrHostgroupExist, nil)
-		return
-	}
-
-	err = model.CreateHostgroup(ctx, hg.Name, hg.Remark, c.GetString("uid"), hg.HostsID)
+	err = model.CreateHostgroupv2(ctx, hg.Name, hg.Remark, c.GetString("uid"), hg.HostsID)
 	if err != nil {
 		log.Error("CreateHostgroup failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.JSON(c, resp.Success, nil)
+	switch err.(type) {
+	case nil:
+		resp.JSON(c, resp.Success)
+	case define.ErrExist:
+		log.Error("create failed", zap.Error(err))
+		resp.JSON(c, resp.ErrNameExist)
+	default:
+		log.Error("create failed", zap.Error(err))
+		resp.JSON(c, resp.ErrInternalServer)
+	}
+
 }
 
 // ChangeHostGroup change hostgroup
@@ -78,43 +76,46 @@ func ChangeHostGroup(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	// 判断ID是否存在
-	exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hg.ID)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
+	// // 判断ID是否存在
+	// exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hg.ID)
+	// if err != nil {
+	// 	log.Error("IsExist failed", zap.Error(err))
+	// 	resp.JSON(c, resp.ErrInternalServer, nil)
+	// 	return
+	// }
 
-	if !exist {
-		resp.JSON(c, resp.ErrHostgroupNotExist, nil)
-		return
-	}
-	uid := c.GetString("uid")
+	// if !exist {
+	// 	resp.JSON(c, resp.ErrHostgroupNotExist, nil)
+	// 	return
+	// }
+	currentUID := c.GetString("uid")
 
 	// 获取用户的类型
 	var role define.Role
 	if v, ok := c.Get("role"); ok {
 		role = v.(define.Role)
 	}
-
+	// var currentUID string
 	// 这里只需要确定如果rule的用户类型是否为Admin
-	if role != define.AdminUser {
+	if role == define.AdminUser {
+		// move gormhook
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hg.ID, uid)
-		if err != nil {
-			log.Error("IsExist failed", zap.Error(err))
-			resp.JSON(c, resp.ErrInternalServer, nil)
-			return
-		}
+		// exist, err := model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hg.ID, uid)
+		// if err != nil {
+		// 	log.Error("IsExist failed", zap.Error(err))
+		// 	resp.JSON(c, resp.ErrInternalServer, nil)
+		// 	return
+		// }
 
-		if !exist {
-			resp.JSON(c, resp.ErrUnauthorized, nil)
-			return
-		}
+		// if !exist {
+		// 	resp.JSON(c, resp.ErrUnauthorized, nil)
+		// 	return
+		// }
+		currentUID = ""
+
 	}
 
-	err = model.ChangeHostGroup(ctx, hg.HostsID, hg.ID, hg.Remark)
+	err = model.ChangeHostGroupv2(ctx, hg.HostsID, hg.ID, hg.Remark, currentUID)
 	if err != nil {
 		log.Error("ChangeHostGroup failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -146,23 +147,23 @@ func DeleteHostGroup(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	if utils.CheckID(hostgroup.ID) != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
+	// if utils.CheckID(hostgroup.ID) != nil {
+	// 	resp.JSON(c, resp.ErrBadRequest, nil)
+	// 	return
+	// }
 	// 判断ID是否存在
-	exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hostgroup.ID)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
+	// exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hostgroup.ID)
+	// if err != nil {
+	// 	log.Error("IsExist failed", zap.Error(err))
+	// 	resp.JSON(c, resp.ErrInternalServer, nil)
+	// 	return
+	// }
 
-	if !exist {
-		resp.JSON(c, resp.ErrHostgroupNotExist, nil)
-		return
-	}
-	uid := c.GetString("uid")
+	// if !exist {
+	// 	resp.JSON(c, resp.ErrHostgroupNotExist, nil)
+	// 	return
+	// }
+	currentUID := c.GetString("uid")
 	// 获取用户的类型
 	var role define.Role
 	if v, ok := c.Get("role"); ok {
@@ -170,33 +171,34 @@ func DeleteHostGroup(c *gin.Context) {
 	}
 
 	// 这里只需要确定如果rule的用户类型是否为Admin
-	if role != define.AdminUser {
+	if role == define.AdminUser {
+		currentUID = ""
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hostgroup.ID, uid)
-		if err != nil {
-			log.Error("IsExist failed", zap.Error(err))
-			resp.JSON(c, resp.ErrInternalServer, nil)
-			return
-		}
+		// exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hostgroup.ID, uid)
+		// if err != nil {
+		// 	log.Error("IsExist failed", zap.Error(err))
+		// 	resp.JSON(c, resp.ErrInternalServer, nil)
+		// 	return
+		// }
 
-		if !exist {
-			resp.JSON(c, resp.ErrUnauthorized, nil)
-			return
-		}
+		// if !exist {
+		// 	resp.JSON(c, resp.ErrUnauthorized, nil)
+		// 	return
+		// }
 	}
-	ok, err := model.Check(ctx, model.TBTask, model.HostGroupID, hostgroup.ID)
-	if err != nil {
-		log.Error("Check failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
+	// ok, err := model.Check(ctx, model.TBTask, model.HostGroupID, hostgroup.ID)
+	// if err != nil {
+	// 	log.Error("Check failed", zap.Error(err))
+	// 	resp.JSON(c, resp.ErrInternalServer, nil)
+	// 	return
 
-	}
-	if ok {
-		resp.JSON(c, resp.ErrDelHostGroupUseByTask, nil)
-		return
-	}
+	// }
+	// if ok {
+	// 	resp.JSON(c, resp.ErrDelHostGroupUseByTask, nil)
+	// 	return
+	// }
 
-	err = model.DeleteHostGroup(ctx, hostgroup.ID)
+	err = model.DeleteHostGroupv2(ctx, hostgroup.ID, currentUID)
 	if err != nil {
 		log.Error("DeleteHostGroup failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)

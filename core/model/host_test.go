@@ -347,8 +347,9 @@ func TestChangeHostStopStatus(t *testing.T) {
 	}
 	id := hosts[0].ID
 	type args struct {
-		ctx context.Context
-		id  string
+		ctx  context.Context
+		id   string
+		stop bool
 	}
 	tests := []struct {
 		name    string
@@ -359,8 +360,9 @@ func TestChangeHostStopStatus(t *testing.T) {
 		{
 			name: "change exist host status",
 			args: args{
-				ctx: context.Background(),
-				id:  id,
+				ctx:  context.Background(),
+				id:   id,
+				stop: true,
 			},
 			wantErr: false,
 		},
@@ -375,7 +377,7 @@ func TestChangeHostStopStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ChangeHostStopStatus(tt.args.ctx, tt.args.id); (err != nil) != tt.wantErr {
+			if err := ChangeHostStopStatus(tt.args.ctx, tt.args.id, tt.args.stop); (err != nil) != tt.wantErr {
 				t.Errorf("ChangeHostStatus() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

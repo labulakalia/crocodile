@@ -163,3 +163,45 @@ func StartInstall(ctx context.Context, username, password string) error {
 	log.Debug("Success Install Crocodile")
 	return nil
 }
+
+/// 查询是否安装 查询用户表是否有数据
+// 安装 只需要创建一个默认的用户，然后将sql/casbin_rule.sql数据插入即可
+// 不再需要手动创建表 表全是由自动生成的
+// 名称不能改
+
+// QueryIsInstallv2 check users
+func QueryIsInstallv2(ctx context.Context) (bool, error) {
+	users, count, err := GetUsersv2(ctx, nil, 0, 100)
+	if err != nil {
+		return false, fmt.Errorf("get userv2 failed: %w", err)
+	}
+	if count == 0 {
+		return false, nil
+	}
+
+	return users[0].Role == define.AdminUser, nil
+}
+
+// StartInstallv2 start instal system, create new user
+func StartInstallv2(ctx context.Context, username, password string) error {
+	_, count, err := GetUsersv2(ctx, nil, 0, 100)
+	if err != nil {
+		return fmt.Errorf("get userv2 failed: %w", err)
+	}
+	if count != 0 {
+		return fmt.Errorf("can init user,because  user exist")
+	}
+	hashpassword, err := utils.GenerateHashPass(password)
+	if err != nil {
+		return fmt.Errorf("generate hashpassword failed: %w", err)
+	}
+	err = AddUserv2(ctx, username, hashpassword, define.AdminUser, "")
+	if err != nil {
+		return fmt.Errorf("add user failed: %w", err)
+	}
+	err = initRabcData(ctx)
+	if err != nil {
+		return fmt.Errorf("initRabcData failed: %w", err)
+	}
+	return nil
+}

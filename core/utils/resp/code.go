@@ -69,4 +69,7 @@ const (
 	ErrInstall = 10702
 	// ErrDBConnFail 数据库连接失败
 	ErrDBConnFail = 10703
+
+
+	ErrNameExist = 10704
 )

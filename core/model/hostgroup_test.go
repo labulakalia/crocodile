@@ -10,12 +10,11 @@ import (
 func TestCreateHostgroupv2(t *testing.T) {
 	gormdb = InitGormSqlite()
 	type args struct {
-		ctx      context.Context
-		name     string
-		remark   string
-		userid   string
-		username string
-		hostids  []string
+		ctx     context.Context
+		name    string
+		remark  string
+		userid  string
+		hostids []string
 	}
 	tests := []struct {
 		name    string
@@ -26,43 +25,40 @@ func TestCreateHostgroupv2(t *testing.T) {
 		{
 			name: "create new hostgroup",
 			args: args{
-				ctx:      context.Background(),
-				name:     "hg1",
-				remark:   "remark1",
-				userid:   "uid",
-				username: "name",
-				hostids:  []string{"hid127272222222222", "hid127272222222221"},
+				ctx:     context.Background(),
+				name:    "hg1",
+				remark:  "remark1",
+				userid:  "uid",
+				hostids: []string{"hid127272222222222", "hid127272222222221"},
 			},
 			wantErr: false,
 		},
 		{
 			name: "create exist new hostgroup",
 			args: args{
-				ctx:      context.Background(),
-				name:     "hg1",
-				remark:   "remark1",
-				userid:   "uid",
-				username: "name",
-				hostids:  []string{"hid127272222222222", "hid127272222222221"},
+				ctx:     context.Background(),
+				name:    "hg1",
+				remark:  "remark1",
+				userid:  "uid",
+				hostids: []string{"hid127272222222222", "hid127272222222221"},
 			},
 			wantErr: true,
 		},
 		{
 			name: "create not valid hostid",
 			args: args{
-				ctx:      context.Background(),
-				name:     "hg1",
-				remark:   "remark1",
-				userid:   "uid",
-				username: "name",
-				hostids:  []string{"valid hostid", "valid hostid2"},
+				ctx:     context.Background(),
+				name:    "hg1",
+				remark:  "remark1",
+				userid:  "uid",
+				hostids: []string{"valid hostid", "valid hostid2"},
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := CreateHostgroupv2(tt.args.ctx, tt.args.name, tt.args.remark, tt.args.userid, tt.args.username, tt.args.hostids); (err != nil) != tt.wantErr {
+			if err := CreateHostgroupv2(tt.args.ctx, tt.args.name, tt.args.remark, tt.args.userid, tt.args.hostids); (err != nil) != tt.wantErr {
 				t.Errorf("CreateHostgroupv2() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -80,10 +76,11 @@ func TestChangeHostGroupv2(t *testing.T) {
 	}
 	hg := hgs[0]
 	type args struct {
-		ctx     context.Context
-		hostids []string
-		id      string
-		remark  string
+		ctx        context.Context
+		hostids    []string
+		id         string
+		currentUID string
+		remark     string
 	}
 	tests := []struct {
 		name    string
@@ -114,7 +111,7 @@ func TestChangeHostGroupv2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ChangeHostGroupv2(tt.args.ctx, tt.args.hostids, tt.args.id, tt.args.remark); (err != nil) != tt.wantErr {
+			if err := ChangeHostGroupv2(tt.args.ctx, tt.args.hostids, tt.args.id, tt.args.remark, tt.args.currentUID); (err != nil) != tt.wantErr {
 				t.Errorf("ChangeHostGroupv2() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -132,8 +129,9 @@ func TestDeleteHostGroupv2(t *testing.T) {
 	}
 	hg := hgs[0]
 	type args struct {
-		ctx context.Context
-		id  string
+		ctx        context.Context
+		id         string
+		currentUID string
 	}
 	tests := []struct {
 		name    string
@@ -160,7 +158,7 @@ func TestDeleteHostGroupv2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := DeleteHostGroupv2(tt.args.ctx, tt.args.id); (err != nil) != tt.wantErr {
+			if err := DeleteHostGroupv2(tt.args.ctx, tt.args.id, tt.args.currentUID); (err != nil) != tt.wantErr {
 				t.Errorf("DeleteHostGroupv2() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

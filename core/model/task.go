@@ -448,7 +448,6 @@ func DeleteTaskv2(ctx context.Context, taskid string) error {
 // TaskIsUsev2 check a task is other task's parent task ids or child task when delete task
 func TaskIsUsev2(ctx context.Context, taskid string) (int64, error) {
 	var count int64
-	gormdb = gormdb.Debug()
 	err := gormdb.WithContext(ctx).Model(&Task{}).Where("child_task_ids LIKE @likeid OR parent_task_ids LIKE @likeid", sql.Named("likeid", "%"+taskid+"%")).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("find taskid %s failed: %w", taskid, err)

@@ -218,8 +218,7 @@ func TestTaskIsUsev2(t *testing.T) {
 	}
 	task := tasks[0]
 	id := task.ID
-	// fmt.Println("id", task.ID)
-	// new task
+
 	newtask := task
 	newtask.Name = "newtask"
 	newtask.ParentTaskIDs = IDs{task.ID}

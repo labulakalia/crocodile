@@ -49,9 +49,7 @@ func CreateOrUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
 	}
 
 	newhost := Host{}
-	// gormdb.Transaction(fc func(tx *DB) error, opts ...*sql.TxOptions)
-	err = gormdb.WithContext(ctx).
-		Where(Host{Addr: addr}).
+	err = tx.Where(Host{Addr: addr}).
 		Assign(&host).
 		FirstOrCreate(&newhost).Error
 	if err != nil {
@@ -62,7 +60,7 @@ func CreateOrUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
 		return nil
 	}
 	hostgroup := HostGroup{}
-	err = gormdb.Where("name = ?", req.Hostgroup).First(&hostgroup).Error
+	err = tx.Where("name = ?", req.Hostgroup).First(&hostgroup).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
@@ -72,7 +70,7 @@ func CreateOrUpdateHost(ctx context.Context, req *pb.RegistryReq) error {
 	}
 
 	ids := append(hostgroup.Hosts, newhost.ID)
-	err = gormdb.Model(&HostGroup{}).Where("name = ?", req.Hostgroup).Update("hosts", ids).Error
+	err = tx.Model(&HostGroup{}).Where("name = ?", req.Hostgroup).Update("hosts", ids).Error
 	if err != nil {
 		return fmt.Errorf("update hostgroup hosts failed: %w", err)
 	}
@@ -354,8 +352,8 @@ func GetHostByIDS(ctx context.Context, ids []string) ([]*define.Host, error) {
 
 // ChangeHostStopStatus change host status
 // it is operate not allow change host's update time
-func ChangeHostStopStatus(ctx context.Context, id string) error {
-	result := gormdb.WithContext(ctx).Model(&Host{}).Omit("update_time").Where("id = ?", id).Update("stop", "~ stop")
+func ChangeHostStopStatus(ctx context.Context, id string, stop bool) error {
+	result := gormdb.WithContext(ctx).Model(&Host{}).Omit("update_time").Where("id = ?", id).UpdateColumn("stop", stop)
 	if result.Error != nil {
 		return fmt.Errorf("update host id %s status failed: %w", id, result.Error)
 	}
@@ -387,12 +385,38 @@ func StopHost(ctx context.Context, hostid string, stop bool) error {
 
 // DeleteHostv2 delete hosts
 func DeleteHostv2(ctx context.Context, id string) error {
-	res := gormdb.WithContext(ctx).Model(&Host{}).Delete("id = ?", id)
+	var (
+		err  error
+		used bool
+	)
+	tx := gormdb.Begin().Debug()
+
+	tx = tx.WithContext(ctx)
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		tx.Commit()
+	}()
+
+	used, err = HostInUse(tx, id)
+	if err != nil {
+		return fmt.Errorf("find host user failed: %w", err)
+	}
+	if used {
+		err = define.ErrIsUsed{Type: "host", Value: id}
+		return err
+	}
+
+	res := tx.WithContext(ctx).Model(&Host{}).Delete("id = ?", id)
 	if res.Error != nil {
-		return fmt.Errorf("delete host %s failed: %w", id, res.Error)
+		err = fmt.Errorf("delete host %s failed: %w", id, res.Error)
+		return err
 	}
 	if res.RowsAffected == 0 {
-		return define.ErrNotExist{Type: "host id", Value: id}
+		err = define.ErrNotExist{Type: "host id", Value: id}
+		return err
 	}
 	return nil
 }

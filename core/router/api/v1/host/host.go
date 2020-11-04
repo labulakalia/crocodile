@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
-	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/model"
 	"github.com/labulaka521/crocodile/core/utils/define"
@@ -41,8 +40,7 @@ func GetHost(c *gin.Context) {
 		q.Limit = define.DefaultLimit
 	}
 
-	hosts, count, err := model.GetHosts(ctx, q.Offset, q.Limit)
-
+	hosts, count, err := model.GetHostsv2(ctx, q.Offset, q.Limit)
 	if err != nil {
 		log.Error("GetHost failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -72,31 +70,22 @@ func ChangeHostState(c *gin.Context) {
 		resp.JSON(c, resp.ErrBadRequest, nil)
 		return
 	}
-	if utils.CheckID(gethost.ID) != nil {
-		log.Error("CheckID failed")
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	host, err := model.GetHostByID(ctx, gethost.ID)
-	switch err.(type) {
-	case nil:
-		goto Next
-	case define.ErrNotExist:
-		resp.JSON(c, resp.ErrHostNotExist, nil)
-		return
-	default:
 
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-Next:
-	err = model.StopHost(ctx, gethost.ID, !host.Stop)
+	err = model.ChangeHostStopStatus(ctx, gethost.ID, gethost.Stop)
 	if err != nil {
-		log.Error("model.StopHost", zap.Error(err))
+		log.Error("change host host status", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
 		return
 	}
-	resp.JSON(c, resp.Success, nil)
+	switch err.(type) {
+	case define.ErrNotExist:
+		log.Error("data not exist: %w", zap.Error(err))
+		resp.JSON(c, resp.ErrHostNotExist, nil)
+	case nil:
+		resp.JSON(c, resp.Success, nil)
+	default:
+		resp.JSON(c, resp.ErrInternalServer, nil)
+	}
 }
 
 // DeleteHost delete host
@@ -115,34 +104,21 @@ func DeleteHost(c *gin.Context) {
 	gethost := define.GetID{}
 	err := c.ShouldBindJSON(&gethost)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	if utils.CheckID(gethost.ID) != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, resp.ErrBadRequest, nil)
 		return
 	}
 
-	hostgroups, _, err := model.GetHostGroups(ctx, 0, 0)
-	if err != nil {
+	err = model.DeleteHostv2(ctx, gethost.ID)
+	switch err.(type) {
+	case define.ErrNotExist:
+		log.Error("data not exist: %w", zap.Error(err))
+		resp.JSON(c, resp.ErrHostNotExist, nil)
+	case nil:
+		resp.JSON(c, resp.Success, nil)
+	default:
 		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	for _, hostgroup := range hostgroups {
-		for _, hid := range hostgroup.HostsID {
-			if gethost.ID == hid {
-				resp.JSON(c, resp.ErrDelHostUseByOtherHG, nil)
-				return
-			}
-		}
 	}
 
-	err = model.DeleteHost(ctx, gethost.ID)
-	if err != nil {
-		log.Error("model.DeleteHost failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
 	resp.JSON(c, resp.Success, nil)
 }
 

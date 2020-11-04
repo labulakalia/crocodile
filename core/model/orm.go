@@ -57,11 +57,12 @@ func (h Host) TableName() string {
 // HostGroup orm Model
 type HostGroup struct {
 	Model
-	Name       string `gorm:"type:varchar(30);not null;uniqueindex" json:"name"`
-	CreateID   string `gorm:"type:char(18);not null" json:"create_id"`
-	CreateName string `gorm:"type:varchar(30);not null" json:"create_name"`
-	Hosts      IDs    `gorm:"type:varchar(360);not null;default ''" json:"hosts"`
-	Remark     string `gorm:"type:varchar(100);not null;default:''" json:"remark"`
+	Name     string `gorm:"type:varchar(30);not null;uniqueindex" json:"name"`
+	CreateID string `gorm:"type:char(18);not null" json:"create_id"`
+	Hosts    IDs    `gorm:"type:varchar(360);not null;default ''" json:"hosts"`
+	Remark   string `gorm:"type:varchar(100);not null;default:''" json:"remark"`
+
+	currentUID string `gorm:"-" json:"-"` // current user checkout operate user
 }
 
 // IDs custom gorm type
@@ -100,6 +101,61 @@ func (hids IDs) Value() (driver.Value, error) {
 // TableName custom HostGroup table name
 func (h HostGroup) TableName() string {
 	return dbPrefix + "hostgroup"
+}
+
+// hostgroup hooks
+
+// BeforeCreate  checkout name exist
+func (h *HostGroup) BeforeCreate(tx *gorm.DB) (err error) {
+	h.ID = utils.GetID()
+	var (
+		count int64
+	)
+	err = tx.Model(&HostGroup{}).Where("name = ?", h.Name).Count(&count).Error
+	if err != nil {
+		return fmt.Errorf("find count failed: %w", err)
+	}
+	if count > 0 {
+		return define.ErrExist{Type: "hostgroup name", Value: h.Name}
+	}
+	return nil
+}
+
+// AfterCreate save log
+func (h *HostGroup) AfterCreate(tx *gorm.DB) (err error) {
+	return nil
+}
+
+// BeforeUpdate checkout hg id exist
+func (h *HostGroup) BeforeUpdate(tx *gorm.DB) (err error) {
+	var (
+		count int64
+	)
+	err = tx.Model(&HostGroup{}).Where("id = ?", h.ID).Count(&count).Error
+	if err != nil {
+		return fmt.Errorf("find count failed: %w", err)
+	}
+	if count > 0 {
+		return define.ErrNotExist{Type: "hostgroup id", Value: h.ID}
+	}
+	// 不需要检查 用户是admin
+	if h.currentUID == "" {
+		return nil
+	}
+	// 用户非admin检查主机组的创建人是否为当前用户
+	err = tx.Model(&HostGroup{}).Where("id = ?", h.ID).Where("create_id = ?", h.currentUID).Scan(&count).Error
+	if err != nil {
+		return fmt.Errorf("find count failed: %w", err)
+	}
+	if count == 0 {
+		return define.ErrUnauthorized{Type: "hostgroup"}
+	}
+	return nil
+}
+
+// BeforeDelete same of BeforeUpdate
+func (h *HostGroup) BeforeDelete(tx *gorm.DB) (err error) {
+	return h.BeforeUpdate(tx)
 }
 
 // Log orm model
@@ -283,4 +339,18 @@ func (t Task) TableName() string {
 	return dbPrefix + "task"
 }
 
-// TDO
+// CasbinRule casbin rabc orm model
+type CasbinRule struct {
+	PType string `gorm:"type:varchar(100);default ''"`
+	V0    string `gorm:"type:varchar(100);default ''"`
+	V1    string `gorm:"type:varchar(100);default ''"`
+	V2    string `gorm:"type:varchar(100);default ''"`
+	V3    string `gorm:"type:varchar(100);default ''"`
+	V4    string `gorm:"type:varchar(100);default ''"`
+	V5    string `gorm:"type:varchar(100);default ''"`
+}
+
+// TableName custom Task table name
+func (t CasbinRule) TableName() string {
+	return "casbin_rule"
+}

@@ -93,7 +93,8 @@ func (tasktype TaskRespType) String() string {
 
 // GetID get task id in post
 type GetID struct {
-	ID string `json:"id" form:"id" binding:"required,len=18"`
+	ID   string `json:"id" form:"id" binding:"required,len=18"`
+	Stop bool   `json:"stop"`
 }
 
 // GetName get task name in post
