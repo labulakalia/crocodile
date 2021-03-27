@@ -3,7 +3,7 @@
 <template>
   <div class="cron" :val="value_">
     <el-row>
-      <el-col :span="18">
+      <el-col :span="17">
         <el-tabs v-model="activeName">
           <el-tab-pane label="秒" name="s">
             <second-and-minute v-model="sVal" lable="秒"></second-and-minute>
@@ -27,7 +27,7 @@
             <year v-model="yearVal" lable="年"></year>
           </el-tab-pane>
         </el-tabs>
-        <el-table :data="tableData" size="mini" border style="width: 100%;">
+        <el-table :data="tableData" size="mini" border style="width: 100%; margin-top: 5px;">
           <el-table-column prop="sVal" label="秒" min-width="60"></el-table-column>
           <el-table-column prop="mVal" label="分" min-width="60"></el-table-column>
           <el-table-column prop="hVal" label="时" min-width="60"></el-table-column>
@@ -37,14 +37,17 @@
           <el-table-column prop="yearVal" label="年" min-width="60"></el-table-column>
         </el-table>
       </el-col>
-      <el-col :span="6">
-        <el-collapse v-model="collapseactiveName" @change="handleChange">
-          <el-collapse-item title="最近运行时间" name="1">
-            <div v-for="item in cronrecenttime" :key="item">
-              <span>{{ item }}</span>
-            </div>
-          </el-collapse-item>
-        </el-collapse>
+      <el-col :span="7">
+        <el-breadcrumb separator="/">
+          <el-breadcrumb-item>最近运行时间</el-breadcrumb-item>
+        </el-breadcrumb>
+        <el-timeline :reverse="reverse">
+          <el-timeline-item
+            v-for="(timestamp, index) in cronrecenttime"
+            :key="index"
+            :timestamp="timestamp">
+          </el-timeline-item>
+        </el-timeline>
       </el-col>
     </el-row>
   </div>
@@ -179,7 +182,18 @@ export default {
   text-align: left;
   padding: 10px;
   background: #fff;
-  border: 1px solid #dcdfe6;
-  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);
+  /*border: 1px solid #dcdfe6;*/
+  /*box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);*/
+}
+.cron .el-tab-pane {
+  line-height: 35px;
+}
+.cron .el-checkbox-group {
+  line-height: 20px;
+}
+.cron .el-breadcrumb {
+  margin-top: 60px;
+  padding-left: 40px;
+  margin-bottom: 20px;
 }
 </style>

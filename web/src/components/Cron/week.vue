@@ -35,8 +35,8 @@
     </div>
     <div>
       <el-radio :disabled="disable" v-model="type" label="4" size="mini" border>指定</el-radio>
-      <el-checkbox-group v-model="appoint">
-          <el-checkbox :disabled="disable" @change="type = '4'"  v-for="i in 7" :key="i" :label="i"></el-checkbox>
+      <el-checkbox-group v-model="appoint" :min="1">
+          <el-checkbox :disabled="disable" @change="type = '4'"  v-for="i in 7" :key="i" :label="check(i)"></el-checkbox>
       </el-checkbox-group>
     </div>
   </div>
@@ -145,6 +145,9 @@ export default {
         this.type = '4'
         this.appoint = this.value.split(',')
       }
+    },
+    check(val) {
+      return val.toString();
     }
   },
   created () {

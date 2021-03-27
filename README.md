@@ -20,6 +20,7 @@ A distributed task scheduling system based on Golang that supports http requests
 <summary>Click Me</summary>
 
 ![](./screenshot/2.png)
+![](./screenshot/8.png)
 ![](./screenshot/3.png)
 ![](./screenshot/4.png)
 ![](./screenshot/5.png)

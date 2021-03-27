@@ -24,13 +24,13 @@
     </div>
     <div>
       <el-radio v-model="type" label="4" size="mini" border>指定</el-radio>
-      <el-checkbox-group v-model="appoint">
+      <el-checkbox-group v-model="appoint" :min="1">
         <div v-for="i in 2" :key="i">
-          <el-checkbox 
-          @change="type = '4'"  
+          <el-checkbox
+          @change="type = '4'"
           v-for="j in 6"
-          :key="j" 
-          :label="check((i-1) * 6 + j)">
+          :key="j"
+          :label="check((i-1) * 6 + j, 'getVal')">{{check((i-1) * 6 + j, 'getText')}}
           </el-checkbox>
           </div>
       </el-checkbox-group>
@@ -147,7 +147,10 @@ export default {
         this.appoint = this.value.split(",");
       }
     },
-    check(val) {
+    check(val, act) {
+      if (act === "getVal") {
+        return val.toString();
+      }
       if (val < 10) {
         return "0" + val;
       }

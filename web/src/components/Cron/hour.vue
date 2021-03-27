@@ -21,13 +21,13 @@
     </div>
     <div>
       <el-radio v-model="type" label="4" size="mini" border>指定</el-radio>
-      <el-checkbox-group v-model="appoint">
+      <el-checkbox-group v-model="appoint" :min="1">
         <div  v-for="i in 4" :key="i">
            <!-- style="margin-left: 10px;  line-height: 25px;" -->
-          <el-checkbox 
-            @change="type = '4'"  
-            v-for="j in 6" 
-            :key="j" 
+          <el-checkbox
+            @change="type = '4'"
+            v-for="j in 6"
+            :key="j"
             :label="check((i-1) * 6 + (j-1))">
           </el-checkbox>
         </div>

@@ -59,7 +59,7 @@
                     :lang="lang[savecode.lang]"
                     height="300"
                     @init="codeinitEditor"
-                    :options="{ 
+                    :options="{
                       readOnly: is_preview,
                       wrap: 'free',
                       indentedSoftWrap: false,
@@ -231,7 +231,7 @@
                           lang="json"
                           height="300"
                           @init="rowreqbodyinitEditor"
-                          :options="{ 
+                          :options="{
                             readOnly: is_preview,
                             wrap: 'free',
                             indentedSoftWrap: false}"
@@ -326,7 +326,7 @@
               style="width: 500px;"
             >
               <template slot="append">
-                <el-popover placement="top" width="650" v-model="cronPopover">
+                <el-popover placement="top" width="700" v-model="cronPopover">
                   <cron v-show="cronPopover" v-model="cronExpression"></cron>
                   <div style="text-align: center; margin: 0">
                     <el-button type="primary" size="medium" @click="changeCron">确定</el-button>
