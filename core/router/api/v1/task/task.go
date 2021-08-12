@@ -145,7 +145,7 @@ func ChangeTask(c *gin.Context) {
 	// 这里只需要确定如果rule的用户类型是否为Admin
 	if role != define.AdminUser {
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, task.ID, uid)
+		exist, err = model.Check(ctx, model.TBTask, model.IDCreateByUID, task.ID, uid)
 		if err != nil {
 			log.Error("IsExist failed", zap.Error(err))
 			resp.JSON(c, resp.ErrInternalServer, nil)
