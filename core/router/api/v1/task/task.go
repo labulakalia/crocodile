@@ -677,7 +677,7 @@ func RealRunTaskLog(c *gin.Context) {
 			err = conn.WriteMessage(websocket.TextMessage, erroutput)
 			if err != nil {
 				log.Error("WriteMessage failed", zap.Error(err))
-				
+
 			}
 			return
 		}
@@ -773,26 +773,13 @@ func ParseCron(c *gin.Context) {
 		return
 	}
 
-	expr, err := cronexpr.Parse(string(cronbyte))
-	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
+	var respTimes []string
+	nextN := cronexpr.MustParse(string(cronbyte)).NextN(time.Now(), 10)
+	for _, nextTime := range nextN {
+		respTimes = append(respTimes, nextTime.Format("2006-01-02 15:04:05"))
 	}
-	var (
-		last time.Time
-		next time.Time
-	)
-	last = time.Now()
-	resptimes := []string{}
-	for {
-		next = expr.Next(last)
-		last = next
-		resptimes = append(resptimes, next.Format("2006-01-02 15:04:05"))
-		if len(resptimes) == 10 {
-			break
-		}
-	}
-	resp.JSON(c, resp.Success, resptimes)
+	resp.JSON(c, resp.Success, respTimes)
+
 }
 
 // GetSelect name,id

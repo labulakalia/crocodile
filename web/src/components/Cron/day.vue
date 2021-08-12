@@ -70,7 +70,7 @@
     </div>
     <div>
       <el-radio :disabled="disable" v-model="type" label="4" size="mini" border>指定</el-radio>
-      <el-checkbox-group v-model="appoint">
+      <el-checkbox-group v-model="appoint" :min="1">
         <div v-for="i in 6" :key="i">
           <el-checkbox
             :disabled="disable"
