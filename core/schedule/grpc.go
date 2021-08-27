@@ -40,14 +40,14 @@ var (
 	// grpc conn pool
 	cachegRPCConnM *cachegRPCConn
 	// stop sent hearbeat to server
-	clentstophb chan struct{}
+	clientstophb chan struct{}
 )
 
 func init() {
 	cachegRPCConnM = &cachegRPCConn{
 		conn: make(map[string]*grpc.ClientConn),
 	}
-	clentstophb = make(chan struct{}, 1)
+	clientstophb = make(chan struct{}, 1)
 }
 
 type cachegRPCConn struct {
@@ -57,9 +57,9 @@ type cachegRPCConn struct {
 
 // getgRPCClientConn return conn or nil
 func (cg *cachegRPCConn) getgRPCClientConn(addr string) *grpc.ClientConn {
-	cg.Lock()
+	cg.RLock()
 	conn, exist := cg.conn[addr]
-	cg.Unlock()
+	cg.RUnlock()
 	if exist && conn.GetState() == connectivity.Ready {
 		return conn
 	}
@@ -290,7 +290,7 @@ func RegistryClient(version string, port int) {
 				cancel()
 				log.Debug("send hearbeat success", zap.String("server", lastaddr))
 				timer.Reset(defaultHearbeatInterval)
-			case <-clentstophb:
+			case <-clientstophb:
 				log.Info("Stop Send HearBeat")
 				timer.Stop()
 				return
@@ -380,7 +380,7 @@ func DoStopConn(mode define.RunMode) {
 	}
 
 	if mode == define.Client {
-		close(clentstophb)
+		close(clientstophb)
 		for _, taskcancel := range runningtask.running {
 			taskcancel()
 		}
