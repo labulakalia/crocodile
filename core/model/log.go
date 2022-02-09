@@ -334,12 +334,13 @@ func GetLogv2(ctx context.Context, taskname string, status int, offset, limit in
 }
 
 // CleanLogv2 clean olg log data
-func CleanLogv2(ctx context.Context, taskid string, beforeStartTime time.Time) error {
-	err := gormdb.WithContext(ctx).Unscoped().Where("task_id = ? and start_time < ?", taskid, beforeStartTime).Delete(&Log{}).Error
+func CleanLogv2(ctx context.Context, taskid string, beforeStartTime time.Time) (int64, error) {
+	var count int64
+	err := gormdb.WithContext(ctx).Where("task_id = ? and start_time < ?", taskid, beforeStartTime).Count(&count).Delete(&Log{}).Error
 	if err != nil {
-		return fmt.Errorf("delete taskid %s log failed: %w", taskid, err)
+		return 0,fmt.Errorf("delete taskid %s log failed: %w", taskid, err)
 	}
-	return nil
+	return count,nil
 }
 
 // SaveOperateLog save all user change operate

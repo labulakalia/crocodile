@@ -2,8 +2,6 @@ package user
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/labulaka521/crocodile/common/log"
@@ -34,37 +32,28 @@ func RegistryUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&ruser)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	// TODO only admin
+	var role define.Role
+	if v, ok := c.Get("role"); ok {
+		role = v.(define.Role)
+	}
+
+	if role != define.AdminUser {
+		resp.JSONv2(c, define.ErrUnauthorized{Type: "create user"})
+		return
+	}
 
 	hashpassword, err = utils.GenerateHashPass(ruser.Password)
 	if err != nil {
 		log.Error("GenerateHashPass failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 
-	exist, err := model.Check(ctx, model.TBUser, model.Name, ruser.Name)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if exist {
-		resp.JSON(c, resp.ErrUserNameExist, nil)
-		return
-	}
-
-	err = model.AddUser(ctx, ruser.Name, hashpassword, ruser.Role)
-	if err != nil {
-		log.Error("AddUser failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-
-	resp.JSON(c, resp.Success, nil)
+	err = model.AddUserv2(ctx, ruser.Name, hashpassword, ruser.Role, ruser.Remark)
+	resp.JSONv2(c, err)
 }
 
 // GetUser Get User Info By Token
@@ -80,32 +69,19 @@ func GetUser(c *gin.Context) {
 	defer cancel()
 
 	uid := c.GetString("uid")
-	fmt.Println(uid)
-	// check uid exist
-	exist, err := model.Check(ctx, model.TBUser, model.ID, uid)
+	user, err := model.GetUserByIDv2(ctx, uid)
 	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if !exist {
-		resp.JSON(c, resp.ErrUserNotExist, nil)
+		log.Error("GetUserByID failed", zap.Error(err))
+		resp.JSONv2(c, err)
 		return
 	}
 
-	user, err := model.GetUserByID(ctx, uid)
-	if err != nil {
-		log.Error("GetUserByID failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	user.Password = ""
-	if user.Role == 2 {
+	if user.Role == define.AdminUser {
 		user.Roles = []string{"admin"}
 	} else {
 		user.Roles = []string{}
 	}
-	resp.JSON(c, resp.Success, user)
+	resp.JSONv2(c, nil, user)
 }
 
 // GetUsers get user info by token
@@ -126,6 +102,15 @@ func GetUsers(c *gin.Context) {
 		err error
 	)
 	// TODO only admin
+	var role define.Role
+	if v, ok := c.Get("role"); ok {
+		role = v.(define.Role)
+	}
+
+	if role != define.AdminUser {
+		resp.JSONv2(c, define.ErrUnauthorized{Type: "get all users"})
+		return
+	}
 
 	err = c.BindQuery(&q)
 	if err != nil {
@@ -135,19 +120,8 @@ func GetUsers(c *gin.Context) {
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	users, count, err := model.GetUsers(ctx, nil, q.Offset, q.Limit)
-	if err != nil {
-		log.Error("GetUsers failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	// remove password
-	for i, user := range users {
-		user.Password = ""
-		users[i] = user
-	}
-
-	resp.JSON(c, resp.Success, users, count)
+	users, count, err := model.GetUsersv2(ctx, nil, q.Offset, q.Limit)
+	resp.JSONv2(c, err, users, count)
 }
 
 // ChangeUserInfo change user self config
@@ -168,31 +142,20 @@ func ChangeUserInfo(c *gin.Context) {
 	err := c.ShouldBindJSON(&newinfo)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	if len(newinfo.Password) > 0 && len(newinfo.Password) < 8 {
-		log.Error("password is short 8")
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
+
 	uid := c.GetString("uid")
 	if uid != newinfo.ID {
 		log.Error("uid is error", zap.String("uid", uid), zap.String("infoid", newinfo.ID))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, define.ErrUnauthorized{
+			Type: "task",
+		})
 		return
 	}
-	exist, err := model.Check(ctx, model.TBUser, model.UserName, newinfo.Name, newinfo.ID)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if exist {
-		resp.JSON(c, resp.ErrUserNameExist, nil)
-		return
-	}
-	err = model.ChangeUserInfo(ctx,
+
+	err = model.ChangeUserInfov2(ctx,
 		uid,
 		newinfo.Name,
 		newinfo.Email,
@@ -200,14 +163,10 @@ func ChangeUserInfo(c *gin.Context) {
 		newinfo.DingPhone,
 		newinfo.Telegram,
 		newinfo.Password,
-		newinfo.Remark)
-	if err != nil {
-		log.Error("ChangeUserInfo failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-
-	resp.JSON(c, resp.Success, nil)
+		newinfo.AlartTmpl,
+		newinfo.Remark,
+		newinfo.Env)
+	resp.JSONv2(c, err)
 }
 
 // AdminChangeUser will change role,forbid,password,Remark
@@ -228,41 +187,21 @@ func AdminChangeUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	if len(user.Password) > 0 && len(user.Password) < 8 {
-		log.Error("password is short 8")
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	// TODO only admin
-	exist, err := model.Check(ctx, model.TBUser, model.ID, user.ID)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-	}
-	if !exist {
-		resp.JSON(c, resp.ErrUserNotExist, nil)
-		return
-	}
+
 	var role define.Role
 	if v, ok := c.Get("role"); ok {
 		role = v.(define.Role)
 	}
 	if role != define.AdminUser {
-		resp.JSON(c, resp.ErrUnauthorized, nil)
+		resp.JSONv2(c, define.ErrUnauthorized{})
 		return
 	}
 
-	err = model.AdminChangeUser(ctx, user.ID, user.Role, user.Forbid, user.Password, user.Remark)
-	if err != nil {
-		log.Error("AdminChangeUser failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-
-	resp.JSON(c, resp.Success, nil)
+	err = model.AdminChangeUserv2(ctx, user.ID, user.Role, user.Forbid, user.Password, user.Remark)
+	resp.JSONv2(c, err)
 }
 
 // AdminDeleteUser will delete user
@@ -295,51 +234,9 @@ func AdminDeleteUser(c *gin.Context) {
 		resp.JSON(c, resp.ErrUnauthorized, nil)
 		return
 	}
-	// 只能删除普通用户，不能删除admin用户
-	userinfo, err := model.GetUserByID(ctx, user.ID)
-	if err != nil {
-		log.Error("GetUserByID failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if userinfo.Role == define.AdminUser {
-		resp.JSON(c, resp.ErrUnauthorized, nil)
-		return
-	}
-	// TODO only admin
-	exist, err := model.Check(ctx, model.TBUser, model.ID, user.ID)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-	}
-	if !exist {
-		resp.JSON(c, resp.ErrUserNotExist, nil)
-		return
-	}
-	// 检查用户是否创建资源
-	ok1, err := model.Check(ctx, model.TBTask, model.CreateByID, user.ID)
-	if err != nil {
-		log.Error("Check failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	ok2, err := model.Check(ctx, model.TBHostgroup, model.CreateByID, user.ID)
-	if err != nil {
-		log.Error("Check failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if ok1 || ok2 {
-		resp.JSON(c, resp.ErrDelUserUseByOther, nil)
-		return
-	}
+
 	err = model.DeleteUser(ctx, user.ID)
-	if err != nil {
-		log.Error("DeleteUser failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, err)
 }
 
 // LoginUser login user
@@ -359,19 +256,7 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 	token, err := model.LoginUser(ctx, username, password)
-	if err != nil {
-		log.Error("model.LoginUser failed", zap.Error(err))
-	}
-	switch err := errors.Unwrap(err); err.(type) {
-	case nil:
-		resp.JSON(c, resp.Success, token)
-	case define.ErrUserPass:
-		resp.JSON(c, resp.ErrUserPassword, nil)
-	case define.ErrForbid:
-		resp.JSON(c, resp.ErrUserForbid, nil)
-	default:
-		resp.JSON(c, resp.ErrInternalServer, nil)
-	}
+	resp.JSONv2(c, err, token)
 }
 
 // LogoutUser logout user
@@ -395,7 +280,7 @@ func GetSelect(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	data, err := model.GetNameID(ctx, model.TBUser)
+	data, err := model.GetIDNameOption(ctx, nil, &model.User{})
 	if err != nil {
 		log.Error("model.GetNameID failed", zap.Error(err))
 		resp.JSON(c, resp.ErrInternalServer, nil)
@@ -423,11 +308,12 @@ func GetAlarmStatus(c *gin.Context) {
 		WeChat:   notifycfg.WeChat.Enable,
 		WebHook:  notifycfg.WebHook.Enable,
 	}
-	resp.JSON(c, resp.Success, notifystatus)
+	resp.JSONv2(c, nil, notifystatus)
 }
 
 // GetOperateLog get user operate log
 func GetOperateLog(c *gin.Context) {
+	// TODO 
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()

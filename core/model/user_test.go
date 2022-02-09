@@ -2,6 +2,8 @@ package model
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/labulaka521/crocodile/common/utils"
@@ -322,4 +324,21 @@ func TestChangeUserInfov2(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetCtx(t *testing.T) {
+	// ctx, cancel := context.WithCancel(context.Background())
+	// defer cancel()
+
+	// v, ok := ctx.Value("11111").(string)
+	// if ok {
+	// 	t.Log(v, ok)
+	// }
+
+	var uuu = `{"4":"2","6":"4"}`
+	var m = map[string]string{}
+	json.Unmarshal([]byte(uuu), &m)
+	fmt.Println(m)
+
+
 }

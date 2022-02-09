@@ -3,6 +3,10 @@ package define
 import (
 	"errors"
 	"fmt"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/labulaka521/crocodile/common/log"
+	"go.uber.org/zap"
 )
 
 // ErrBadRequest err bad request
@@ -50,7 +54,7 @@ func (e ErrNotExist) Error() string {
 	return fmt.Sprintf("%s value %s is not exist", e.Type, e.Value)
 }
 
-// ErrExist query  exist err
+// ErrExist query exist err
 type ErrExist struct {
 	Type  string
 	Value string
@@ -81,11 +85,20 @@ func (e ErrUnauthorized) Error() string {
 
 // ErrDependByOther object depend by other, can not operate
 type ErrDependByOther struct {
-	Type string
+	Type  string
+	Value string
 }
 
 func (e ErrDependByOther) Error() string {
-	return fmt.Sprintf("depend by %s model,can not delete", e.Type)
+	return fmt.Sprintf("it can not delete, depend by %s model %s value", e.Type, e.Value)
+}
+
+type ErrCronExpr struct {
+	Value string
+}
+
+func (e ErrCronExpr) Error() string {
+	return fmt.Sprintf("please check your cronexpr %s", e.Value)
 }
 
 // ErrServer if err not find, will return this error
@@ -93,12 +106,17 @@ type ErrServer struct {
 }
 
 func (e ErrServer) Error() string {
-	return fmt.Sprintf("please try again later, the server is busy")
+	return fmt.Sprintf("server is busy,please try again later")
 }
 
 // GetError get first error
 func GetError(err error) error {
+	log.Error("request error", zap.Error(err))
 	switch err = errors.Unwrap(err); err.(type) {
+	case nil:
+		return nil
+	case validator.ValidationErrors:
+		return ErrBadRequest{}
 	case ErrUserPass:
 		return err
 	case ErrForbid:

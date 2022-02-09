@@ -79,7 +79,6 @@ func TestChangeHostGroupv2(t *testing.T) {
 		ctx        context.Context
 		hostids    []string
 		id         string
-		currentUID string
 		remark     string
 	}
 	tests := []struct {
@@ -111,7 +110,7 @@ func TestChangeHostGroupv2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ChangeHostGroupv2(tt.args.ctx, tt.args.hostids, tt.args.id, tt.args.remark, tt.args.currentUID); (err != nil) != tt.wantErr {
+			if err := ChangeHostGroupv2(tt.args.ctx, tt.args.hostids, tt.args.id, tt.args.remark); (err != nil) != tt.wantErr {
 				t.Errorf("ChangeHostGroupv2() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -131,7 +130,6 @@ func TestDeleteHostGroupv2(t *testing.T) {
 	type args struct {
 		ctx        context.Context
 		id         string
-		currentUID string
 	}
 	tests := []struct {
 		name    string
@@ -158,7 +156,7 @@ func TestDeleteHostGroupv2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := DeleteHostGroupv2(tt.args.ctx, tt.args.id, tt.args.currentUID); (err != nil) != tt.wantErr {
+			if err := DeleteHostGroupv2(tt.args.ctx, tt.args.id); (err != nil) != tt.wantErr {
 				t.Errorf("DeleteHostGroupv2() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

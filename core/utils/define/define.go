@@ -1,5 +1,7 @@
 package define
 
+import "time"
+
 const (
 	// DefaultLimit set get total page
 	DefaultLimit = 20
@@ -151,14 +153,17 @@ type AdminChangeUser struct {
 
 // ChangeUserSelf change self's config
 type ChangeUserSelf struct {
-	ID        string `json:"id"  binding:"required"`  // user id
-	Name      string `json:"name" binding:"required"` // 用户名称
-	Email     string `json:"email"`                   // 用户邮箱
-	WeChat    string `json:"wechat"`                  // wechat id
-	DingPhone string `json:"dingphone"`               // dingding phone
-	Telegram  string `json:"telegram"`                // telegram bot chat id
-	Password  string `json:"password"`
-	Remark    string `json:"remark"`
+	ID        string            `json:"id"  binding:"required"`  // user id
+	Name      string            `json:"name" binding:"required"` // 用户名称
+	Email     string            `json:"email"`                   // 用户邮箱
+	WeChat    string            `json:"wechat"`                  // wechat id
+	DingPhone string            `json:"dingphone"`               // dingding phone
+	Telegram  string            `json:"telegram"`                // telegram bot chat id
+	Password  string            `json:"password"`
+	WebHook   string            `gorm:"type:varchar(100)" json:"webhook"`
+	Env       map[string]string `gorm:"type:text" json:"env"`                // 用户的环境变量 用于替换任务数据的隐密字段
+	AlartTmpl string            `gorm:"type:varchar(100)" json:"alarm_tmpl"` // 报警模版
+	Remark    string            `json:"remark"`
 }
 
 // HostGroup define hostgroup
@@ -391,7 +396,7 @@ type Log struct {
 
 // Cleanlog data
 type Cleanlog struct {
-	GetName
+	GetID
 	PreDay int64 `json:"preday"` // preday几天前的日志 0 为全部日志
 }
 
@@ -403,9 +408,9 @@ type Query struct {
 
 // KlOption vue el-select
 type KlOption struct {
-	Label  string `json:"label"`
-	Value  string `json:"value"`
-	Online int    `json:"online,omitempty"` // online: 1 offline: -1
+	Label      string    `json:"label"`
+	Value      string    `json:"value"`
+	UpdateTime time.Time `json:"update_time"`
 }
 
 // TaskStatusTree real task tree
@@ -538,4 +543,26 @@ type Notify struct {
 	Content        string     `json:"content"`              // 通知内容
 	NotifyTime     int64      `json:"notify_time"`
 	NotifyTimeDesc string     `json:"notify_timedesc"`
+}
+
+/// no change
+type ModelType uint8
+
+const (
+	HostModel ModelType = iota + 1
+	HostGroupModel
+	TaskModel
+)
+
+func (t ModelType) String() string {
+	switch t {
+	case HostModel:
+		return "Host"
+	case HostGroupModel:
+		return "HostGroup"
+	case TaskModel:
+		return "Task"
+	default:
+		return "UnknowModelType"
+	}
 }

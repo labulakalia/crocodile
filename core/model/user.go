@@ -422,6 +422,7 @@ func AddUserv2(ctx context.Context, name, hashpassword string, role define.Role,
 		Role:         role,
 		Remark:       remark,
 	}
+
 	err := gormdb.WithContext(ctx).Create(&user).Error
 	if err != nil {
 		return fmt.Errorf("create user failed: %w", err)

@@ -43,11 +43,11 @@ func GetHost(c *gin.Context) {
 	hosts, count, err := model.GetHostsv2(ctx, q.Offset, q.Limit)
 	if err != nil {
 		log.Error("GetHost failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 
-	resp.JSON(c, resp.Success, hosts, count)
+	resp.JSONv2(c, nil, hosts, count)
 }
 
 // ChangeHostState stop host worker
@@ -67,25 +67,11 @@ func ChangeHostState(c *gin.Context) {
 	err := c.ShouldBindJSON(&gethost)
 	if err != nil {
 		log.Error("c.ShouldBindJSON", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-
 	err = model.ChangeHostStopStatus(ctx, gethost.ID, gethost.Stop)
-	if err != nil {
-		log.Error("change host host status", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	switch err.(type) {
-	case define.ErrNotExist:
-		log.Error("data not exist: %w", zap.Error(err))
-		resp.JSON(c, resp.ErrHostNotExist, nil)
-	case nil:
-		resp.JSON(c, resp.Success, nil)
-	default:
-		resp.JSON(c, resp.ErrInternalServer, nil)
-	}
+	resp.JSONv2(c, err)
 }
 
 // DeleteHost delete host
@@ -104,22 +90,12 @@ func DeleteHost(c *gin.Context) {
 	gethost := define.GetID{}
 	err := c.ShouldBindJSON(&gethost)
 	if err != nil {
-		resp.JSONv2(c, resp.ErrBadRequest, nil)
+		log.Error("bind json failed", zap.Error(err))
+		resp.JSONv2(c, err, nil)
 		return
 	}
-
 	err = model.DeleteHostv2(ctx, gethost.ID)
-	switch err.(type) {
-	case define.ErrNotExist:
-		log.Error("data not exist: %w", zap.Error(err))
-		resp.JSON(c, resp.ErrHostNotExist, nil)
-	case nil:
-		resp.JSON(c, resp.Success, nil)
-	default:
-		resp.JSON(c, resp.ErrInternalServer, nil)
-	}
-
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, err)
 }
 
 // GetSelect name,id
@@ -133,11 +109,11 @@ func GetSelect(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	data, err := model.GetNameID(ctx, model.TBHost)
+	data, err := model.GetIDNameOption(ctx, nil, &model.Host{})
 	if err != nil {
 		log.Error("model.GetNameID failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	resp.JSON(c, resp.Success, data)
+	resp.JSONv2(c, nil, data)
 }

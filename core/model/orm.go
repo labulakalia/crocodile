@@ -20,10 +20,12 @@ type Model struct {
 	CreatedAt time.Time      `json:"create_at"`
 	UpdatedAt time.Time      `json:"update_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	CurrentUID string `gorm:"-" json:"-"` // current operate uid
 }
 
 // BeforeCreate hook generate snake id
-func (m *Model) BeforeCreate(tx *gorm.DB) error {
+func (m *Model) BeforeSave(tx *gorm.DB) error {
 	m.ID = utils.GetID()
 	return nil
 }
@@ -57,12 +59,10 @@ func (h Host) TableName() string {
 // HostGroup orm Model
 type HostGroup struct {
 	Model
-	Name     string `gorm:"type:varchar(30);not null;uniqueindex" json:"name"`
+	Name     string `gorm:"type:varchar(30);not null;uniqueindex" json:"name" binding:"required,max=30"`
 	CreateID string `gorm:"type:char(18);not null" json:"create_id"`
 	Hosts    IDs    `gorm:"type:varchar(360);not null;default ''" json:"hosts"`
 	Remark   string `gorm:"type:varchar(100);not null;default:''" json:"remark"`
-
-	currentUID string `gorm:"-" json:"-"` // current user checkout operate user
 }
 
 // IDs custom gorm type
@@ -107,7 +107,6 @@ func (h HostGroup) TableName() string {
 
 // BeforeCreate  checkout name exist
 func (h *HostGroup) BeforeCreate(tx *gorm.DB) (err error) {
-	h.ID = utils.GetID()
 	var (
 		count int64
 	)
@@ -131,19 +130,42 @@ func (h *HostGroup) BeforeUpdate(tx *gorm.DB) (err error) {
 	var (
 		count int64
 	)
-	err = tx.Model(&HostGroup{}).Where("id = ?", h.ID).Count(&count).Error
+	if h.CurrentUID == "" {
+		return nil
+	}
+
+	// 用户非admin检查主机组的创建人是否为当前用户
+	err = tx.Model(&HostGroup{}).Where("id = ?", h.ID).Where("create_id = ?", h.CurrentUID).Scan(&count).Error
 	if err != nil {
 		return fmt.Errorf("find count failed: %w", err)
 	}
-	if count > 0 {
-		return define.ErrNotExist{Type: "hostgroup id", Value: h.ID}
+	if count == 0 {
+		return define.ErrUnauthorized{Type: "hostgroup"}
 	}
+
+	return nil
+}
+
+// BeforeDelete same of BeforeUpdate
+func (h *HostGroup) BeforeDelete(tx *gorm.DB) (err error) {
+	used, err := HostGroupInUse(tx, h.ID)
+	if err != nil {
+		return err
+	}
+	if used {
+		return define.ErrDependByOther{
+			Type:  "task",
+			Value: h.ID,
+		}
+	}
+	var count int64
+
 	// 不需要检查 用户是admin
-	if h.currentUID == "" {
+	if h.CurrentUID == "" {
 		return nil
 	}
 	// 用户非admin检查主机组的创建人是否为当前用户
-	err = tx.Model(&HostGroup{}).Where("id = ?", h.ID).Where("create_id = ?", h.currentUID).Scan(&count).Error
+	err = tx.Model(&HostGroup{}).Where("id = ?", h.ID).Where("create_id = ?", h.CurrentUID).Scan(&count).Error
 	if err != nil {
 		return fmt.Errorf("find count failed: %w", err)
 	}
@@ -151,11 +173,6 @@ func (h *HostGroup) BeforeUpdate(tx *gorm.DB) (err error) {
 		return define.ErrUnauthorized{Type: "hostgroup"}
 	}
 	return nil
-}
-
-// BeforeDelete same of BeforeUpdate
-func (h *HostGroup) BeforeDelete(tx *gorm.DB) (err error) {
-	return h.BeforeUpdate(tx)
 }
 
 // Log orm model
@@ -261,6 +278,7 @@ type User struct {
 	Name         string      `gorm:"type:varchar(30);not null;default ''" json:"name"`
 	HashPassword string      `gorm:"type:varchar(100);not null;default ''" json:"hash_password,omitempty"`
 	Role         define.Role `gorm:"type:integer;not null;default 0" json:"role"`
+	Roles        []string    `gorm:"-" json:"roles"` // 管理员
 	Forbid       bool        `gorm:"type:bool;not null;default false" json:"forbid"`
 	Email        string      `gorm:"type:varchar(30)" json:"email"`
 	DingPhone    string      `gorm:"type:varchar(12)" json:"dingphone"`
@@ -276,6 +294,37 @@ type User struct {
 // TableName custom User table name
 func (u User) TableName() string {
 	return dbPrefix + "user"
+}
+
+// BeforeCreate  checkout name exist
+func (h *User) BeforeCreate(tx *gorm.DB) (err error) {
+	var (
+		count int64
+	)
+	err = tx.Model(&User{}).Where("name = ?", h.Name).Count(&count).Error
+	if err != nil {
+		return fmt.Errorf("find count failed: %w", err)
+	}
+	if count > 0 {
+		return define.ErrExist{Type: "user name", Value: h.Name}
+	}
+
+	return nil
+}
+
+// BeforeCreate  checkout name exist
+func (h *User) BeforeUpdate(tx *gorm.DB) (err error) {
+	var (
+		count int64
+	)
+	err = tx.Model(&User{}).Where("name = ? and id != ?", h.Name, h.ID).Count(&count).Error
+	if err != nil {
+		return fmt.Errorf("find count failed: %w", err)
+	}
+	if count > 1 {
+		return define.ErrExist{Type: "user name", Value: h.Name}
+	}
+	return nil
 }
 
 // AfterFind query after change password to empty
@@ -312,31 +361,88 @@ func (e Env) Value() (driver.Value, error) {
 // Task orm model
 type Task struct {
 	Model
-	Name           string          `gorm:"type:varchar(30);not null" json:"name"`
-	TaskType       define.TaskType `gorm:"type:integer;not null" json:"task_type"`
-	TaskData       string          `gorm:"type:mediumtext" json:"task_data"`
-	Run            bool            `gorm:"type:bool;not null;default false" json:"run"`
-	ParentTaskIDs  IDs             `gorm:"type:varchar(360);not null;default ''" json:"parent_task_ids"`
-	ParentParallel bool            `gorm:"type:bool;not null;default false" json:"parent_parallel"`
-	ChildTaskIDs   IDs             `gorm:"type:varchar(360);not null;default ''" json:"child_task_ids"`
-	ChildParallel  bool            `gorm:"type:bool;not null;default false" json:"child_parallel"`
-	CreateUID      string          `gorm:"type:char(18);not null;default '';index" json:"create_uid"`
-	// CreateName     string             `gorm:"type:varchar(30);not null;default '';index" json:"create_name"`
-	HostgroupID string `gorm:"type:char(18);not null;default ''" json:"hostgroup_id"`
-	// HostgroupName  string             `gorm:"type:varchar(30);not null;default ''" json:"hostgroup_name"`
-	Cronexpr      string             `gorm:"type:varchar(200);not null;default ''" json:"cronexpr"`
-	Timeout       int                `gorm:"type:integer;not null;default -1" json:"timeout"`
-	AlarmUIDs     IDs                `gorm:"type:varchar(180);not null" json:"alarm_uids"`
-	RoutePolicy   define.RoutePolicy `gorm:"type:integer;not null;default 1" json:"route_policy"`
-	ExpectCode    int                `gorm:"type:integer;not null;default 0" json:"expect_code"`
-	ExpectContent string             `gorm:"type:varchar(500);not null;default ''" json:"expect_content"`
-	AlarmStatus   define.AlarmStatus `gorm:"type:integer;not null;default -1" json:"alarm_status"`
-	Remark        string             `gorm:"type:varchar(100);not null;default ''" json:"remark"`
+	Name           string             `gorm:"type:varchar(30);not null" json:"name"`
+	TaskType       define.TaskType    `gorm:"type:integer;not null" json:"task_type" binding:"required"`
+	TaskData       string             `gorm:"type:mediumtext" json:"task_data" binding:"required"`
+	Run            bool               `gorm:"type:bool;not null;default false" json:"run"`
+	ParentTaskIDs  IDs                `gorm:"type:varchar(360);not null;default ''" json:"parent_task_ids"`
+	ParentParallel bool               `gorm:"type:bool;not null;default false" json:"parent_parallel"`
+	ChildTaskIDs   IDs                `gorm:"type:varchar(360);not null;default ''" json:"child_task_ids"`
+	ChildParallel  bool               `gorm:"type:bool;not null;default false" json:"child_parallel"`
+	CreateUID      string             `gorm:"type:char(18);not null;default '';index" json:"create_uid"`
+	HostgroupID    string             `gorm:"type:char(18);not null;default ''" json:"hostgroup_id" binding:"required"`
+	Cronexpr       string             `gorm:"type:varchar(200);not null;default ''" json:"cronexpr" binding:"required"`
+	Timeout        int                `gorm:"type:integer;not null;default -1" json:"timeout"`
+	AlarmUIDs      IDs                `gorm:"type:varchar(180);not null" json:"alarm_uids" binding:"required"`
+	RoutePolicy    define.RoutePolicy `gorm:"type:integer;not null;default 1" json:"route_policy" binding:"required"`
+	ExpectCode     int                `gorm:"type:integer;not null;default 0" json:"expect_code"`
+	ExpectContent  string             `gorm:"type:varchar(500);not null;default ''" json:"expect_content"`
+	AlarmStatus    define.AlarmStatus `gorm:"type:integer;not null;default -1" json:"alarm_status" binding:"required"`
+	Remark         string             `gorm:"type:varchar(100);not null;default ''" json:"remark"`
 }
 
 // TableName custom Task table name
 func (t Task) TableName() string {
 	return dbPrefix + "task"
+}
+
+// hostgroup hooks
+
+// BeforeCreate  checkout name exist
+func (h *Task) BeforeCreate(tx *gorm.DB) (err error) {
+	var (
+		count int64
+	)
+	err = tx.Model(&Task{}).Where("name = ?", h.Name).Count(&count).Error
+	if err != nil {
+		return fmt.Errorf("find count failed: %w", err)
+	}
+	if count > 0 {
+		return define.ErrExist{Type: "task name", Value: h.Name}
+	}
+	return nil
+}
+
+// BeforeUpdate checkout hg id exist
+func (h *Task) BeforeUpdate(tx *gorm.DB) (err error) {
+	var (
+		count int64
+	)
+	// 不需要检查 用户是admin
+	if h.CurrentUID == "" {
+		return nil
+	}
+
+	err = tx.Model(&Task{}).Where("id = ?", h.ID).Where("create_id = ?", h.CurrentUID).Scan(&count).Error
+	if err != nil {
+		return fmt.Errorf("find count failed: %w", err)
+	}
+	if count == 0 {
+		return define.ErrUnauthorized{Type: "task"}
+	}
+	return nil
+}
+
+// BeforeDelete same of BeforeUpdate
+func (h *Task) BeforeDelete(tx *gorm.DB) (err error) {
+	used, err := TaskIsUsev2(tx, h.ID)
+	if err != nil {
+		return err
+	}
+	if used {
+		return define.ErrDependByOther{
+			Type:  "task",
+			Value: h.ID,
+		}
+	}
+
+	return h.BeforeUpdate(tx)
+}
+
+// AfterCreate save log
+func (h *Task) AfterCreate(tx *gorm.DB) (err error) {
+	// TODO operate log
+	return nil
 }
 
 // CasbinRule casbin rabc orm model

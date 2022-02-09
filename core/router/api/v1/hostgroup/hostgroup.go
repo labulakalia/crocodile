@@ -31,27 +31,11 @@ func CreateHostGroup(c *gin.Context) {
 	err := c.ShouldBindJSON(&hg)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-
 	err = model.CreateHostgroupv2(ctx, hg.Name, hg.Remark, c.GetString("uid"), hg.HostsID)
-	if err != nil {
-		log.Error("CreateHostgroup failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	switch err.(type) {
-	case nil:
-		resp.JSON(c, resp.Success)
-	case define.ErrExist:
-		log.Error("create failed", zap.Error(err))
-		resp.JSON(c, resp.ErrNameExist)
-	default:
-		log.Error("create failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer)
-	}
-
+	resp.JSONv2(c, err)
 }
 
 // ChangeHostGroup change hostgroup
@@ -73,23 +57,9 @@ func ChangeHostGroup(c *gin.Context) {
 	err := c.ShouldBindJSON(&hg)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	// // 判断ID是否存在
-	// exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hg.ID)
-	// if err != nil {
-	// 	log.Error("IsExist failed", zap.Error(err))
-	// 	resp.JSON(c, resp.ErrInternalServer, nil)
-	// 	return
-	// }
-
-	// if !exist {
-	// 	resp.JSON(c, resp.ErrHostgroupNotExist, nil)
-	// 	return
-	// }
-	currentUID := c.GetString("uid")
-
 	// 获取用户的类型
 	var role define.Role
 	if v, ok := c.Get("role"); ok {
@@ -97,31 +67,12 @@ func ChangeHostGroup(c *gin.Context) {
 	}
 	// var currentUID string
 	// 这里只需要确定如果rule的用户类型是否为Admin
-	if role == define.AdminUser {
-		// move gormhook
-		// 判断ID的创建人是否为uid
-		// exist, err := model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hg.ID, uid)
-		// if err != nil {
-		// 	log.Error("IsExist failed", zap.Error(err))
-		// 	resp.JSON(c, resp.ErrInternalServer, nil)
-		// 	return
-		// }
-
-		// if !exist {
-		// 	resp.JSON(c, resp.ErrUnauthorized, nil)
-		// 	return
-		// }
-		currentUID = ""
-
+	if role != define.AdminUser {
+		ctx = context.WithValue(ctx, "uid", c.GetString("uid"))
 	}
 
-	err = model.ChangeHostGroupv2(ctx, hg.HostsID, hg.ID, hg.Remark, currentUID)
-	if err != nil {
-		log.Error("ChangeHostGroup failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, nil)
+	err = model.ChangeHostGroupv2(ctx, hg.HostsID, hg.ID, hg.Remark)
+	resp.JSONv2(c, err, nil)
 
 }
 
@@ -144,26 +95,10 @@ func DeleteHostGroup(c *gin.Context) {
 	err := c.ShouldBindJSON(&hostgroup)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	// if utils.CheckID(hostgroup.ID) != nil {
-	// 	resp.JSON(c, resp.ErrBadRequest, nil)
-	// 	return
-	// }
-	// 判断ID是否存在
-	// exist, err := model.Check(ctx, model.TBHostgroup, model.ID, hostgroup.ID)
-	// if err != nil {
-	// 	log.Error("IsExist failed", zap.Error(err))
-	// 	resp.JSON(c, resp.ErrInternalServer, nil)
-	// 	return
-	// }
 
-	// if !exist {
-	// 	resp.JSON(c, resp.ErrHostgroupNotExist, nil)
-	// 	return
-	// }
-	currentUID := c.GetString("uid")
 	// 获取用户的类型
 	var role define.Role
 	if v, ok := c.Get("role"); ok {
@@ -171,40 +106,12 @@ func DeleteHostGroup(c *gin.Context) {
 	}
 
 	// 这里只需要确定如果rule的用户类型是否为Admin
-	if role == define.AdminUser {
-		currentUID = ""
-		// 判断ID的创建人是否为uid
-		// exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, hostgroup.ID, uid)
-		// if err != nil {
-		// 	log.Error("IsExist failed", zap.Error(err))
-		// 	resp.JSON(c, resp.ErrInternalServer, nil)
-		// 	return
-		// }
-
-		// if !exist {
-		// 	resp.JSON(c, resp.ErrUnauthorized, nil)
-		// 	return
-		// }
+	if role != define.AdminUser {
+		ctx = context.WithValue(ctx, "uid", c.GetString("uid"))
 	}
-	// ok, err := model.Check(ctx, model.TBTask, model.HostGroupID, hostgroup.ID)
-	// if err != nil {
-	// 	log.Error("Check failed", zap.Error(err))
-	// 	resp.JSON(c, resp.ErrInternalServer, nil)
-	// 	return
 
-	// }
-	// if ok {
-	// 	resp.JSON(c, resp.ErrDelHostGroupUseByTask, nil)
-	// 	return
-	// }
-
-	err = model.DeleteHostGroupv2(ctx, hostgroup.ID, currentUID)
-	if err != nil {
-		log.Error("DeleteHostGroup failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, nil)
+	err = model.DeleteHostGroupv2(ctx, hostgroup.ID)
+	resp.JSONv2(c, err)
 }
 
 // GetHostGroups get all hostgroup
@@ -229,7 +136,7 @@ func GetHostGroups(c *gin.Context) {
 	err = c.BindQuery(&q)
 	if err != nil {
 		log.Error("BindQuery offset failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err, nil)
 		return
 	}
 
@@ -238,12 +145,7 @@ func GetHostGroups(c *gin.Context) {
 	}
 
 	hgs, count, err := model.GetHostGroups(ctx, q.Limit, q.Offset)
-	if err != nil {
-		log.Error("GetHostGroup failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, hgs, count)
+	resp.JSONv2(c, err, hgs, count)
 }
 
 // GetSelect return name,id
@@ -258,13 +160,8 @@ func GetSelect(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	data, err := model.GetNameID(ctx, model.TBHostgroup)
-	if err != nil {
-		log.Error("model.GetNameID failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, data)
+	data, err := model.GetIDNameOption(ctx, nil, &model.HostGroup{})
+	resp.JSONv2(c, err, data)
 }
 
 // GetHostsByIHGID get host detail by hostgroup id
@@ -283,17 +180,9 @@ func GetHostsByIHGID(c *gin.Context) {
 	getid := define.GetID{}
 	err := c.BindQuery(&getid)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err, nil)
 		return
 	}
-	hosts, err := model.GetHostsByHGID(ctx, getid.ID)
-	switch err.(type) {
-	case nil:
-		resp.JSON(c, resp.Success, hosts)
-	case define.ErrNotExist:
-		resp.JSON(c, resp.ErrHostgroupNotExist, nil)
-	default:
-		log.Error("model.GetHostsByHGID", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-	}
+	hosts, err := model.GetHostsByHGIDv2(ctx, getid.ID)
+	resp.JSONv2(c, err, hosts)
 }

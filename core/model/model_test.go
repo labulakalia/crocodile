@@ -20,6 +20,7 @@ func TestGetIDNameDIct(t *testing.T) {
 		ctx   context.Context
 		model interface{}
 		ids   []string
+		resp  map[string]string
 	}
 	tests := []struct {
 		name    string
@@ -35,18 +36,19 @@ func TestGetIDNameDIct(t *testing.T) {
 				ids: []string{
 					hg.ID,
 				},
+				resp: make(map[string]string),
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetIDNameDict(tt.args.ctx, tt.args.ids, tt.args.model)
+			err := GetIDNameDict(tt.args.ctx, tt.args.ids, tt.args.model, &tt.args.resp)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetIDNameDIct() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			t.Logf("%+v", got)
+			t.Logf("%+v", tt.args.resp)
 		})
 	}
 }

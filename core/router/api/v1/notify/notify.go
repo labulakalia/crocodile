@@ -17,13 +17,8 @@ func GetNotify(c *gin.Context) {
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 	uid := c.GetString("uid")
-	notifys, err := model.GetNotifyByUID(ctx, uid)
-	if err != nil {
-		log.Error("model.GetNotify failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, notifys)
+	notifys, err := model.GetNotify(ctx, uid)
+	resp.JSONv2(c, err, notifys)
 	return
 }
 
@@ -40,7 +35,7 @@ func ReadNotify(c *gin.Context) {
 	err := c.ShouldBindJSON(&nuid)
 	if err != nil {
 		log.Error("c.ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	err = model.NotifyRead(ctx, nuid.ID, c.GetString("uid"))

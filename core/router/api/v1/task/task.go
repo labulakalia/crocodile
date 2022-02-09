@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +15,6 @@ import (
 	"github.com/gorhill/cronexpr"
 	"github.com/gorilla/websocket"
 	"github.com/labulaka521/crocodile/common/log"
-	"github.com/labulaka521/crocodile/common/utils"
 	"github.com/labulaka521/crocodile/core/config"
 	"github.com/labulaka521/crocodile/core/middleware"
 	"github.com/labulaka521/crocodile/core/model"
@@ -37,45 +35,27 @@ import (
 func CreateTask(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	//config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	task := define.CreateTask{}
+	task := model.Task{}
 	err := c.ShouldBindJSON(&task)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	_, err = cronexpr.Parse(task.Cronexpr)
 	if err != nil {
 		log.Error("cronexpr.Parse failed", zap.Error(err))
-		resp.JSON(c, resp.ErrCronExpr, nil)
+		resp.JSONv2(c, define.ErrCronExpr{
+			Value: task.Cronexpr,
+		})
 		return
 	}
 
-	// TODO 检查任务数据
-	exist, err := model.Check(ctx, model.TBTask, model.Name, task.Name)
+	id, err := model.CreateTaskv2(ctx, &task)
 	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if exist {
-		resp.JSON(c, resp.ErrTaskExist, nil)
-		return
-	}
-	// task.CreateByUID = c.GetString("uid")
-	task.Run = true
-	id := utils.GetID()
-	err = model.CreateTask(ctx, id, task.Name, task.TaskType, task.TaskData, true, task.ParentTaskIds, task.ParentRunParallel,
-		task.ChildTaskIds, task.ChildRunParallel, task.Cronexpr, task.Timeout, task.AlarmUserIds, task.RoutePolicy,
-		task.ExpectCode, task.ExpectContent, task.AlarmStatus, c.GetString("uid"), task.HostGroupID, task.Remark,
-	)
-	if err != nil {
-		log.Error("CreateTask failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
+		resp.JSONv2(c, err)
 	}
 	event := schedule.EventData{
 		TaskID: id,
@@ -84,14 +64,14 @@ func CreateTask(c *gin.Context) {
 	res, err := json.Marshal(event)
 	if err != nil {
 		log.Error("json.Marshal failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	schedule.Cron2.PubTaskEvent(res)
 	//log.Debug("start Add Schedule Cron", zap.String("taskid", id))
 	//schedule.Cron.Add(id, task.Name, task.Cronexpr,
 	//	schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, nil)
 }
 
 // ChangeTask change task
@@ -107,34 +87,20 @@ func ChangeTask(c *gin.Context) {
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
-	task := define.ChangeTask{}
+	task := model.Task{}
 	err := c.ShouldBindJSON(&task)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err, nil)
 		return
 	}
 
 	_, err = cronexpr.Parse(task.Cronexpr)
 	if err != nil {
 		log.Error("cronexpr.Parse failed", zap.Error(err))
-		resp.JSON(c, resp.ErrCronExpr, nil)
+		resp.JSONv2(c, define.ErrCronExpr{}, nil)
 		return
 	}
-
-	exist, err := model.Check(ctx, model.TBTask, model.ID, task.ID)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-
-	if !exist {
-		resp.JSON(c, resp.ErrTaskNotExist, nil)
-		return
-	}
-
-	uid := c.GetString("uid")
 
 	// 获取用户的类型
 	var role define.Role
@@ -144,29 +110,37 @@ func ChangeTask(c *gin.Context) {
 
 	// 这里只需要确定如果rule的用户类型是否为Admin
 	if role != define.AdminUser {
+		ctx = context.WithValue(ctx, "uid", c.GetString("uid"))
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, task.ID, uid)
-		if err != nil {
-			log.Error("IsExist failed", zap.Error(err))
-			resp.JSON(c, resp.ErrInternalServer, nil)
-			return
-		}
+		// exist, err = model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, task.ID, uid)
+		// if err != nil {
+		// 	log.Error("IsExist failed", zap.Error(err))
+		// 	resp.JSONv2(c, resp.ErrInternalServer, nil)
+		// 	return
+		// }
 
-		if !exist {
-			resp.JSON(c, resp.ErrUnauthorized, nil)
-			return
-		}
+		// if !exist {
+		// 	resp.JSONv2(c, resp.ErrUnauthorized, nil)
+		// 	return
+		// }
 	}
-
-	err = model.ChangeTask(ctx, task.ID, task.Run, task.TaskType, task.TaskData, task.ParentTaskIds, task.ParentRunParallel,
-		task.ChildTaskIds, task.ChildRunParallel, task.Cronexpr, task.Timeout, task.AlarmUserIds, task.RoutePolicy,
-		task.ExpectCode, task.ExpectContent, task.AlarmStatus, task.HostGroupID, task.Remark,
-	)
+	err = model.ChangeTaskv2(ctx, &task)
 	if err != nil {
-		log.Error("ChangeTask failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		log.Error("change task failed", zap.Error(err))
+		resp.JSONv2(c, err)
 		return
 	}
+
+	// err = model.ChangeTask(ctx, task.ID, task.Run, task.TaskType, task.TaskData, task.ParentTaskIds, task.ParentRunParallel,
+	// 	task.ChildTaskIds, task.ChildRunParallel, task.Cronexpr, task.Timeout, task.AlarmUserIds, task.RoutePolicy,
+	// 	task.ExpectCode, task.ExpectContent, task.AlarmStatus, task.HostGroupID, task.Remark,
+	// )
+	// if err != nil {
+	// 	log.Error("ChangeTask failed", zap.Error(err))
+	// 	resp.JSONv2(c, resp.ErrInternalServer, nil)
+	// 	return
+	// }
+	// model.
 	event := schedule.EventData{
 		TaskID: task.ID,
 		TE:     schedule.AddEvent,
@@ -174,14 +148,14 @@ func ChangeTask(c *gin.Context) {
 	res, err := json.Marshal(event)
 	if err != nil {
 		log.Error("json.Marshal failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	schedule.Cron2.PubTaskEvent(res)
 	//schedule.Cron.Add(task.ID, task.Name, task.Cronexpr,
 	//	schedule.GetRoutePolicy(task.HostGroupID, task.RoutePolicy))
 
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, nil)
 }
 
 // DeleteTask delete task
@@ -199,27 +173,9 @@ func DeleteTask(c *gin.Context) {
 	deletetask := define.GetID{}
 	err := c.ShouldBindJSON(&deletetask)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	if utils.CheckID(deletetask.ID) != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	exist, err := model.Check(ctx, model.TBTask, model.ID, deletetask.ID)
-	if err != nil {
-		log.Error("model.Check failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-
-	if !exist {
-		log.Warn("unauthorized ", zap.String("id", deletetask.ID))
-		resp.JSON(c, resp.ErrHostgroupNotExist, nil)
-		return
-	}
-
-	uid := c.GetString("uid")
 
 	// 获取用户的类型
 	var role define.Role
@@ -229,45 +185,28 @@ func DeleteTask(c *gin.Context) {
 
 	// 这里只需要确定如果rule的用户类型是否为Admin
 	if role != define.AdminUser {
+		ctx = context.WithValue(ctx, "uid", c.GetString("uid"))
 		// 判断ID的创建人是否为uid
-		exist, err = model.Check(ctx, model.TBTask, model.IDCreateByUID, deletetask.ID, uid)
-		if err != nil {
-			log.Error("model.Check failed", zap.Error(err))
-			resp.JSON(c, resp.ErrInternalServer, nil)
-			return
-		}
+		// exist, err = model.Check(ctx, model.TBTask, model.IDCreateByUID, deletetask.ID, uid)
+		// if err != nil {
+		// 	log.Error("model.Check failed", zap.Error(err))
+		// 	resp.JSONv2(c, resp.ErrInternalServer, nil)
+		// 	return
+		// }
 
-		if !exist {
-			resp.JSON(c, resp.ErrUnauthorized, nil)
-			return
-		}
+		// if !exist {
+		// 	resp.JSONv2(c, resp.ErrUnauthorized, nil)
+		// 	return
+		// }
 	}
 
-	usecount, err := model.TaskIsUse(ctx, deletetask.ID)
-	if err != nil {
-		log.Error("model.TaskIsUse failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if usecount > 0 {
-		log.Warn("task can delete,use by other task", zap.String("taskid", deletetask.ID), zap.Int("use count", usecount))
-		resp.JSON(c, resp.ErrTaskUseByOtherTask, nil)
-		return
-	}
-
-	err = model.DeleteTask(ctx, deletetask.ID)
+	err = model.DeleteTaskv2(ctx, deletetask.ID)
 	if err != nil {
 		log.Error("model.DeleteTask failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	//schedule.Cron.Del(deletetask.ID)
-	//_, err = model.	CleanTaskLog(ctx, "", deletetask.ID, time.Now().UnixNano()/1e6)
-	//if err != nil {
-	//	log.Error("model.CleanTaskLog failed", zap.Error(err))
-	//	resp.JSON(c, resp.ErrInternalServer, nil)
-	//	return
-	//}
+
 	event := schedule.EventData{
 		TaskID: deletetask.ID,
 		TE:     schedule.DeleteEvent,
@@ -275,11 +214,11 @@ func DeleteTask(c *gin.Context) {
 	res, err := json.Marshal(event)
 	if err != nil {
 		log.Error("json.Marshal failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, resp.ErrInternalServer)
 		return
 	}
 	schedule.Cron2.PubTaskEvent(res)
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, nil)
 
 }
 
@@ -320,13 +259,33 @@ func GetTasks(c *gin.Context) {
 	if q.Self {
 		createby = c.GetString("uid")
 	}
-	hgs, count, err := model.GetTasks(ctx, q.Offset, q.Limit, "", q.PSName, createby)
+
+	data, count, err := model.GetTasksv2(ctx, q.Offset, q.Limit, q.PSName, createby)
 	if err != nil {
-		log.Error("GetTasks failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	resp.JSON(c, resp.Success, hgs, count)
+	var (
+		hgids   []string
+		userids []string
+	)
+	for _, task := range data {
+		hgids = append(hgids, task.HostgroupID)
+		userids = append(userids, task.CreateUID)
+	}
+
+	var idnamerelaton = make(map[string]string)
+	err = model.GetIDNameDict(ctx, hgids, &model.HostGroup{}, &idnamerelaton)
+	if err != nil {
+		resp.JSONv2(c, fmt.Errorf("get hostgroup id name failed: %w", err))
+		return
+	}
+	err = model.GetIDNameDict(ctx, userids, &model.User{}, &idnamerelaton)
+	if err != nil {
+		resp.JSONv2(c, fmt.Errorf("get user id name failed: %w", err))
+		return
+	}
+	resp.JSONv2(c, nil, data, count)
 }
 
 // GetTask get task info
@@ -341,28 +300,16 @@ func GetTask(c *gin.Context) {
 	getid := define.GetID{}
 	err := c.ShouldBindQuery(&getid)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	if utils.CheckID(getid.ID) != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	t, err := model.GetTaskByID(ctx, getid.ID)
+	t, err := model.GetTaskByIDv2(ctx, getid.ID)
+	resp.JSONv2(c, err, t)
 
-	switch err.(type) {
-	case nil:
-		resp.JSON(c, resp.Success, t)
-	case define.ErrNotExist:
-		resp.JSON(c, resp.ErrTaskNotExist, nil)
-	default:
-		log.Error("GetTasks failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-	}
 }
 
 // RunTask start run task now
@@ -374,44 +321,25 @@ func GetTask(c *gin.Context) {
 // @Router /api/v1/task/run [put]
 // @Security ApiKeyAuth
 func RunTask(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(),
-		config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(),
+	// 	config.CoreConf.Server.DB.MaxQueryTime.Duration)
+	// defer cancel()
 
 	runtask := define.GetID{}
 	err := c.ShouldBindJSON(&runtask)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	if utils.CheckID(runtask.ID) != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	uid := c.GetString("uid")
+	// uid := c.GetString("uid")
 
-	// 获取用户的类型
-	var role define.Role
-	if v, ok := c.Get("role"); ok {
-		role = v.(define.Role)
-	}
+	// // 获取用户的类型
+	// var role define.Role
+	// if v, ok := c.Get("role"); ok {
+	// 	role = v.(define.Role)
+	// }
 
-	// 这里只需要确定如果rule的用户类型是否为Admin
-	if role != define.AdminUser {
-		// 判断ID的创建人是否为uid
-		exist, err := model.Check(ctx, model.TBHostgroup, model.IDCreateByUID, runtask.ID, uid)
-		if err != nil {
-			log.Error("model.Check failed", zap.Error(err))
-			resp.JSON(c, resp.ErrInternalServer, nil)
-			return
-		}
-
-		if !exist {
-			resp.JSON(c, resp.ErrUnauthorized, nil)
-			return
-		}
-	}
-	//go schedule.Cron.RunTask(runtask.ID, define.Manual)
+	// TODO 操作日志
 
 	event := schedule.EventData{
 		TaskID: runtask.ID,
@@ -420,11 +348,11 @@ func RunTask(c *gin.Context) {
 	res, err := json.Marshal(event)
 	if err != nil {
 		log.Error("json.Marshal failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	schedule.Cron2.PubTaskEvent(res)
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, nil)
 }
 
 // KillTask kill running task
@@ -439,13 +367,10 @@ func KillTask(c *gin.Context) {
 	runtask := define.GetID{}
 	err := c.ShouldBindJSON(&runtask)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	if utils.CheckID(runtask.ID) != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
+
 	event := schedule.EventData{
 		TaskID: runtask.ID,
 		TE:     schedule.KillEvent,
@@ -453,12 +378,12 @@ func KillTask(c *gin.Context) {
 	res, err := json.Marshal(event)
 	if err != nil {
 		log.Error("json.Marshal failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	schedule.Cron2.PubTaskEvent(res)
 	//schedule.Cron.KillTask(runtask.ID)
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, nil)
 }
 
 // GetRunningTask return running task
@@ -480,6 +405,8 @@ func GetRunningTask(c *gin.Context) {
 	err = c.BindQuery(&q)
 	if err != nil {
 		log.Error("BindQuery offset failed", zap.Error(err))
+		resp.JSONv2(c, err)
+		return
 	}
 
 	if q.Limit == 0 {
@@ -487,7 +414,7 @@ func GetRunningTask(c *gin.Context) {
 	}
 	allrunningtasks, err := schedule.Cron2.GetRunningTask()
 	if err != nil {
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 	}
 	if len(runningtasks) < q.Offset {
 		runningtasks = []*define.RunTask{}
@@ -497,7 +424,7 @@ func GetRunningTask(c *gin.Context) {
 		runningtasks = allrunningtasks[q.Offset : q.Offset+q.Limit]
 	}
 
-	resp.JSON(c, resp.Success, runningtasks, len(runningtasks))
+	resp.JSONv2(c, nil, runningtasks, len(runningtasks))
 }
 
 // LogTask get task log
@@ -512,40 +439,31 @@ func GetRunningTask(c *gin.Context) {
 // @Router /api/v1/task/log [get]
 // @Security ApiKeyAuth
 func LogTask(c *gin.Context) {
-
-	name := c.Query("name")
-	statusstr := c.Query("status")
-
-	status, err := strconv.Atoi(statusstr)
-	if err != nil {
-		log.Warn("get params status is not int", zap.Error(err))
+	type Log struct {
+		Name   string `form:"name"`
+		Status int    `form:"status" binding:"gte=-1,lte=1"`
+		define.Query
 	}
-	if status < -1 || status > 1 {
-		status = 0
-	}
+
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
 
 	var (
-		q define.Query
+		q Log
 	)
 
-	err = c.BindQuery(&q)
+	err := c.BindQuery(&q)
 	if err != nil {
 		log.Error("BindQuery offset failed", zap.Error(err))
+		resp.JSONv2(c, err)
 	}
 
 	if q.Limit == 0 {
 		q.Limit = define.DefaultLimit
 	}
-	logs, count, err := model.GetLog(ctx, name, status, q.Offset, q.Limit)
-	if err != nil {
-		log.Error("GetLog failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, logs, count)
+	logs, count, err := model.GetLogv2(ctx, q.Name, q.Status, q.Offset, q.Limit)
+	resp.JSONv2(c, err, logs, count)
 }
 
 // LogTreeData get log tree
@@ -557,38 +475,39 @@ func LogTask(c *gin.Context) {
 // @Success 200 {object} resp.Response
 // @Router /api/v1/task/log/tree [get]
 // @Security ApiKeyAuth
-func LogTreeData(c *gin.Context) {
-	getid := define.GetID{}
-	err := c.BindQuery(&getid)
-	if err != nil {
-		log.Error("c.BindQuery", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
+// func LogTreeData(c *gin.Context) {
+// 	// TODO
+// 	getid := define.GetID{}
+// 	err := c.BindQuery(&getid)
+// 	if err != nil {
+// 		log.Error("c.BindQuery", zap.Error(err))
+// 		resp.JSONv2(c, err)
+// 		return
+// 	}
 
-	starttime := c.Query("start_time")
-	ctx, cancel := context.WithTimeout(context.Background(),
-		config.CoreConf.Server.DB.MaxQueryTime.Duration)
-	defer cancel()
-	if starttime == "" {
-		log.Error("can't get start_time")
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	starttimeint, err := strconv.ParseInt(starttime, 10, 64)
-	if err != nil {
-		log.Error("strconv.ParseInt", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	TaskTreeStatus, err := model.GetTreeLog(ctx, getid.ID, starttimeint)
-	if err != nil {
-		log.Error("model.GetTreeLog", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, TaskTreeStatus)
-}
+// 	starttime := c.Query("start_time")
+// 	ctx, cancel := context.WithTimeout(context.Background(),
+// 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
+// 	defer cancel()
+// 	if starttime == "" {
+// 		log.Error("can't get start_time")
+// 		resp.JSONv2(c, err)
+// 		return
+// 	}
+// 	starttimeint, err := strconv.ParseInt(starttime, 10, 64)
+// 	if err != nil {
+// 		log.Error("strconv.ParseInt", zap.Error(err))
+// 		resp.JSONv2(c, resp.ErrBadRequest, nil)
+// 		return
+// 	}
+// 	TaskTreeStatus, err := model.GetTreeLog(ctx, getid.ID, starttimeint)
+// 	if err != nil {
+// 		log.Error("model.GetTreeLog", zap.Error(err))
+// 		resp.JSONv2(c, resp.ErrInternalServer, nil)
+// 		return
+// 	}
+// 	resp.JSONv2(c, resp.Success, TaskTreeStatus)
+// }
 
 var upgrade = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -611,29 +530,34 @@ func RealRunTaskLog(c *gin.Context) {
 		return
 	}
 	defer conn.Close()
-	getid := define.GetID{}
-	err = c.BindQuery(&getid)
+	type tasklog struct {
+		define.GetID
+		RealID string              `form:"realid" binding:"required"`
+		Type   define.TaskRespType `form:"type" binding:"required"`
+	}
+	query := tasklog{}
+	err = c.BindQuery(&query)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
-	realid := c.Query("realid")
-	taskruntype, err := strconv.Atoi(c.Query("type"))
-	if err != nil {
-		log.Error("can get valid task type", zap.Error(err))
-		conn.WriteMessage(websocket.TextMessage, []byte("can get task type"))
-		return
-	}
+	// realid := c.Query("realid")
+	// taskruntype, err := strconv.Atoi(c.Query("type"))
+	// if err != nil {
+	// 	log.Error("can get valid task type", zap.Error(err))
+	// 	conn.WriteMessage(websocket.TextMessage, []byte("can get task type"))
+	// 	return
+	// }
 
-	task, ok := schedule.Cron2.GetTask(getid.ID)
+	task, ok := schedule.Cron2.GetTask(query.ID)
 	if !ok {
-		log.Error("can get taskid", zap.String("taskid", getid.ID))
-		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("can get taskid %s", getid.ID)))
+		log.Error("can get taskid", zap.String("taskid", query.ID))
+		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("can get taskid %s", query.ID)))
 		return
 	}
 	var offset int64
 	for {
-		output, err := task.GetTaskRealLog(define.TaskRespType(taskruntype), realid, offset)
+		output, err := task.GetTaskRealLog(define.TaskRespType(query.Type), query.RealID, offset)
 		if err == nil {
 			offset++
 			err = conn.WriteMessage(websocket.TextMessage, output)
@@ -656,13 +580,13 @@ func RealRunTaskLog(c *gin.Context) {
 		} else if errors.Is(err, schedule.ErrNoGetLog) {
 			log.Debug("can not get new data, please wait some time")
 			// if can get data,check task is running ,is task is stop then close websocket
-			ok, err := schedule.Cron2.IsRunning(getid.ID)
+			ok, err := schedule.Cron2.IsRunning(query.ID)
 			if err != nil {
 				log.Error("Cron2.IsRunning failed", zap.Error(err))
 				return
 			}
 			if !ok {
-				log.Warn("task is not running ", zap.String("taskid", getid.ID))
+				log.Warn("task is not running ", zap.String("taskid", query.ID))
 				return
 			}
 			time.Sleep(time.Second)
@@ -697,7 +621,7 @@ func RealRunTaskStatus(c *gin.Context) {
 	getid := define.GetID{}
 	err = c.BindQuery(&getid)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		conn.WriteMessage(websocket.TextMessage, []byte(define.ErrBadRequest{}.Error()))
 		return
 	}
 
@@ -764,18 +688,20 @@ func ParseCron(c *gin.Context) {
 	reqep := reqexpr{}
 	err := c.ShouldBindQuery(&reqep)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	cronbyte, err := base64.StdEncoding.DecodeString(reqep.CronExpr)
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 
 	expr, err := cronexpr.Parse(string(cronbyte))
 	if err != nil {
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, define.ErrCronExpr{
+			Value: string(cronbyte),
+		})
 		return
 	}
 	var (
@@ -792,7 +718,7 @@ func ParseCron(c *gin.Context) {
 			break
 		}
 	}
-	resp.JSON(c, resp.Success, resptimes)
+	resp.JSONv2(c, nil, resptimes)
 }
 
 // GetSelect name,id
@@ -806,13 +732,8 @@ func GetSelect(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		config.CoreConf.Server.DB.MaxQueryTime.Duration)
 	defer cancel()
-	data, err := model.GetNameID(ctx, model.TBTask)
-	if err != nil {
-		log.Error("model.GetNameID failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	resp.JSON(c, resp.Success, data)
+	data, err := model.GetIDNameOption(ctx, nil, &model.Task{})
+	resp.JSONv2(c, err, data)
 }
 
 // CloneTask clone task
@@ -833,63 +754,18 @@ func CloneTask(c *gin.Context) {
 	err := c.ShouldBindJSON(&clonetask)
 	if err != nil {
 		log.Error("ShouldBindJSON failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
-		return
-	}
-	exist, err := model.Check(ctx, model.TBTask, model.Name, clonetask.Name)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if exist {
-		resp.JSON(c, resp.ErrTaskExist, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 
-	task, err := model.GetTaskByID(ctx, clonetask.ID)
-	switch err.(type) {
-	case nil:
-		goto Next
-	case define.ErrNotExist:
-		log.Error("get task failed", zap.Error(err))
-		resp.JSON(c, resp.ErrTaskNotExist, nil)
-		return
-	default:
-		log.Error("model.GetTaskByID failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-Next:
-	id := utils.GetID()
-	if id == "" {
-		log.Error("utils.GetID return empty", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	err = model.CreateTask(ctx,
-		id,
-		clonetask.Name,
-		task.TaskType,
-		task.TaskData,
-		task.Run,
-		task.ParentTaskIds,
-		task.ParentRunParallel,
-		task.ChildTaskIds,
-		task.ChildRunParallel,
-		task.Cronexpr,
-		task.Timeout,
-		task.AlarmUserIds,
-		task.RoutePolicy,
-		task.ExpectCode,
-		task.ExpectContent,
-		task.AlarmStatus,
-		c.GetString("uid"),
-		task.HostGroupID,
-		fmt.Sprintf("从任务%s克隆", task.Name))
+	task, err := model.GetTaskByIDv2(ctx, clonetask.ID)
 	if err != nil {
-		log.Error(" model.CreateTask failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
+		return
+	}
+	id, err := model.CreateTaskv2(ctx, task)
+	if err != nil {
+		resp.JSONv2(c, err)
 		return
 	}
 	event := schedule.EventData{
@@ -899,11 +775,11 @@ Next:
 	res, err := json.Marshal(event)
 	if err != nil {
 		log.Error("json.Marshal failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 	schedule.Cron2.PubTaskEvent(res)
-	resp.JSON(c, resp.Success, nil)
+	resp.JSONv2(c, nil)
 }
 
 // CleanTaskLog clean old task log
@@ -924,55 +800,11 @@ func CleanTaskLog(c *gin.Context) {
 	err := c.ShouldBindJSON(&cleanlog)
 	if err != nil {
 		log.Error("c.ShouldBindJson failed", zap.Error(err))
-		resp.JSON(c, resp.ErrBadRequest, nil)
+		resp.JSONv2(c, err)
 		return
 	}
 
-	// TODO 检查任务数据
-	exist, err := model.Check(ctx, model.TBTask, model.Name, cleanlog.Name)
-	if err != nil {
-		log.Error("IsExist failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	if !exist {
-		log.Error("task is not exist", zap.String("name", cleanlog.Name))
-		resp.JSON(c, resp.ErrTaskNotExist, nil)
-		return
-	}
-
-	// 获取用户的类型
-	var role define.Role
-	if v, ok := c.Get("role"); ok {
-		role = v.(define.Role)
-	}
-
-	// 这里只需要确定如果rule的用户类型是否为Admin
-	if role != define.AdminUser {
-		// 判断任务的创建人是否为当前用户
-		exist, err = model.Check(ctx, model.TBTask, model.NameCreateByUID, cleanlog.Name, c.GetString("uid"))
-		if err != nil {
-			log.Error("IsExist failed", zap.Error(err))
-			resp.JSON(c, resp.ErrInternalServer, nil)
-			return
-		}
-
-		if !exist {
-			resp.JSON(c, resp.ErrUnauthorized, nil)
-			return
-		}
-	}
-
-	deletetime := (time.Now().UnixNano() - int64(time.Hour)*24*cleanlog.PreDay) / 1e6
-	delcount, err := model.CleanTaskLog(ctx, cleanlog.Name, "", deletetime)
-	if err != nil {
-		log.Error("model.CleanTaskLog failed", zap.Error(err))
-		resp.JSON(c, resp.ErrInternalServer, nil)
-		return
-	}
-	type del struct {
-		DelCount int64 `json:"delcount"`
-	}
-
-	resp.JSON(c, resp.Success, del{DelCount: delcount})
+	deletetime := time.Now().Add(time.Hour * time.Duration(-24*cleanlog.PreDay))
+	delcount, err := model.CleanLogv2(ctx, cleanlog.ID, deletetime)
+	resp.JSONv2(c,err,nil,delcount)
 }

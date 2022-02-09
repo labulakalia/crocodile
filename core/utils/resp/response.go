@@ -2,6 +2,7 @@ package resp
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/labulaka521/crocodile/core/utils/define"
 )
 
 // Response api response
@@ -39,24 +40,26 @@ func JSON(c *gin.Context, code int, data ...interface{}) {
 
 // JSONv2 json response
 func JSONv2(c *gin.Context, err error, data ...interface{}) {
-	resp := Response{
-		Msg: "ok",
-	}
-
+	resp := Response{}
+	err = define.GetError(err)
 	if err != nil {
 		resp.Msg = err.Error()
 		resp.Code = 1
-	}
-	if len(data) == 1 {
-		resp.Data = data[0]
-	}
-	if len(data) == 2 {
-		resp.Count = data[1].(int)
+	} else {
+		resp.Msg = "ok"
+		if len(data) == 1 {
+			resp.Data = data[0]
+		}
+
+		if len(data) == 2 {
+			resp.Count = data[1].(int)
+		}
+
+		if len(data) == 3 {
+			resp.Releation = data[2]
+		}
 	}
 
-	if len(data) == 3 {
-		resp.Releation = data[2]
-	}
 	c.JSON(200, resp)
 	c.Set("statuscode", 1)
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/labulaka521/crocodile/common/db"
 	"github.com/labulaka521/crocodile/common/log"
@@ -245,11 +244,11 @@ func GetNameID(ctx context.Context, t string) ([]define.KlOption, error) {
 				continue
 			}
 
-			if lastUpdateTimeUnix+maxWorkerTTL > time.Now().Unix() {
-				kloption.Online = 1
-			} else {
-				kloption.Online = -1
-			}
+			// if lastUpdateTimeUnix+maxWorkerTTL > time.Now().Unix() {
+			// 	kloption.Online = 1
+			// } else {
+			// 	kloption.Online = -1
+			// }
 		} else {
 			err = rows.Scan(&id, &name)
 			if err != nil {
@@ -292,13 +291,13 @@ func gencountsql(querysql string) string {
 }
 
 // GetIDNameDict return slice key like map[key]value
-func GetIDNameDict(ctx context.Context, ids []string, model interface{}) (map[string]string, error) {
+func GetIDNameDict(ctx context.Context, ids []string, model interface{}, resp *map[string]string) error {
 	result := []map[string]interface{}{}
 	err := gormdb.WithContext(ctx).Model(model).Select("id", "name").Where("id in ?", ids).Find(&result).Error
 	if err != nil {
-		return nil, fmt.Errorf("select id ,name failed :%w", err)
+		return fmt.Errorf("select id ,name failed :%w", err)
 	}
-	var res = map[string]string{}
+	gormdb.FirstOrCreate(dest interface{}, conds ...interface{})
 	for _, v := range result {
 		id, ok := v["id"]
 		if !ok {
@@ -308,7 +307,27 @@ func GetIDNameDict(ctx context.Context, ids []string, model interface{}) (map[st
 		if !ok {
 			continue
 		}
-		res[id.(string)] = name.(string)
+		(*resp)[id.(string)] = name.(string)
+
 	}
-	return res, nil
+	return nil
+}
+
+func GetIDNameOption(ctx context.Context, ids []string, model interface{}) ([]define.KlOption, error) {
+	rows, err := gormdb.WithContext(ctx).Model(model).
+		Select("id", "name", "updatetime").Where("id in ?", ids).Rows()
+	if err != nil {
+		return nil, fmt.Errorf("select id ,name failed :%w", err)
+	}
+	resp := make([]define.KlOption, 0)
+	for rows.Next() {
+		var o define.KlOption
+		err = rows.Scan(&o.Label, &o.Value, &o.UpdateTime)
+		if err != nil {
+			log.Error("scan failed ", zap.Error(err))
+			continue
+		}
+		resp = append(resp, o)
+	}
+	return resp, nil
 }

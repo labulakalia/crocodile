@@ -233,7 +233,7 @@ func TestTaskIsUsev2(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    int64
+		want    bool
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -243,7 +243,7 @@ func TestTaskIsUsev2(t *testing.T) {
 				ctx:    context.Background(),
 				taskid: id,
 			},
-			want:    1,
+			want:    true,
 			wantErr: false,
 		},
 		{
@@ -252,13 +252,13 @@ func TestTaskIsUsev2(t *testing.T) {
 				ctx:    context.Background(),
 				taskid: "not_exist_id",
 			},
-			want:    0,
+			want:    false,
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := TaskIsUsev2(tt.args.ctx, tt.args.taskid)
+			got, err := TaskIsUsev2(gormdb, tt.args.taskid)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TaskIsUsev2() error = %v, wantErr %v", err, tt.wantErr)
 				return
